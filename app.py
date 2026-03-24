@@ -6,7 +6,11 @@ import json
 from datetime import datetime, timedelta
 from io import BytesIO
 from sqlalchemy import create_engine
-from vnstock3 import Vnstock
+try:
+    from vnstock3 import Vnstock
+    HAS_VNSTOCK = True
+except ImportError:
+    HAS_VNSTOCK = False
 
 # =============================
 # CONFIG
@@ -42,51 +46,48 @@ VN30_SYMBOLS = list(VN30_STOCKS.keys())
 
 
 # =============================
-# VNINDEX DATA FETCH (via vnstock)
+# VNINDEX DATA FETCH (multiple sources)
 # =============================
 def get_vnindex_data():
-    # Try vnstock3 with VCI source
-    try:
-        stock = Vnstock().stock(symbol="VN30", source="VCI")
-        end = datetime.now().strftime("%Y-%m-%d")
-        start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
-        df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
-        if df is not None and not df.empty:
-            df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
-            if "time" in df.columns:
-                df.index = pd.to_datetime(df["time"])
-            elif "date" in df.columns:
-                df.index = pd.to_datetime(df["date"])
-            return df
-    except Exception:
-        pass
-
-    # Try vnstock3 with TCBS source
-    try:
-        stock = Vnstock().stock(symbol="VN30", source="TCBS")
-        end = datetime.now().strftime("%Y-%m-%d")
-        start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
-        df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
-        if df is not None and not df.empty:
-            df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
-            if "time" in df.columns:
-                df.index = pd.to_datetime(df["time"])
-            elif "date" in df.columns:
-                df.index = pd.to_datetime(df["date"])
-            return df
-    except Exception:
-        pass
-
-    # Fallback to yfinance with multiple ticker attempts
-    for ticker in ["^VNINDEX.VN", "E1VFVN30.VN", "VNM"]:
+    sources = []
+    if HAS_VNSTOCK:
+        sources.append(lambda: _fetch_vnstock("VCI"))
+        sources.append(lambda: _fetch_vnstock("TCBS"))
+    sources.extend([
+        lambda: _fetch_yfinance("^VNINDEX.VN"),
+        lambda: _fetch_yfinance("E1VFVN30.VN"),
+        lambda: _fetch_yfinance("VNM"),
+    ])
+    for fetch in sources:
         try:
-            df = yf.Ticker(ticker).history(period="6mo")
-            if df is not None and not df.empty:
+            df = fetch()
+            if df is not None and not df.empty and len(df) >= 50:
                 return df
         except Exception:
             continue
-
     return None
+
+
+def _fetch_vnstock(source):
+    stock = Vnstock().stock(symbol="VN30", source=source)
+    end = datetime.now().strftime("%Y-%m-%d")
+    start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+    df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
+    if df is None or df.empty:
+        return None
+    df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
+    if "time" in df.columns:
+        df.index = pd.to_datetime(df["time"])
+    elif "date" in df.columns:
+        df.index = pd.to_datetime(df["date"])
+    return df
+
+
+def _fetch_yfinance(ticker):
+    df = yf.Ticker(ticker).history(period="6mo")
+    if df is None or df.empty:
+        return None
+    return df
 
 
 # =============================
@@ -130,23 +131,46 @@ def compute_rsi(series, period=14):
 
 
 # =============================
-# VNINDEX FILTER (SAFE)
+# MARKET TREND (VNINDEX or proxy)
 # =============================
+def _compute_trend(df):
+    """Compute UP/DOWN trend from a dataframe with a Close column."""
+    if df is None or df.empty or len(df) < 50:
+        return None
+    ma50 = df["Close"].rolling(50).mean()
+    if pd.isna(ma50.iloc[-1]):
+        return None
+    return "UP" if df["Close"].iloc[-1] > ma50.iloc[-1] else "DOWN"
+
+
 def market_trend():
+    # Primary: use VNINDEX directly
     df = get_vnindex_data()
+    result = _compute_trend(df)
+    if result is not None:
+        return result, "VNINDEX"
 
-    if df is None or df.empty:
-        return "UNKNOWN"
+    # Fallback: derive market trend from VN30 blue-chips via yfinance
+    # These are the most liquid VN stocks that yfinance reliably serves
+    proxy_symbols = ["VCB.VN", "VNM.VN", "FPT.VN", "HPG.VN", "MBB.VN"]
+    up_count = 0
+    total = 0
+    for sym in proxy_symbols:
+        try:
+            proxy_df = yf.Ticker(sym).history(period="6mo")
+            trend = _compute_trend(proxy_df)
+            if trend is not None:
+                total += 1
+                if trend == "UP":
+                    up_count += 1
+        except Exception:
+            continue
 
-    if len(df) < 50:
-        return "UNKNOWN"
+    if total == 0:
+        return "UNKNOWN", None
 
-    df["MA50"] = df["Close"].rolling(50).mean()
-
-    if pd.isna(df["MA50"].iloc[-1]):
-        return "UNKNOWN"
-
-    return "UP" if df["Close"].iloc[-1] > df["MA50"].iloc[-1] else "DOWN"
+    # Majority vote: if most blue-chips are in uptrend, market is UP
+    return ("UP" if up_count > total / 2 else "DOWN"), f"{up_count}/{total} proxies"
 
 
 # =============================
@@ -248,12 +272,14 @@ def save_trade(symbol, price, action):
 st.set_page_config(layout="wide")
 st.title("AI Trading Dashboard")
 
-trend = market_trend()
+trend, trend_source = market_trend()
 
 if trend == "UNKNOWN":
-    st.warning("Could not fetch VNINDEX data")
+    st.warning("Could not fetch market data from any source")
+elif trend_source == "VNINDEX":
+    st.info(f"Market Trend: **{trend}** (source: VNINDEX)")
 else:
-    st.info(f"Market Trend: **{trend}**")
+    st.info(f"Market Trend: **{trend}** (source: {trend_source})")
 
 # =============================
 # SYMBOL SOURCE SELECTION
