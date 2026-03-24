@@ -4,3 +4,4 @@ pandas
 numpy
 sqlalchemy
 vnstock3
+ipython
