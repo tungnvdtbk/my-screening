@@ -5,3 +5,4 @@ numpy
 sqlalchemy
 vnstock3
 ipython
+openpyxl

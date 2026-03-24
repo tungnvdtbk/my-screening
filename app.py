@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime, timedelta
+from io import BytesIO
 from sqlalchemy import create_engine
 from vnstock3 import Vnstock
 
@@ -44,7 +45,7 @@ VN30_SYMBOLS = list(VN30_STOCKS.keys())
 # VNINDEX DATA FETCH (via vnstock)
 # =============================
 def get_vnindex_data():
-    # Try vnstock3 first
+    # Try vnstock3 with VCI source
     try:
         stock = Vnstock().stock(symbol="VN30", source="VCI")
         end = datetime.now().strftime("%Y-%m-%d")
@@ -60,13 +61,30 @@ def get_vnindex_data():
     except Exception:
         pass
 
-    # Fallback to yfinance
+    # Try vnstock3 with TCBS source
     try:
-        df = yf.Ticker("^VNINDEX").history(period="6mo")
+        stock = Vnstock().stock(symbol="VN30", source="TCBS")
+        end = datetime.now().strftime("%Y-%m-%d")
+        start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
+        df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
         if df is not None and not df.empty:
+            df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
+            if "time" in df.columns:
+                df.index = pd.to_datetime(df["time"])
+            elif "date" in df.columns:
+                df.index = pd.to_datetime(df["date"])
             return df
     except Exception:
         pass
+
+    # Fallback to yfinance with multiple ticker attempts
+    for ticker in ["^VNINDEX.VN", "E1VFVN30.VN", "VNM"]:
+        try:
+            df = yf.Ticker(ticker).history(period="6mo")
+            if df is not None and not df.empty:
+                return df
+        except Exception:
+            continue
 
     return None
 
@@ -307,7 +325,7 @@ with st.spinner("Loading data..."):
             "Trend": "UP" if uptrend else "DOWN",
             "Pullback Zone": f"{zone_low} - {zone_high}",
             "Target": f"{target[0]} (+20%) - {target[1]} (+50%)",
-            "Stoploss": stoploss,
+            "Stoploss": f"{stoploss} (-7%)",
             "Action": action,
         })
 
@@ -353,6 +371,16 @@ if rows:
                 use_container_width=True,
                 hide_index=True,
             )
+
+        # Export to Excel
+        buf = BytesIO()
+        filtered.to_excel(buf, index=False, engine="openpyxl")
+        st.download_button(
+            label="Export to Excel",
+            data=buf.getvalue(),
+            file_name=f"screening_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
 # =============================
 # CHART VIEWER
