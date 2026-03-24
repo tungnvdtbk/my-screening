@@ -10,7 +10,7 @@ from vnstock3 import Vnstock
 # =============================
 # CONFIG
 # =============================
-DATA_PATH = "/app/data"
+DATA_PATH = "./data"
 engine = create_engine(f"sqlite:///{DATA_PATH}/trades.db")
 
 VN30_STOCKS = {

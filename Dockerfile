@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mkdir -p /app/data
+RUN mkdir -p ./data
 
 ENV PORT=8000
 

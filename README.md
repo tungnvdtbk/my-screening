@@ -50,19 +50,17 @@ To run in detached mode:
 docker-compose up -d
 ```
 
-### Deploy on Koyeb
+### Deploy on Streamlit Community Cloud (Free, No Credit Card)
 
-1. Push this repo to GitHub.
+1. Go to **https://share.streamlit.io** and sign in with your **GitHub account**.
 
-2. Create a new **Web Service** on [Koyeb](https://app.koyeb.com/) and connect your GitHub repo.
+2. Click **New app**.
 
-3. Select **Dockerfile** as the build method (auto-detected).
+3. Select repo **tungnvdtbk/my-screening**, branch **main**, file **app.py**.
 
-4. Koyeb automatically sets the `PORT` environment variable — the Dockerfile reads it.
+4. Click **Deploy** — app will be live in ~2 minutes.
 
-5. Set the health check path to `/_stcore/health` (HTTP, port 8000).
-
-6. Deploy. Koyeb will build the image and expose your app on a public URL.
+5. Your app URL: `https://<your-app>.streamlit.app`
 
 ## Project Structure
 
