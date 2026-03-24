@@ -44,21 +44,31 @@ VN30_SYMBOLS = list(VN30_STOCKS.keys())
 # VNINDEX DATA FETCH (via vnstock)
 # =============================
 def get_vnindex_data():
+    # Try vnstock3 first
     try:
         stock = Vnstock().stock(symbol="VN30", source="VCI")
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
         df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
-        if df is None or df.empty:
-            return None
-        df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
-        if "time" in df.columns:
-            df.index = pd.to_datetime(df["time"])
-        elif "date" in df.columns:
-            df.index = pd.to_datetime(df["date"])
-        return df
+        if df is not None and not df.empty:
+            df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
+            if "time" in df.columns:
+                df.index = pd.to_datetime(df["time"])
+            elif "date" in df.columns:
+                df.index = pd.to_datetime(df["date"])
+            return df
     except Exception:
-        return None
+        pass
+
+    # Fallback to yfinance
+    try:
+        df = yf.Ticker("^VNINDEX").history(period="6mo")
+        if df is not None and not df.empty:
+            return df
+    except Exception:
+        pass
+
+    return None
 
 
 # =============================
@@ -296,7 +306,7 @@ with st.spinner("Loading data..."):
             "Volume": vol_signal,
             "Trend": "UP" if uptrend else "DOWN",
             "Pullback Zone": f"{zone_low} - {zone_high}",
-            "Target": f"{target[0]} - {target[1]}",
+            "Target": f"{target[0]} (+20%) - {target[1]} (+50%)",
             "Stoploss": stoploss,
             "Action": action,
         })
