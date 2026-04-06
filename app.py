@@ -1163,7 +1163,7 @@ if "scan_rows" in st.session_state:
             "· **Click một hàng để xem chart**"
         )
         # inline chart for selected row
-        sel_rows = tbl_event.selection.get("rows", []) if tbl_event else []
+        sel_rows = tbl_event.selection.rows if tbl_event else []
         if sel_rows:
             sel_ticker = str(filtered_reset.iloc[sel_rows[0]]["Mã"])
             st.markdown(f"##### 📈 {sel_ticker}")
@@ -1260,7 +1260,7 @@ if "pattern_scan_meta" in st.session_state:
                 key="pattern_tbl",
             )
             # inline chart for selected pattern row
-            pat_sel = pat_event.selection.get("rows", []) if pat_event else []
+            pat_sel = pat_event.selection.rows if pat_event else []
             if pat_sel:
                 pat_ticker = str(result_pdf.iloc[pat_sel[0]]["Mã"])
                 st.markdown(f"##### 📈 {pat_ticker}")
