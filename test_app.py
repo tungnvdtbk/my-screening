@@ -735,12 +735,46 @@ class TestPatternDetection(unittest.TestCase):
         self.assertEqual(app.detect_patterns(make_uptrend_df(20)), [])
 
     def test_pattern_dict_has_required_keys(self):
-        """Every detected pattern must have the 5 required keys."""
+        """Every detected pattern must have all 6 required keys including confirmed."""
         df = self.make_vcp_df()
         patterns = app.detect_patterns(df)
         for p in patterns:
-            for k in ["pattern", "quality", "pivot", "stoploss", "notes"]:
+            for k in ["pattern", "quality", "pivot", "stoploss", "notes", "confirmed"]:
                 self.assertIn(k, p, f"Key '{k}' missing in {p}")
+
+    def test_confirmed_is_bool(self):
+        """confirmed field must be a boolean."""
+        for make_fn in [self.make_vcp_df, self.make_flat_base_df, self.make_pullback_ma20_df]:
+            df = make_fn() if make_fn != self.make_flat_base_df else make_fn(n=80)
+            for check_fn in [app._check_vcp, app._check_flat_base, app._check_pullback_ma20]:
+                p = check_fn(df)
+                if p:
+                    self.assertIsInstance(p["confirmed"], bool,
+                                          f"confirmed not bool in {p['pattern']}")
+
+    def test_vcp_confirmed_false_when_below_pivot(self):
+        """VCP in base (price below pivot) must have confirmed=False."""
+        df = self.make_vcp_df()
+        p = app._check_vcp(df)
+        if p:
+            # make_vcp_df ends at ~60, pivot is recent_high*1.01 > current price
+            self.assertFalse(p["confirmed"],
+                             "VCP in base should not be confirmed yet")
+
+    def test_vcp_confirmed_true_when_breakout(self):
+        """VCP with price above pivot + high volume → confirmed=True."""
+        df = self.make_vcp_df()
+        p = app._check_vcp(df)
+        if p is None:
+            return
+        pivot = p["pivot"]
+        # Simulate a breakout: push the last bar above pivot with 2× volume
+        df2 = df.copy()
+        df2.iloc[-1, df2.columns.get_loc("Close")] = pivot * 1.02
+        df2.iloc[-1, df2.columns.get_loc("Volume")] = float(df["Volume"].mean()) * 2.0
+        p2 = app._check_vcp(df2)
+        if p2:
+            self.assertTrue(p2["confirmed"], "Breakout bar should be confirmed")
 
     def test_quality_values_valid(self):
         df = self.make_vcp_df()

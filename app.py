@@ -489,20 +489,30 @@ def _check_vcp(df: pd.DataFrame) -> dict | None:
     vol_dry_ratio     = v3 / v1 if v1 > 0 else 1.0
 
     if contraction_ratio >= 5 and vol_dry_ratio < 0.50:
-        quality = "★★★"   # strong contraction (5×) + volume dried >50%
+        quality = "★★★"
     elif contraction_ratio >= 3:
-        quality = "★★"    # good contraction (3×)
+        quality = "★★"
     else:
-        quality = "★"     # marginal
+        quality = "★"
+
+    pivot    = round(recent_high * 1.01, 1)
+    price    = float(df["Close"].iloc[-1])
+    last_vol = float(df["Volume"].iloc[-1])
+    vol_ma20 = float(df["Volume"].rolling(20).mean().iloc[-1])
+
+    # Breakout confirmed: price breaks pivot + volume ≥ 1.5× avg
+    confirmed = (price > pivot) and (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
 
     return {
-        "pattern":  "VCP",
-        "quality":  quality,
-        "pivot":    round(recent_high * 1.01, 1),
-        "stoploss": round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
-        "notes":    (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
-                     f"Contraction {contraction_ratio:.1f}×  "
-                     f"Vol {vol_dry_ratio:.0%} of start"),
+        "pattern":   "VCP",
+        "quality":   quality,
+        "pivot":     pivot,
+        "stoploss":  round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
+        "confirmed": confirmed,
+        "notes":     (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
+                      f"Contraction {contraction_ratio:.1f}×  "
+                      f"Vol {vol_dry_ratio:.0%} of start"
+                      + ("  🔥 BREAKOUT confirmed" if confirmed else "")),
     }
 
 
@@ -550,13 +560,21 @@ def _check_flat_base(df: pd.DataFrame) -> dict | None:
     else:
         quality = "★"     # base forming, not yet at top
 
+    fb_pivot  = round(base_high * 1.01, 1)
+    fb_price  = float(df["Close"].iloc[-1])
+    fb_vol    = float(df["Volume"].iloc[-1])
+    fb_volma  = float(df["Volume"].rolling(20).mean().iloc[-1])
+    fb_conf   = (fb_price > fb_pivot) and (not pd.isna(fb_volma)) and (fb_vol >= fb_volma * 1.5)
+
     return {
-        "pattern":  "Flat Base",
-        "quality":  quality,
-        "pivot":    round(base_high * 1.01, 1),
-        "stoploss": round(float(base["Low"].min()) * 0.99, 1),
-        "notes":    (f"Range {r:.1f}% over 40 bars  "
-                     f"Vol {vol_ratio:.0%} of prior"),
+        "pattern":   "Flat Base",
+        "quality":   quality,
+        "pivot":     fb_pivot,
+        "stoploss":  round(float(base["Low"].min()) * 0.99, 1),
+        "confirmed": fb_conf,
+        "notes":     (f"Range {r:.1f}% over 40 bars  "
+                      f"Vol {vol_ratio:.0%} of prior"
+                      + ("  🔥 BREAKOUT confirmed" if fb_conf else "")),
     }
 
 
@@ -604,16 +622,21 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
         if pct_chg < -4.0 and vol_mult > 3.0:
             return None   # panic sell detected → skip
 
-    quality = "★★★" if vol_declining else "★★"
+    quality   = "★★★" if vol_declining else "★★"
     prev_high = float(close.iloc[-6:-1].max())
+    pb_pivot  = round(prev_high * 1.005, 1)
+    last_vol  = float(volume.iloc[-1])
+    pb_conf   = (price > pb_pivot) and (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
 
     return {
-        "pattern":  "Pullback MA20",
-        "quality":  quality,
-        "pivot":    round(prev_high * 1.005, 1),   # entry above recent high
-        "stoploss": round(ma50_v * 0.97, 1),        # below MA50
-        "notes":    (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
-                     f"Vol {vol_avg5/vol_ma20:.0%} of avg"),
+        "pattern":   "Pullback MA20",
+        "quality":   quality,
+        "pivot":     pb_pivot,
+        "stoploss":  round(ma50_v * 0.97, 1),
+        "confirmed": pb_conf,
+        "notes":     (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
+                      f"Vol {vol_avg5/vol_ma20:.0%} of avg"
+                      + ("  🔥 BREAKOUT confirmed" if pb_conf else "")),
     }
 
 
@@ -716,37 +739,27 @@ with btn_col1:
                         help="Tải dữ liệu, lọc Trend Template + RS toàn sàn.")
 with btn_col2:
     do_pattern = st.button("📐 Pattern Scan", use_container_width=True,
-                           help="Phát hiện VCP / Flat Base / Pullback MA20 từ cache. Chạy nhanh, không cần mạng.")
+                           help="Scan toàn sàn HOSE tìm VCP / Flat Base / Pullback MA20. Tải dữ liệu nếu chưa có cache.")
 
-# ── Pattern Scan ──────────────────────────────────────────────
+# ── Pattern Scan — always scans full HOSE independently ───────────────
 if do_pattern:
-    # Use symbols from last scan if available, else all cached files
-    if "scan_rows" in st.session_state:
-        pattern_syms = [r["sym"] for r in st.session_state["scan_rows"]]
-    else:
-        cached_files = [f for f in os.listdir(CACHE_DIR) if f.endswith((".parquet", ".csv"))]
-        pattern_syms = [f.replace("_VN.parquet", ".VN")
-                         .replace("_VN.csv", ".VN")
-                         .replace("_", ".", 1) for f in cached_files]
-        pattern_syms = [s for s in pattern_syms if s.endswith(".VN")]
+    with st.spinner("Lấy danh sách mã HOSE..."):
+        pattern_syms = list(VN30_STOCKS.keys()) if scan_mode == "VN30" else get_hose_symbols()
 
     if not pattern_syms:
-        st.warning("Chưa có dữ liệu cache. Chạy Scan Now trước.")
+        st.error("Không lấy được danh sách mã.")
     else:
-        prog2 = st.progress(0, text="Detecting patterns...")
+        prog2 = st.progress(0, text="Scanning patterns...")
         pattern_rows = []
         n2 = len(pattern_syms)
         for i, sym in enumerate(pattern_syms):
             prog2.progress((i + 1) / n2, text=f"[{i+1}/{n2}] {sym}")
-            df = load_price_data(sym, use_cache=True)
+            df = load_price_data(sym, use_cache=True)   # fetches from network if not cached
             if df is None or df.empty:
                 continue
             patterns = detect_patterns(df)
             for p in patterns:
-                pattern_rows.append({
-                    "sym": sym,
-                    **p,
-                })
+                pattern_rows.append({"sym": sym, **p})
         prog2.empty()
         st.session_state["pattern_rows"] = pattern_rows
         st.rerun()
@@ -1034,10 +1047,10 @@ if "scan_rows" in st.session_state:
                         live_patterns = detect_patterns(df_c)
                         if live_patterns:
                             for lp in live_patterns:
+                                status = "🔥 BREAKOUT" if lp.get("confirmed") else "⏳ Setup forming"
                                 st.markdown(
-                                    f"**{lp['pattern']}** {lp['quality']}  "
-                                    f"— Pivot: `{lp['pivot']}`  "
-                                    f"SL: `{lp['stoploss']}`"
+                                    f"**{lp['pattern']}** {lp['quality']}  {status}  "
+                                    f"— Pivot: `{lp['pivot']}`  SL: `{lp['stoploss']}`"
                                 )
                                 st.caption(lp["notes"])
                         else:
@@ -1068,21 +1081,29 @@ if "pattern_rows" in st.session_state and st.session_state["pattern_rows"]:
     filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
 
     if filtered_p:
+        # Sort confirmed breakouts first
+        filtered_p = sorted(filtered_p,
+                            key=lambda r: (0 if r.get("confirmed") else 1,
+                                           {"★★★": 0, "★★": 1, "★": 2}.get(r["quality"], 3)))
         p_table = []
         for r in filtered_p:
+            status = "🔥 BREAKOUT" if r.get("confirmed") else "⏳ Setup"
             p_table.append({
                 "Mã":       r["sym"].replace(".VN", ""),
                 "Pattern":  r["pattern"],
+                "Status":   status,
                 "Quality":  r["quality"],
                 "Pivot":    r["pivot"],
                 "Stoploss": r["stoploss"],
                 "Notes":    r["notes"],
             })
-        st.dataframe(pd.DataFrame(p_table), use_container_width=True, hide_index=True)
+        result_pdf = pd.DataFrame(p_table)
+        confirmed_count = sum(1 for r in filtered_p if r.get("confirmed"))
+        st.dataframe(result_pdf, use_container_width=True, hide_index=True)
         st.caption(
-            f"{len(filtered_p)} pattern(s) detected across "
-            f"{len({r['sym'] for r in filtered_p})} stocks.  "
-            "Pivot = breakout entry price (+1%). Chờ xác nhận volume ≥ 150% avg."
+            f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
+            f"| 🔥 {confirmed_count} breakout confirmed (price > pivot + vol ≥ 1.5× avg)  "
+            f"| ⏳ {len(filtered_p) - confirmed_count} setup forming"
         )
     else:
         st.info("Không có pattern nào khớp bộ lọc.")
