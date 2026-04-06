@@ -140,6 +140,37 @@ def _load_df(path: str) -> pd.DataFrame | None:
     return None
 
 
+def cache_stats() -> tuple[int, float]:
+    """Return (file_count, total_size_mb) for all cached price files."""
+    try:
+        files = [f for f in os.listdir(CACHE_DIR)
+                 if f.endswith((".parquet", ".csv"))]
+        size = sum(
+            os.path.getsize(os.path.join(CACHE_DIR, f))
+            for f in files
+            if os.path.exists(os.path.join(CACHE_DIR, f))
+        )
+        return len(files), size / (1024 * 1024)
+    except Exception:
+        return 0, 0.0
+
+
+def clear_cache() -> int:
+    """Delete all price cache files. Returns count of deleted files."""
+    deleted = 0
+    try:
+        for fname in os.listdir(CACHE_DIR):
+            if fname.endswith((".parquet", ".csv")):
+                try:
+                    os.remove(os.path.join(CACHE_DIR, fname))
+                    deleted += 1
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return deleted
+
+
 def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
     """Load from parquet cache; append only new bars from yfinance."""
     path = _cache_path(symbol)
@@ -160,7 +191,7 @@ def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
 
     if cached is not None and not cached.empty:
         last_date = cached.index.max()
-        if last_date >= today - pd.Timedelta(days=1):
+        if last_date >= today - pd.Timedelta(days=3):  # covers weekends
             return cached  # already up-to-date
 
         # Fetch only missing range
@@ -451,7 +482,15 @@ with st.sidebar:
         help="HOSE: toàn bộ ~400 mã (chậm hơn lần đầu). VN30: 30 mã blue-chip."
     )
     use_cache = st.checkbox("Dùng cache giá", value=True,
-                            help="Lần sau chỉ tải dữ liệu mới, nhanh hơn nhiều.")
+                            help="Bỏ chọn để tải lại toàn bộ từ đầu (bỏ qua cache).")
+    st.markdown("---")
+    st.markdown("**Cache**")
+    _n, _mb = cache_stats()
+    st.caption(f"{_n} files · {_mb:.1f} MB")
+    if st.button("🗑️ Xoá cache", help="Xoá toàn bộ file giá đã cache. Scan tiếp theo sẽ tải lại từ đầu."):
+        _deleted = clear_cache()
+        st.cache_data.clear()
+        st.success(f"Đã xoá {_deleted} file cache.")
     st.markdown("---")
     st.markdown("**Ngưỡng lọc**")
     st.caption(f"Vol trung bình 20 phiên ≥ {MIN_VOL_20:,}")

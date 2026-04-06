@@ -4,6 +4,7 @@ Run: /path/to/python test_app.py
 
 Strategy: stub out Streamlit (no server needed) + vnstock3,
 then call each logic function directly with synthetic DataFrames.
+yfinance is mocked in cache tests so no network calls are needed.
 """
 
 import sys
@@ -11,6 +12,7 @@ import types
 import unittest
 import tempfile
 import os
+from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
 
@@ -399,8 +401,21 @@ class TestCheckTrendTemplate(unittest.TestCase):
         self.assertEqual(details, {})
 
 
-class TestCacheHelpers(unittest.TestCase):
-    """_save_df / _load_df — parquet-or-CSV file cache."""
+def make_df_ending(n, end_date, base=50.0, vol=500_000, seed=42):
+    """Synthetic df whose last bar lands on end_date."""
+    rng = np.random.default_rng(seed)
+    prices = base + np.linspace(0, base * 0.3, n) + rng.standard_normal(n) * 0.2
+    prices = np.abs(prices)
+    idx = pd.date_range(end=end_date, periods=n, freq="B")
+    return pd.DataFrame({
+        "Open": prices * 0.99, "High": prices * 1.01,
+        "Low": prices * 0.98, "Close": prices,
+        "Volume": np.full(n, float(vol)),
+    }, index=idx)
+
+
+class TestSavLoadHelpers(unittest.TestCase):
+    """_save_df / _load_df — parquet-or-CSV round-trip."""
 
     def test_roundtrip(self):
         df = make_uptrend_df(50)
@@ -410,11 +425,8 @@ class TestCacheHelpers(unittest.TestCase):
             loaded = app._load_df(path)
             self.assertIsNotNone(loaded)
             self.assertEqual(len(loaded), len(df))
-            self.assertAlmostEqual(
-                float(loaded["Close"].iloc[-1]),
-                float(df["Close"].iloc[-1]),
-                places=4,
-            )
+            self.assertAlmostEqual(float(loaded["Close"].iloc[-1]),
+                                   float(df["Close"].iloc[-1]), places=4)
 
     def test_load_nonexistent_returns_none(self):
         self.assertIsNone(app._load_df("/nonexistent/path.parquet"))
@@ -427,6 +439,197 @@ class TestCacheHelpers(unittest.TestCase):
             loaded = app._load_df(path)
             for col in ["Open", "High", "Low", "Close", "Volume"]:
                 self.assertIn(col, loaded.columns)
+
+
+class TestCacheStats(unittest.TestCase):
+    """cache_stats() and clear_cache()."""
+
+    def test_stats_counts_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                # create 3 dummy parquet files
+                for name in ["A_VN.parquet", "B_VN.parquet", "C_VN.parquet"]:
+                    open(os.path.join(tmpdir, name), "wb").close()
+                n, _ = app.cache_stats()
+                self.assertEqual(n, 3)
+
+    def test_stats_empty_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                n, mb = app.cache_stats()
+                self.assertEqual(n, 0)
+                self.assertEqual(mb, 0.0)
+
+    def test_clear_deletes_parquet_and_csv(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                for name in ["A.parquet", "B.parquet", "C.csv"]:
+                    open(os.path.join(tmpdir, name), "wb").close()
+                deleted = app.clear_cache()
+                self.assertEqual(deleted, 3)
+                n, _ = app.cache_stats()
+                self.assertEqual(n, 0)
+
+    def test_clear_returns_count(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                for name in ["X.parquet", "Y.parquet"]:
+                    open(os.path.join(tmpdir, name), "wb").close()
+                self.assertEqual(app.clear_cache(), 2)
+
+    def test_clear_ignores_non_cache_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                open(os.path.join(tmpdir, "readme.txt"), "w").close()
+                open(os.path.join(tmpdir, "A.parquet"), "wb").close()
+                deleted = app.clear_cache()
+                self.assertEqual(deleted, 1)            # only .parquet deleted
+                self.assertTrue(os.path.exists(         # .txt untouched
+                    os.path.join(tmpdir, "readme.txt")))
+
+
+class TestLoadPriceDataCache(unittest.TestCase):
+    """load_price_data() — incremental cache logic (yfinance mocked)."""
+
+    # ── helper ──────────────────────────────────────────────────────
+    def _mock_ticker(self, df):
+        """Return a mock yf.Ticker whose .history() returns df."""
+        m = MagicMock()
+        m.history.return_value = df
+        return m
+
+    # ── up-to-date cache → no network call ──────────────────────────
+    def test_uptodate_cache_no_yfinance_call(self):
+        """Cache ends on last business day → return cached, never call yfinance."""
+        # Use the most recent business day to avoid weekend edge-case
+        last_bday = pd.bdate_range(end=pd.Timestamp.today(), periods=1)[0].normalize()
+        df = make_df_ending(200, last_bday)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(df, app._cache_path("FRESH.VN"))
+                with patch("yfinance.Ticker") as mock_yf:
+                    result = app.load_price_data("FRESH.VN", use_cache=True)
+                    mock_yf.assert_not_called()
+                    self.assertIsNotNone(result)
+                    self.assertEqual(len(result), len(df))
+
+    def test_same_day_cache_no_yfinance_call(self):
+        """Cache ends today (business day) → return cached, no fetch."""
+        last_bday = pd.bdate_range(end=pd.Timestamp.today(), periods=1)[0].normalize()
+        df = make_df_ending(100, last_bday)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(df, app._cache_path("TODAY.VN"))
+                with patch("yfinance.Ticker") as mock_yf:
+                    app.load_price_data("TODAY.VN", use_cache=True)
+                    mock_yf.assert_not_called()
+
+    # ── stale cache → fetch new bars and append ──────────────────────
+    def test_stale_cache_triggers_fetch(self):
+        """Cache ends 10 days ago → yfinance called to fill the gap."""
+        today   = pd.Timestamp.today().normalize()
+        stale   = today - pd.Timedelta(days=10)
+        old_df  = make_df_ending(200, stale)
+        new_df  = make_df_ending(5, today, base=old_df["Close"].iloc[-1] * 1.05)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(old_df, app._cache_path("STALE.VN"))
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(new_df)):
+                    result = app.load_price_data("STALE.VN", use_cache=True)
+                    # result should be longer than old_df
+                    self.assertGreater(len(result), len(old_df))
+
+    def test_stale_cache_appends_new_bars(self):
+        """New bars are actually present in the combined result."""
+        today   = pd.Timestamp.today().normalize()
+        stale   = today - pd.Timedelta(days=10)
+        old_df  = make_df_ending(100, stale)
+        new_df  = make_df_ending(3, today, base=99.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(old_df, app._cache_path("APPEND.VN"))
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(new_df)):
+                    result = app.load_price_data("APPEND.VN", use_cache=True)
+                    # last bar should come from new_df
+                    self.assertAlmostEqual(
+                        float(result["Close"].iloc[-1]),
+                        float(new_df["Close"].iloc[-1]),
+                        places=2,
+                    )
+
+    def test_stale_cache_saved_to_disk(self):
+        """After appending, the updated data is written back to disk."""
+        today  = pd.Timestamp.today().normalize()
+        stale  = today - pd.Timedelta(days=10)
+        old_df = make_df_ending(100, stale)
+        new_df = make_df_ending(3, today, base=60.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                path = app._cache_path("SAVE.VN")
+                app._save_df(old_df, path)
+                mtime_before = os.path.getmtime(path)
+                import time; time.sleep(0.05)
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(new_df)):
+                    app.load_price_data("SAVE.VN", use_cache=True)
+                self.assertGreater(os.path.getmtime(path), mtime_before)
+
+    # ── use_cache=False → bypass read, always fetch ──────────────────
+    def test_use_cache_false_skips_disk_read(self):
+        """use_cache=False must call yfinance even when cache exists."""
+        today  = pd.Timestamp.today().normalize()
+        old_df = make_df_ending(200, today)   # up-to-date cache
+        fresh  = make_uptrend_df(300)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(old_df, app._cache_path("NOCACHE.VN"))
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(fresh)) as mock_yf:
+                    app.load_price_data("NOCACHE.VN", use_cache=False)
+                    mock_yf.assert_called_once()   # yfinance WAS called
+
+    def test_use_cache_false_fetches_full_period(self):
+        """use_cache=False calls history(period='2y'), not incremental."""
+        fresh = make_uptrend_df(300)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                mock_ticker = self._mock_ticker(fresh)
+                with patch("yfinance.Ticker", return_value=mock_ticker):
+                    app.load_price_data("FULL.VN", use_cache=False)
+                    mock_ticker.history.assert_called_once_with(period="2y")
+
+    # ── no cache → full fetch ─────────────────────────────────────────
+    def test_no_cache_fetches_and_writes(self):
+        """No existing cache → fetch 2y and write to disk."""
+        fresh = make_uptrend_df(300)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                path = app._cache_path("NEW.VN")
+                self.assertFalse(os.path.exists(path))
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(fresh)):
+                    result = app.load_price_data("NEW.VN", use_cache=True)
+                self.assertIsNotNone(result)
+                # cache file now exists
+                exists = os.path.exists(path) or os.path.exists(
+                    path.replace(".parquet", ".csv"))
+                self.assertTrue(exists)
+
+    # ── 500-bar cap ───────────────────────────────────────────────────
+    def test_combined_capped_at_500_bars(self):
+        """After append, result never exceeds 500 bars."""
+        today  = pd.Timestamp.today().normalize()
+        stale  = today - pd.Timedelta(days=10)
+        old_df = make_df_ending(490, stale)
+        new_df = make_df_ending(50, today, base=old_df["Close"].iloc[-1] * 1.02)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(app, "CACHE_DIR", tmpdir):
+                app._save_df(old_df, app._cache_path("CAP.VN"))
+                with patch("yfinance.Ticker", return_value=self._mock_ticker(new_df)):
+                    result = app.load_price_data("CAP.VN", use_cache=True)
+                    self.assertLessEqual(len(result), 500)
 
 
 # ═════════════════════════════════════════════════════════════════════
