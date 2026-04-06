@@ -447,6 +447,88 @@ def compute_market_filter(vnindex_df: pd.DataFrame, breadth_pct: float) -> tuple
 # PATTERN DETECTION — Setup A / B / C
 # ============================================================
 
+def _detect_candle_pattern(df: pd.DataFrame) -> str:
+    """
+    Detect bullish / reversal candlestick pattern on the last bar.
+    Returns: "Hammer" | "Bullish Engulfing" | "Marubozu" | "Pin Bar" |
+             "Strong Bull" | "None"
+
+    Normalises H/L so they always encompass O and C (robust to synthetic data).
+    """
+    if len(df) < 2:
+        return "None"
+
+    o  = float(df["Open"].iloc[-1])
+    h  = float(df["High"].iloc[-1])
+    l  = float(df["Low"].iloc[-1])
+    c  = float(df["Close"].iloc[-1])
+    po = float(df["Open"].iloc[-2])
+    pc = float(df["Close"].iloc[-2])
+
+    # Normalise H/L to always contain O and C (handles synthetic test data)
+    h = max(h, o, c)
+    l = min(l, o, c)
+
+    total_range = h - l
+    if total_range < 1e-8:
+        return "None"
+
+    body       = abs(c - o)
+    upper_wick = h - max(o, c)
+    lower_wick = min(o, c) - l
+
+    # 1. Bullish Marubozu — strong green bar, body ≥ 75% of range
+    if c > o and body / total_range >= 0.75:
+        return "Marubozu"
+
+    # 2. Bullish Engulfing — current green fully engulfs prior red body
+    if c > o and pc < po and o <= pc and c >= po:
+        return "Bullish Engulfing"
+
+    # 3. Hammer — small body in top half, lower wick ≥ 2× body
+    if (lower_wick >= 2 * max(body, total_range * 0.02) and
+            upper_wick <= body * 0.8 and
+            min(o, c) >= l + total_range * 0.45):
+        return "Hammer"
+
+    # 4. Pin Bar — lower wick ≥ 60% of range (strong wick rejection)
+    if lower_wick >= total_range * 0.60 and body <= total_range * 0.35:
+        return "Pin Bar"
+
+    # 5. Strong Bull — closes in top 30%, body ≥ 50% of range
+    if c > o and (c - l) / total_range >= 0.70 and body / total_range >= 0.50:
+        return "Strong Bull"
+
+    return "None"
+
+
+def _check_entry_candle(df: pd.DataFrame, pivot: float) -> tuple[str, str]:
+    """
+    Determine entry status relative to pivot.
+
+    Returns (status, entry_candle):
+      "🔥 BUY"        — price > pivot + volume ≥ 1.5× avg (entry triggered)
+      "👀 Monitoring" — within 3% of pivot with a bullish/reversal candle
+      "⏳ Setup"      — pattern detected, waiting for price to approach pivot
+    """
+    price    = float(df["Close"].iloc[-1])
+    last_vol = float(df["Volume"].iloc[-1])
+    vol_ma20 = float(df["Volume"].rolling(20).mean().iloc[-1])
+    vol_ok   = (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
+    candle   = _detect_candle_pattern(df)
+
+    above_pivot = price > pivot
+    near_pivot  = price >= pivot * 0.97     # within 3% below pivot
+
+    if above_pivot and vol_ok:
+        return "🔥 BUY", candle if candle != "None" else "Breakout"
+
+    if near_pivot and candle != "None":
+        return "👀 Monitoring", candle
+
+    return "⏳ Setup", candle
+
+
 def _range_pct(chunk: pd.DataFrame) -> float:
     """High-low range as % of midpoint price."""
     h = float(chunk["High"].max())
@@ -495,24 +577,21 @@ def _check_vcp(df: pd.DataFrame) -> dict | None:
     else:
         quality = "★"
 
-    pivot    = round(recent_high * 1.01, 1)
-    price    = float(df["Close"].iloc[-1])
-    last_vol = float(df["Volume"].iloc[-1])
-    vol_ma20 = float(df["Volume"].rolling(20).mean().iloc[-1])
-
-    # Breakout confirmed: price breaks pivot + volume ≥ 1.5× avg
-    confirmed = (price > pivot) and (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
+    pivot  = round(recent_high * 1.01, 1)
+    status, entry_candle = _check_entry_candle(df, pivot)
+    confirmed = (status == "🔥 BUY")
 
     return {
-        "pattern":   "VCP",
-        "quality":   quality,
-        "pivot":     pivot,
-        "stoploss":  round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
-        "confirmed": confirmed,
-        "notes":     (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
-                      f"Contraction {contraction_ratio:.1f}×  "
-                      f"Vol {vol_dry_ratio:.0%} of start"
-                      + ("  🔥 BREAKOUT confirmed" if confirmed else "")),
+        "pattern":      "VCP",
+        "quality":      quality,
+        "pivot":        pivot,
+        "stoploss":     round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
+        "confirmed":    confirmed,
+        "status":       status,
+        "entry_candle": entry_candle,
+        "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
+                         f"Contraction {contraction_ratio:.1f}×  "
+                         f"Vol {vol_dry_ratio:.0%} of start"),
     }
 
 
@@ -560,21 +639,19 @@ def _check_flat_base(df: pd.DataFrame) -> dict | None:
     else:
         quality = "★"     # base forming, not yet at top
 
-    fb_pivot  = round(base_high * 1.01, 1)
-    fb_price  = float(df["Close"].iloc[-1])
-    fb_vol    = float(df["Volume"].iloc[-1])
-    fb_volma  = float(df["Volume"].rolling(20).mean().iloc[-1])
-    fb_conf   = (fb_price > fb_pivot) and (not pd.isna(fb_volma)) and (fb_vol >= fb_volma * 1.5)
+    fb_pivot = round(base_high * 1.01, 1)
+    status, entry_candle = _check_entry_candle(df, fb_pivot)
+    confirmed = (status == "🔥 BUY")
 
     return {
-        "pattern":   "Flat Base",
-        "quality":   quality,
-        "pivot":     fb_pivot,
-        "stoploss":  round(float(base["Low"].min()) * 0.99, 1),
-        "confirmed": fb_conf,
-        "notes":     (f"Range {r:.1f}% over 40 bars  "
-                      f"Vol {vol_ratio:.0%} of prior"
-                      + ("  🔥 BREAKOUT confirmed" if fb_conf else "")),
+        "pattern":      "Flat Base",
+        "quality":      quality,
+        "pivot":        fb_pivot,
+        "stoploss":     round(float(base["Low"].min()) * 0.99, 1),
+        "confirmed":    confirmed,
+        "status":       status,
+        "entry_candle": entry_candle,
+        "notes":        f"Range {r:.1f}% over 40 bars  Vol {vol_ratio:.0%} of prior",
     }
 
 
@@ -625,18 +702,19 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
     quality   = "★★★" if vol_declining else "★★"
     prev_high = float(close.iloc[-6:-1].max())
     pb_pivot  = round(prev_high * 1.005, 1)
-    last_vol  = float(volume.iloc[-1])
-    pb_conf   = (price > pb_pivot) and (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
+    status, entry_candle = _check_entry_candle(df, pb_pivot)
+    confirmed = (status == "🔥 BUY")
 
     return {
-        "pattern":   "Pullback MA20",
-        "quality":   quality,
-        "pivot":     pb_pivot,
-        "stoploss":  round(ma50_v * 0.97, 1),
-        "confirmed": pb_conf,
-        "notes":     (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
-                      f"Vol {vol_avg5/vol_ma20:.0%} of avg"
-                      + ("  🔥 BREAKOUT confirmed" if pb_conf else "")),
+        "pattern":      "Pullback MA20",
+        "quality":      quality,
+        "pivot":        pb_pivot,
+        "stoploss":     round(ma50_v * 0.97, 1),
+        "confirmed":    confirmed,
+        "status":       status,
+        "entry_candle": entry_candle,
+        "notes":        (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
+                         f"Vol {vol_avg5/vol_ma20:.0%} of avg"),
     }
 
 
@@ -1097,29 +1175,32 @@ if "pattern_scan_meta" in st.session_state:
         filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
 
         if filtered_p:
-            # Sort confirmed breakouts first
-            filtered_p = sorted(filtered_p,
-                                key=lambda r: (0 if r.get("confirmed") else 1,
-                                               {"★★★": 0, "★★": 1, "★": 2}.get(r["quality"], 3)))
+            _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
+            _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
+            filtered_p  = sorted(filtered_p, key=lambda r: (
+                _status_ord.get(r.get("status", "⏳ Setup"), 3),
+                _q_ord2.get(r.get("quality", "★"), 3),
+            ))
             p_table = []
             for r in filtered_p:
-                status = "🔥 BREAKOUT" if r.get("confirmed") else "⏳ Setup"
                 p_table.append({
-                    "Mã":       r["sym"].replace(".VN", ""),
-                    "Pattern":  r["pattern"],
-                    "Status":   status,
-                    "Quality":  r["quality"],
-                    "Pivot":    r["pivot"],
-                    "Stoploss": r["stoploss"],
-                    "Notes":    r["notes"],
+                    "Mã":           r["sym"].replace(".VN", ""),
+                    "Pattern":      r["pattern"],
+                    "Status":       r.get("status", "⏳ Setup"),
+                    "Entry Candle": r.get("entry_candle", "—"),
+                    "Quality":      r["quality"],
+                    "Pivot":        r["pivot"],
+                    "Stoploss":     r["stoploss"],
+                    "Notes":        r["notes"],
                 })
-            result_pdf = pd.DataFrame(p_table)
-            confirmed_count = sum(1 for r in filtered_p if r.get("confirmed"))
+            result_pdf    = pd.DataFrame(p_table)
+            buy_count     = sum(1 for r in filtered_p if r.get("status") == "🔥 BUY")
+            monitor_count = sum(1 for r in filtered_p if r.get("status") == "👀 Monitoring")
+            setup_count   = len(filtered_p) - buy_count - monitor_count
             st.dataframe(result_pdf, use_container_width=True, hide_index=True)
             st.caption(
                 f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
-                f"| 🔥 {confirmed_count} breakout confirmed (price > pivot + vol ≥ 1.5× avg)  "
-                f"| ⏳ {len(filtered_p) - confirmed_count} setup forming"
+                f"| 🔥 {buy_count} BUY  | 👀 {monitor_count} Monitoring  | ⏳ {setup_count} Setup"
             )
         else:
             st.info("Không có pattern nào khớp bộ lọc.")

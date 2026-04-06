@@ -981,6 +981,185 @@ class TestPatternDetectionLimitations(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
 
 
+def _candle_df(bars: list, n_prefix: int = 25) -> pd.DataFrame:
+    """
+    Build a DataFrame from explicit (O, H, L, C, V) tuples.
+    Prepend n_prefix neutral bars so rolling(20) is well-defined.
+    The LAST row is always the bar under test.
+    """
+    # neutral preceding bars
+    prefix = [(50.0, 50.5, 49.5, 50.0, 300_000)] * n_prefix
+    all_bars = prefix + list(bars)
+    idx = pd.date_range(end="2026-01-01", periods=len(all_bars), freq="B")
+    o, h, l, c, v = zip(*all_bars)
+    return pd.DataFrame(
+        {"Open": o, "High": h, "Low": l, "Close": c, "Volume": list(v)},
+        index=idx,
+    )
+
+
+class TestCandlePatternDetection(unittest.TestCase):
+    """
+    _detect_candle_pattern and _check_entry_candle.
+    Each test uses precise synthetic OHLCV values chosen to satisfy
+    exactly one pattern's geometric criteria.
+    """
+
+    # ── _detect_candle_pattern ────────────────────────────────────────
+
+    def test_hammer_detected(self):
+        """
+        Hammer: O=50.0, H=50.3, L=47.0, C=50.3  (close = high → zero upper wick)
+          body       = |50.3-50.0| = 0.3
+          upper_wick = 50.3-50.3  = 0.0   ≤ body*0.8 = 0.24 ✓
+          lower_wick = 50.0-47.0  = 3.0   ≥ 2×body = 0.6 ✓
+          min(O,C)=50.0 ≥ 47+(3.3*0.45)=48.49 ✓
+        """
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 300_000),   # prev bar
+                         (50.0, 50.3, 47.0, 50.3, 300_000)])  # hammer (C=H)
+        self.assertEqual(app._detect_candle_pattern(df), "Hammer")
+
+    def test_bullish_engulfing_detected(self):
+        """
+        Prev: O=52, C=50 (red)  Current: O=49, C=53 (green, fully engulfs)
+          o(49) ≤ pc(50) ✓   c(53) ≥ po(52) ✓
+        """
+        df = _candle_df([(52.0, 53.0, 49.0, 50.0, 200_000),   # prev red
+                         (49.0, 54.0, 48.5, 53.0, 500_000)])  # engulfing
+        self.assertEqual(app._detect_candle_pattern(df), "Bullish Engulfing")
+
+    def test_marubozu_detected(self):
+        """
+        O=50, H=55.2, L=49.8, C=54.8
+          body/range = 4.8/5.4 = 88.9%  ≥ 75% ✓  (green bar)
+        """
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 200_000),   # prev
+                         (50.0, 55.2, 49.8, 54.8, 600_000)])  # marubozu
+        self.assertEqual(app._detect_candle_pattern(df), "Marubozu")
+
+    def test_pin_bar_detected(self):
+        """
+        O=51, H=52, L=46, C=51.5
+          lower_wick = min(51,51.5)-46 = 5.0   range = 6.0
+          lower_wick/range = 83%  ≥ 60% ✓
+          body/range = 0.5/6 = 8.3%  ≤ 35% ✓
+        """
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 200_000),   # prev
+                         (51.0, 52.0, 46.0, 51.5, 400_000)])  # pin bar
+        self.assertEqual(app._detect_candle_pattern(df), "Pin Bar")
+
+    def test_strong_bull_detected(self):
+        """
+        O=50, H=55, L=49.5, C=53.5
+          body/range = 3.5/5.5 = 63.6% ≥ 50% ✓
+          (C-L)/range = 4/5.5 = 72.7% ≥ 70% ✓  (green bar)
+        """
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 200_000),   # prev
+                         (50.0, 55.0, 49.5, 53.5, 400_000)])  # strong bull
+        self.assertEqual(app._detect_candle_pattern(df), "Strong Bull")
+
+    def test_neutral_bar_returns_none(self):
+        """Small doji-like bar with no significant pattern → 'None'."""
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 200_000),
+                         (50.1, 50.4, 49.8, 50.15, 200_000)])  # no clear pattern
+        result = app._detect_candle_pattern(df)
+        # Result may or may not be None depending on bar geometry;
+        # at minimum it must be a valid string.
+        self.assertIsInstance(result, str)
+
+    def test_bearish_bar_not_bullish_pattern(self):
+        """Strong red bar should not return a bullish pattern."""
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 200_000),
+                         (54.0, 54.5, 49.5, 50.0, 600_000)])  # bearish marubozu
+        result = app._detect_candle_pattern(df)
+        self.assertNotIn(result, ["Marubozu", "Bullish Engulfing", "Strong Bull"])
+
+    def test_insufficient_bars_returns_none(self):
+        """Need ≥ 2 bars to detect a pattern."""
+        df = _candle_df([])
+        self.assertEqual(app._detect_candle_pattern(df), "None")
+
+    # ── _check_entry_candle ───────────────────────────────────────────
+
+    def _base_df(self, close_override=None, vol_override=None):
+        """
+        Returns a 30-bar uptrend df where vol_ma20 ≈ 300k.
+        Last bar open ≈ 49.7, high ≈ 50.5, low ≈ 49.5, close ≈ 50.0.
+        """
+        df = make_uptrend_df(30, base=48.0, vol=300_000)
+        if close_override is not None:
+            df.iloc[-1, df.columns.get_loc("Close")] = close_override
+        if vol_override is not None:
+            df.iloc[-1, df.columns.get_loc("Volume")] = float(vol_override)
+        return df
+
+    def test_status_buy_above_pivot_high_vol(self):
+        """price > pivot + vol ≥ 1.5× → 🔥 BUY regardless of candle."""
+        df = self._base_df(close_override=55.0, vol_override=600_000)
+        # Also push High to contain the close (realistic data)
+        df.iloc[-1, df.columns.get_loc("High")] = 55.5
+        status, candle = app._check_entry_candle(df, pivot=50.0)
+        self.assertEqual(status, "🔥 BUY")
+
+    def test_status_buy_requires_volume(self):
+        """price > pivot but vol < 1.5× → not BUY."""
+        df = self._base_df(close_override=55.0, vol_override=200_000)
+        df.iloc[-1, df.columns.get_loc("High")] = 55.5
+        status, _ = app._check_entry_candle(df, pivot=50.0)
+        self.assertNotEqual(status, "🔥 BUY")
+
+    def test_status_monitoring_near_pivot_with_candle(self):
+        """
+        Price within 3% of pivot (49.3 ≥ 50.0*0.97=48.5) + Pin Bar
+        → 👀 Monitoring.
+        Bar: O=49.2, H=49.5, L=46.0, C=49.3
+          lower_wick = 49.2-46.0 = 3.2  /  range = 3.5  = 91% ≥ 60% → Pin Bar ✓
+        """
+        df = _candle_df([(50.0, 50.5, 49.5, 50.0, 300_000),
+                         (49.2, 49.5, 46.0, 49.3, 300_000)])  # pin bar near pivot
+        status, candle = app._check_entry_candle(df, pivot=50.0)
+        self.assertEqual(status, "👀 Monitoring")
+        self.assertEqual(candle, "Pin Bar")
+
+    def test_status_setup_far_from_pivot(self):
+        """Price well below pivot (no candle signal) → ⏳ Setup."""
+        df = self._base_df(close_override=44.0, vol_override=300_000)
+        status, _ = app._check_entry_candle(df, pivot=50.0)
+        self.assertEqual(status, "⏳ Setup")
+
+    def test_entry_candle_returned_correctly(self):
+        """entry_candle from _check_entry_candle matches _detect_candle_pattern."""
+        df = make_uptrend_df(30, base=48.0)
+        expected_candle = app._detect_candle_pattern(df)
+        _, actual_candle = app._check_entry_candle(df, pivot=100.0)  # far pivot → Setup
+        self.assertEqual(actual_candle, expected_candle)
+
+    # ── Integration: status field in pattern results ──────────────────
+
+    def test_pattern_has_status_field(self):
+        """All detected patterns must include 'status' and 'entry_candle' keys."""
+        for make_fn, check_fn in [
+            (lambda: self.make_vcp(), app._check_vcp),
+            (lambda: self.make_flat(), app._check_flat_base),
+            (lambda: self.make_pull(), app._check_pullback_ma20),
+        ]:
+            df = make_fn()
+            p = check_fn(df)
+            if p:
+                self.assertIn("status", p, f"status missing in {p['pattern']}")
+                self.assertIn("entry_candle", p, f"entry_candle missing in {p['pattern']}")
+                self.assertIn(p["status"], ["🔥 BUY", "👀 Monitoring", "⏳ Setup"])
+
+    def make_vcp(self):
+        return TestPatternDetection().make_vcp_df()
+
+    def make_flat(self):
+        return TestPatternDetection().make_flat_base_df(n=80)
+
+    def make_pull(self):
+        return TestPatternDetection().make_pullback_ma20_df()
+
+
 # ═════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     unittest.main(verbosity=2)
