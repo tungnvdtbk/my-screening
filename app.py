@@ -786,6 +786,70 @@ def detect_patterns(df: pd.DataFrame, require_trend: bool = True) -> list[dict]:
 
 
 # ============================================================
+# INLINE CHART HELPER
+# ============================================================
+def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
+                       scan_rows: list | None = None) -> None:
+    """
+    Load data for sym_ticker (with or without .VN suffix) and render
+    a candlestick-style line chart with MA lines + pattern criteria expander.
+    """
+    sym = sym_ticker if sym_ticker.endswith(".VN") else sym_ticker + ".VN"
+    df_c = load_price_data(sym, use_cache=use_cache)
+    if df_c is None or df_c.empty:
+        st.warning(f"Không có dữ liệu cho {sym_ticker}")
+        return
+
+    df_c = df_c.copy()
+    df_c["MA20"]  = df_c["Close"].rolling(20).mean()
+    df_c["MA50"]  = df_c["Close"].rolling(50).mean()
+    df_c["MA150"] = df_c["Close"].rolling(150).mean()
+
+    chart_cols = ["Close", "MA20", "MA50"]
+    if not df_c["MA150"].isna().all():
+        chart_cols.append("MA150")
+
+    st.line_chart(df_c[chart_cols].iloc[-252:], use_container_width=True)
+
+    # criteria expander (uses scan_rows if provided)
+    if scan_rows:
+        sel_row = next((r for r in scan_rows if r["sym"] == sym), None)
+        if sel_row and sel_row.get("tt_d"):
+            d    = sel_row["tt_d"]
+            rs_p = sel_row.get("rs_pct")
+            with st.expander(f"📋 Tiêu chí — {sym_ticker}"):
+                crit = [
+                    ("1. Giá > MA50",                    d.get("c1")),
+                    ("2. Giá > MA150",                   d.get("c2")),
+                    ("3. MA50 > MA150",                  d.get("c3")),
+                    ("4. MA150 tăng 4 tuần liên tiếp",   d.get("c4")),
+                    ("5. Giá ≥ 25% trên đáy 52 tuần",    d.get("c5")),
+                    ("6. Giá trong 30% so đỉnh 52 tuần", d.get("c6")),
+                    ("7. Vol(20) ≥ 200,000 cổ",          d.get("c7")),
+                    ("8. Giá ≥ 15,000 VNĐ",              d.get("c8")),
+                    ("9. RS ≥ 80 percentile",
+                     rs_p is not None and rs_p >= RS_MIN),
+                    ("10. Không có phân phối",            d.get("c10")),
+                ]
+                for lbl, ok in crit:
+                    st.markdown(f"{'✅' if ok else '❌'} {lbl}")
+
+    # live pattern detection
+    live_p = detect_patterns(df_c, require_trend=False)
+    if live_p:
+        with st.expander(f"🔍 Patterns — {sym_ticker}"):
+            for lp in live_p:
+                status_str = lp.get("status", "⏳ Setup")
+                st.markdown(
+                    f"**{lp['pattern']}** {lp.get('quality','')}  "
+                    f"{lp.get('trend_grade','')}  {status_str}  "
+                    f"— Pivot: `{lp['pivot']}`  SL: `{lp['stoploss']}`  "
+                    f"Candle: {lp.get('entry_candle','—')}"
+                )
+                st.caption(lp.get("notes", ""))
+
+
+# ============================================================
 # UI HELPERS
 # ============================================================
 LIGHT_CFG = {
@@ -1088,8 +1152,22 @@ if "scan_rows" in st.session_state:
             filtered = filtered[filtered["Trạng thái"].isin(["✅ Pass", "🔶 Gần"])]
         filtered = filtered[filtered["Score(/9)"] >= min_score]
 
-        st.dataframe(filtered.reset_index(drop=True), use_container_width=True, hide_index=True)
-        st.caption(f"{len(filtered)} mã hiển thị / {len(result_df)} mã scan được")
+        filtered_reset = filtered.reset_index(drop=True)
+        tbl_event = st.dataframe(
+            filtered_reset, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row",
+            key="filter_tbl",
+        )
+        st.caption(
+            f"{len(filtered)} mã hiển thị / {len(result_df)} mã scan được  "
+            "· **Click một hàng để xem chart**"
+        )
+        # inline chart for selected row
+        sel_rows = tbl_event.selection.get("rows", []) if tbl_event else []
+        if sel_rows:
+            sel_ticker = str(filtered_reset.iloc[sel_rows[0]]["Mã"])
+            st.markdown(f"##### 📈 {sel_ticker}")
+            _show_inline_chart(sel_ticker, use_cache=use_cache, scan_rows=scan_rows)
 
         # Export
         buf = BytesIO()
@@ -1101,78 +1179,21 @@ if "scan_rows" in st.session_state:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    # ============================================================
-    # CHART VIEWER
-    # ============================================================
-    st.markdown("---")
-    st.subheader("📈 Xem chart")
-
-    # Prioritise top-5, then other qualifying, then all scanned
-    chart_pool = (
-        [r["sym"] for r in top5]
-        + [r["sym"] for r in qualifying if r["sym"] not in [x["sym"] for x in top5]]
-        + [r["sym"] for r in scan_rows if r["sym"] not in [x["sym"] for x in qualifying]]
-    )
-    chart_pool = chart_pool[:60]   # cap at 60 for the dropdown
-
-    if chart_pool:
-        sel = st.selectbox(
-            "Chọn mã để xem chart",
-            chart_pool,
-            format_func=lambda s: s.replace(".VN", ""),
-        )
-        if sel:
-            df_c = load_price_data(sel, use_cache=True)
-            if df_c is not None and not df_c.empty:
-                df_c = df_c.copy()
-                df_c["MA20"]  = df_c["Close"].rolling(20).mean()
-                df_c["MA50"]  = df_c["Close"].rolling(50).mean()
-                df_c["MA150"] = df_c["Close"].rolling(150).mean()
-                chart_cols = ["Close", "MA20", "MA50"]
-                if not df_c["MA150"].isna().all():
-                    chart_cols.append("MA150")
-                display_df = df_c[chart_cols].iloc[-252:]   # last 1 year
-                st.line_chart(display_df)
-
-                # Show criteria pass/fail for selected stock
-                sel_row = next((r for r in scan_rows if r["sym"] == sel), None)
-                if sel_row and sel_row["tt_d"]:
-                    d = sel_row["tt_d"]
-                    rs_p = sel_row.get("rs_pct")
-                    with st.expander("Chi tiết 10 tiêu chí"):
-                        crit = [
-                            ("1. Giá > MA50",                     d.get("c1")),
-                            ("2. Giá > MA150",                    d.get("c2")),
-                            ("3. MA50 > MA150",                   d.get("c3")),
-                            ("4. MA150 tăng 4 tuần liên tiếp",    d.get("c4")),
-                            ("5. Giá ≥ 25% trên đáy 52 tuần",     d.get("c5")),
-                            ("6. Giá trong 30% so đỉnh 52 tuần",  d.get("c6")),
-                            ("7. Vol(20) ≥ 200,000 cổ",           d.get("c7")),
-                            ("8. Giá ≥ 15,000 VNĐ",               d.get("c8")),
-                            ("9. RS ≥ 80 percentile",
-                             rs_p is not None and rs_p >= RS_MIN),
-                            ("10. Không có phân phối (Distribution)", d.get("c10")),
-                        ]
-                        for label_c, passed in crit:
-                            icon = "✅" if passed else "❌"
-                            st.markdown(f"{icon} {label_c}")
-
-                    # Pattern debug — run live on the loaded df so you can
-                    # visually confirm against the chart above
-                    with st.expander("🔍 Pattern detection (live on this chart)"):
-                        live_patterns = detect_patterns(df_c, require_trend=False)
-                        if live_patterns:
-                            for lp in live_patterns:
-                                status = "🔥 BREAKOUT" if lp.get("confirmed") else "⏳ Setup forming"
-                                st.markdown(
-                                    f"**{lp['pattern']}** {lp['quality']}  {status}  "
-                                    f"— Pivot: `{lp['pivot']}`  SL: `{lp['stoploss']}`"
-                                )
-                                st.caption(lp["notes"])
-                        else:
-                            st.info("Không phát hiện pattern trên mã này.")
-            else:
-                st.warning(f"Không có dữ liệu cho {sel}")
+    # ── Any-stock chart (fallback for stocks not in the filtered table) ──
+    all_syms = [r["sym"] for r in scan_rows]
+    if all_syms:
+        st.markdown("---")
+        sc1, _ = st.columns([2, 5])
+        with sc1:
+            other_sel = st.selectbox(
+                "📈 Xem chart bất kỳ mã",
+                ["— chọn mã —"] + all_syms,
+                format_func=lambda s: s.replace(".VN", "") if s != "— chọn mã —" else s,
+                key="any_chart_sel",
+            )
+        if other_sel and other_sel != "— chọn mã —":
+            _show_inline_chart(other_sel.replace(".VN", ""),
+                               use_cache=use_cache, scan_rows=scan_rows)
 
 else:
     st.info("Nhấn **Scan Now** để bắt đầu quét.")
@@ -1233,7 +1254,17 @@ if "pattern_scan_meta" in st.session_state:
             buy_count     = sum(1 for r in filtered_p if r.get("status") == "🔥 BUY")
             monitor_count = sum(1 for r in filtered_p if r.get("status") == "👀 Monitoring")
             setup_count   = len(filtered_p) - buy_count - monitor_count
-            st.dataframe(result_pdf, use_container_width=True, hide_index=True)
+            pat_event = st.dataframe(
+                result_pdf, use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row",
+                key="pattern_tbl",
+            )
+            # inline chart for selected pattern row
+            pat_sel = pat_event.selection.get("rows", []) if pat_event else []
+            if pat_sel:
+                pat_ticker = str(result_pdf.iloc[pat_sel[0]]["Mã"])
+                st.markdown(f"##### 📈 {pat_ticker}")
+                _show_inline_chart(pat_ticker, use_cache=True)
             green_count  = sum(1 for r in filtered_p if r.get("trend_grade") == "🟢")
             yellow_count = sum(1 for r in filtered_p if r.get("trend_grade") == "🟡")
             red_count    = sum(1 for r in filtered_p if r.get("trend_grade") == "🔴")
