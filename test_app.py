@@ -695,9 +695,37 @@ class TestPatternDetection(unittest.TestCase):
             "Low": prices - 0.3, "Close": prices, "Volume": vol.astype(float),
         }, index=idx)
 
+    # ── _passes_trend_filter ─────────────────────────────────────────────
+    def test_trend_filter_pass_uptrend(self):
+        """Strong uptrend with 300 bars: price > MA50 > MA150 > MA200."""
+        df = make_uptrend_df(300, base=50.0)
+        self.assertTrue(app._passes_trend_filter(df))
+
+    def test_trend_filter_fail_downtrend(self):
+        """Downtrend: price < MA50, should fail."""
+        df = make_downtrend_df(300)
+        self.assertFalse(app._passes_trend_filter(df))
+
+    def test_trend_filter_fail_insufficient_bars(self):
+        """Less than 200 bars → always False (MA200 undefined)."""
+        df = make_uptrend_df(150)
+        self.assertFalse(app._passes_trend_filter(df))
+
+    def test_trend_filter_fail_none(self):
+        self.assertFalse(app._passes_trend_filter(None))
+
+    def test_detect_patterns_skips_downtrend(self):
+        """detect_patterns returns [] for a downtrend stock even if enough bars."""
+        df = make_downtrend_df(300)
+        self.assertEqual(app.detect_patterns(df), [])
+
+    def test_detect_patterns_skips_short_df(self):
+        """detect_patterns returns [] when < 200 bars (trend filter needs 200)."""
+        self.assertEqual(app.detect_patterns(make_uptrend_df(150)), [])
+
     # ── detect_patterns wrapper ─────────────────────────────────────────
     def test_returns_list(self):
-        result = app.detect_patterns(make_uptrend_df(80))
+        result = app.detect_patterns(make_uptrend_df(300))
         self.assertIsInstance(result, list)
 
     def test_none_df_returns_empty(self):

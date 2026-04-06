@@ -617,9 +617,31 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
     }
 
 
+def _passes_trend_filter(df: pd.DataFrame) -> bool:
+    """
+    Require price > MA50 > MA150 > MA200.
+    Ensures patterns are only detected on stocks in a confirmed uptrend.
+    Needs ≥ 200 bars.
+    """
+    if df is None or df.empty or len(df) < 200:
+        return False
+    close = df["Close"]
+    price  = float(close.iloc[-1])
+    ma50   = float(close.rolling(50).mean().iloc[-1])
+    ma150  = float(close.rolling(150).mean().iloc[-1])
+    ma200  = float(close.rolling(200).mean().iloc[-1])
+    if any(pd.isna(v) for v in [ma50, ma150, ma200]):
+        return False
+    return price > ma50 > ma150 > ma200
+
+
 def detect_patterns(df: pd.DataFrame) -> list[dict]:
-    """Run all pattern checks. Returns list of detected patterns (may be empty)."""
-    if df is None or df.empty or len(df) < 30:
+    """
+    Run all pattern checks.
+    Returns empty list if stock is not in a confirmed uptrend
+    (price > MA50 > MA150 > MA200) or has insufficient data.
+    """
+    if not _passes_trend_filter(df):
         return []
     results = []
     for check in [_check_vcp, _check_flat_base, _check_pullback_ma20]:
