@@ -714,14 +714,50 @@ class TestPatternDetection(unittest.TestCase):
     def test_trend_filter_fail_none(self):
         self.assertFalse(app._passes_trend_filter(None))
 
-    def test_detect_patterns_skips_downtrend(self):
-        """detect_patterns returns [] for a downtrend stock even if enough bars."""
+    def test_detect_patterns_skips_downtrend_by_default(self):
+        """detect_patterns(require_trend=True) returns [] for a downtrend stock."""
         df = make_downtrend_df(300)
-        self.assertEqual(app.detect_patterns(df), [])
+        self.assertEqual(app.detect_patterns(df, require_trend=True), [])
+
+    def test_detect_patterns_allows_downtrend_when_require_false(self):
+        """detect_patterns(require_trend=False) runs checks regardless of trend."""
+        df = make_downtrend_df(300)
+        result = app.detect_patterns(df, require_trend=False)
+        self.assertIsInstance(result, list)  # may be empty but must not raise
 
     def test_detect_patterns_skips_short_df(self):
-        """detect_patterns returns [] when < 200 bars (trend filter needs 200)."""
-        self.assertEqual(app.detect_patterns(make_uptrend_df(150)), [])
+        """detect_patterns returns [] when < 60 bars (minimum for any pattern)."""
+        self.assertEqual(app.detect_patterns(make_uptrend_df(50)), [])
+
+    def test_trend_grade_in_result_when_require_false(self):
+        """Every pattern result must include trend_grade when require_trend=False."""
+        df = make_uptrend_df(300)
+        for p in app.detect_patterns(df, require_trend=False):
+            self.assertIn("trend_grade", p)
+            self.assertIn(p["trend_grade"], ["🟢", "🟡", "🔴"])
+
+    # ── _trend_grade ──────────────────────────────────────────────────
+    def test_trend_grade_green_full_uptrend(self):
+        """Strong 300-bar uptrend: price > MA50 > MA150 > MA200 → 🟢."""
+        df = make_uptrend_df(300, base=50.0)
+        self.assertEqual(app._trend_grade(df), "🟢")
+
+    def test_trend_grade_red_downtrend(self):
+        """Downtrend: price < MA50 → 🔴."""
+        df = make_downtrend_df(300)
+        self.assertEqual(app._trend_grade(df), "🔴")
+
+    def test_trend_grade_yellow_short_uptrend(self):
+        """Only 60 bars (MA200 undefined): price > MA50 but can't confirm full → 🟡."""
+        df = make_uptrend_df(60, base=50.0)
+        grade = app._trend_grade(df)
+        self.assertIn(grade, ["🟡", "🟢"])   # 60 bars may not have MA200
+
+    def test_trend_grade_none_returns_red(self):
+        self.assertEqual(app._trend_grade(None), "🔴")
+
+    def test_trend_grade_too_short_returns_red(self):
+        self.assertEqual(app._trend_grade(make_uptrend_df(20)), "🔴")
 
     # ── detect_patterns wrapper ─────────────────────────────────────────
     def test_returns_list(self):

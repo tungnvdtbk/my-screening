@@ -736,18 +736,51 @@ def _passes_trend_filter(df: pd.DataFrame) -> bool:
     return price > ma50 > ma150 > ma200
 
 
-def detect_patterns(df: pd.DataFrame) -> list[dict]:
+def _trend_grade(df: pd.DataFrame) -> str:
+    """
+    Traffic-light grade for MA alignment.
+    🟢 Green  — price > MA50 > MA150 > MA200  (full uptrend, ready to trade)
+    🟡 Yellow — price > MA50  (short-term bullish, MAs not fully aligned)
+    🔴 Red    — price ≤ MA50  (bearish / downtrend)
+    """
+    if df is None or df.empty or len(df) < 50:
+        return "🔴"
+    close  = df["Close"]
+    price  = float(close.iloc[-1])
+    ma50   = float(close.rolling(50).mean().iloc[-1])
+    if pd.isna(ma50):
+        return "🔴"
+    if price <= ma50:
+        return "🔴"
+    # price > MA50 — check longer MAs
+    ma150 = float(close.rolling(150).mean().iloc[-1]) if len(df) >= 150 else float("nan")
+    ma200 = float(close.rolling(200).mean().iloc[-1]) if len(df) >= 200 else float("nan")
+    if not pd.isna(ma150) and not pd.isna(ma200) and ma50 > ma150 > ma200:
+        return "🟢"
+    return "🟡"
+
+
+def detect_patterns(df: pd.DataFrame, require_trend: bool = True) -> list[dict]:
     """
     Run all pattern checks.
-    Returns empty list if stock is not in a confirmed uptrend
-    (price > MA50 > MA150 > MA200) or has insufficient data.
+
+    require_trend=True  (default) — only returns patterns when
+                        price > MA50 > MA150 > MA200 (strict uptrend filter).
+    require_trend=False — runs pattern checks regardless of trend; each
+                        result includes a 'trend_grade' 🟢/🟡/🔴 field so
+                        the caller can colour-code candidates.
     """
-    if not _passes_trend_filter(df):
+    if df is None or df.empty or len(df) < 60:
         return []
+    if require_trend and not _passes_trend_filter(df):
+        return []
+
+    grade   = _trend_grade(df)
     results = []
     for check in [_check_vcp, _check_flat_base, _check_pullback_ma20]:
         p = check(df)
         if p:
+            p["trend_grade"] = grade
             results.append(p)
     return results
 
@@ -835,7 +868,7 @@ if do_pattern:
             df = load_price_data(sym, use_cache=True)   # fetches from network if not cached
             if df is None or df.empty:
                 continue
-            patterns = detect_patterns(df)
+            patterns = detect_patterns(df, require_trend=False)
             for p in patterns:
                 pattern_rows.append({"sym": sym, **p})
         prog2.empty()
@@ -1127,7 +1160,7 @@ if "scan_rows" in st.session_state:
                     # Pattern debug — run live on the loaded df so you can
                     # visually confirm against the chart above
                     with st.expander("🔍 Pattern detection (live on this chart)"):
-                        live_patterns = detect_patterns(df_c)
+                        live_patterns = detect_patterns(df_c, require_trend=False)
                         if live_patterns:
                             for lp in live_patterns:
                                 status = "🔥 BREAKOUT" if lp.get("confirmed") else "⏳ Setup forming"
@@ -1176,15 +1209,18 @@ if "pattern_scan_meta" in st.session_state:
 
         if filtered_p:
             _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
+            _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
             _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
             filtered_p  = sorted(filtered_p, key=lambda r: (
-                _status_ord.get(r.get("status", "⏳ Setup"), 3),
-                _q_ord2.get(r.get("quality", "★"), 3),
+                _status_ord.get(r.get("status",      "⏳ Setup"), 3),
+                _grade_ord.get( r.get("trend_grade", "🔴"),       3),
+                _q_ord2.get(    r.get("quality",     "★"),        3),
             ))
             p_table = []
             for r in filtered_p:
                 p_table.append({
                     "Mã":           r["sym"].replace(".VN", ""),
+                    "Trend":        r.get("trend_grade", "🔴"),
                     "Pattern":      r["pattern"],
                     "Status":       r.get("status", "⏳ Setup"),
                     "Entry Candle": r.get("entry_candle", "—"),
@@ -1198,9 +1234,13 @@ if "pattern_scan_meta" in st.session_state:
             monitor_count = sum(1 for r in filtered_p if r.get("status") == "👀 Monitoring")
             setup_count   = len(filtered_p) - buy_count - monitor_count
             st.dataframe(result_pdf, use_container_width=True, hide_index=True)
+            green_count  = sum(1 for r in filtered_p if r.get("trend_grade") == "🟢")
+            yellow_count = sum(1 for r in filtered_p if r.get("trend_grade") == "🟡")
+            red_count    = sum(1 for r in filtered_p if r.get("trend_grade") == "🔴")
             st.caption(
                 f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
-                f"| 🔥 {buy_count} BUY  | 👀 {monitor_count} Monitoring  | ⏳ {setup_count} Setup"
+                f"| 🔥 {buy_count} BUY  | 👀 {monitor_count} Monitoring  | ⏳ {setup_count} Setup  "
+                f"| 🟢 {green_count} uptrend  | 🟡 {yellow_count} partial  | 🔴 {red_count} weak"
             )
         else:
             st.info("Không có pattern nào khớp bộ lọc.")
