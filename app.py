@@ -444,6 +444,178 @@ def compute_market_filter(vnindex_df: pd.DataFrame, breadth_pct: float) -> tuple
 
 
 # ============================================================
+# PATTERN DETECTION — Setup A / B / C
+# ============================================================
+
+def _range_pct(chunk: pd.DataFrame) -> float:
+    """High-low range as % of midpoint price."""
+    h = float(chunk["High"].max())
+    l = float(chunk["Low"].min())
+    mid = (h + l) / 2
+    return (h - l) / mid * 100 if mid > 0 else 0.0
+
+
+def _check_vcp(df: pd.DataFrame) -> dict | None:
+    """
+    Setup A — Volatility Contraction Pattern.
+    Needs ≥ 60 bars. Splits last 60 days into 3 × 20-day windows;
+    checks price-range and volume both contract each window.
+    """
+    if len(df) < 60:
+        return None
+
+    p1, p2, p3 = df.iloc[-60:-40], df.iloc[-40:-20], df.iloc[-20:]
+
+    r1, r2, r3 = _range_pct(p1), _range_pct(p2), _range_pct(p3)
+    v1 = float(p1["Volume"].mean())
+    v2 = float(p2["Volume"].mean())
+    v3 = float(p3["Volume"].mean())
+
+    price_contracting = r1 > r2 > r3
+    vol_drying        = v3 < v2 * 0.90 and v2 < v1 * 0.95
+    tight_close       = r3 < 10.0          # final window very tight
+
+    if not (price_contracting and vol_drying and tight_close):
+        return None
+
+    recent_high = float(df["High"].iloc[-20:].max())
+    price       = float(df["Close"].iloc[-1])
+    near_pivot  = price >= recent_high * 0.94   # within 6% of base top
+
+    if r3 < 4 and near_pivot:
+        quality = "★★★"
+    elif r3 < 7:
+        quality = "★★"
+    else:
+        quality = "★"
+
+    pivot = round(recent_high * 1.01, 1)        # breakout = base top + 1%
+    stoploss = round(float(df["Low"].iloc[-20:].min()) * 0.99, 1)
+
+    return {
+        "pattern":  "VCP",
+        "quality":  quality,
+        "pivot":    pivot,
+        "stoploss": stoploss,
+        "notes":    (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
+                     f"Vol {v3/v1:.0%} of base start"),
+    }
+
+
+def _check_flat_base(df: pd.DataFrame) -> dict | None:
+    """
+    Setup C variant — Flat Base (5–10 weeks of tight sideways action).
+    Range of last 40 bars < 12 %, volume contracted vs prior 40 bars.
+    """
+    if len(df) < 50:
+        return None
+
+    base  = df.iloc[-40:]
+    prior = df.iloc[-80:-40] if len(df) >= 80 else df.iloc[:-40]
+
+    r = _range_pct(base)
+    if r >= 12.0:
+        return None
+
+    price   = float(df["Close"].iloc[-1])
+    ma50_v  = float(df["Close"].rolling(50).mean().iloc[-1])
+    if pd.isna(ma50_v) or price <= ma50_v:
+        return None   # must be in uptrend above MA50
+
+    base_vol  = float(base["Volume"].mean())
+    prior_vol = float(prior["Volume"].mean()) if not prior.empty else base_vol
+    vol_contracted = base_vol < prior_vol * 0.85
+
+    base_high = float(base["High"].max())
+    near_top  = price >= base_high * 0.96
+
+    if r < 5 and vol_contracted:
+        quality = "★★★"
+    elif r < 8:
+        quality = "★★"
+    else:
+        quality = "★"
+
+    return {
+        "pattern":  "Flat Base",
+        "quality":  quality,
+        "pivot":    round(base_high * 1.01, 1),
+        "stoploss": round(float(base["Low"].min()) * 0.99, 1),
+        "notes":    (f"Range {r:.1f}% over 40 bars  "
+                     f"Vol vs prior {base_vol/prior_vol:.0%}"),
+    }
+
+
+def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
+    """
+    Setup B — Pullback to MA20 in Uptrend.
+    Price was above MA20, pulled back to within 3%, volume declining,
+    no panic-sell session (vol × 3 + price −4 %).
+    """
+    if len(df) < 30:
+        return None
+
+    close  = df["Close"]
+    volume = df["Volume"]
+
+    ma20 = close.rolling(20).mean()
+    ma50 = close.rolling(50).mean()
+
+    price   = float(close.iloc[-1])
+    ma20_v  = float(ma20.iloc[-1])
+    ma50_v  = float(ma50.iloc[-1])
+
+    if any(pd.isna(v) for v in [ma20_v, ma50_v]):
+        return None
+
+    above_ma50 = price > ma50_v
+    near_ma20  = abs(price - ma20_v) / ma20_v < 0.03
+
+    # Was above MA20 recently (confirms pullback, not breakdown)
+    was_above = any(float(close.iloc[i]) > float(ma20.iloc[i])
+                    for i in range(-8, -1))
+
+    if not (above_ma50 and near_ma20 and was_above):
+        return None
+
+    # Volume declining in pullback (last 5 days vs 20-day avg)
+    vol_avg5  = float(volume.iloc[-5:].mean())
+    vol_ma20  = float(volume.rolling(20).mean().iloc[-1])
+    vol_declining = vol_avg5 < vol_ma20 * 0.80
+
+    # No panic sell in last 5 sessions
+    for i in range(-5, 0):
+        pct_chg  = (float(close.iloc[i]) / float(close.iloc[i - 1]) - 1) * 100
+        vol_mult = float(volume.iloc[i]) / vol_ma20
+        if pct_chg < -4.0 and vol_mult > 3.0:
+            return None   # panic sell detected → skip
+
+    quality = "★★★" if vol_declining else "★★"
+    prev_high = float(close.iloc[-6:-1].max())
+
+    return {
+        "pattern":  "Pullback MA20",
+        "quality":  quality,
+        "pivot":    round(prev_high * 1.005, 1),   # entry above recent high
+        "stoploss": round(ma50_v * 0.97, 1),        # below MA50
+        "notes":    (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
+                     f"Vol {vol_avg5/vol_ma20:.0%} of avg"),
+    }
+
+
+def detect_patterns(df: pd.DataFrame) -> list[dict]:
+    """Run all pattern checks. Returns list of detected patterns (may be empty)."""
+    if df is None or df.empty or len(df) < 30:
+        return []
+    results = []
+    for check in [_check_vcp, _check_flat_base, _check_pullback_ma20]:
+        p = check(df)
+        if p:
+            results.append(p)
+    return results
+
+
+# ============================================================
 # UI HELPERS
 # ============================================================
 LIGHT_CFG = {
@@ -501,8 +673,49 @@ with st.sidebar:
     sl_pct  = st.slider("Stop Loss %",  min_value=3,  max_value=15, value=5,  step=1)
     tgt_pct = st.slider("Target %",     min_value=5,  max_value=50, value=10, step=5)
 
-# ── Scan button ───────────────────────────────────────────────
-if st.button("🔍 Scan Now", type="primary", use_container_width=True):
+# ── Scan buttons ─────────────────────────────────────────────
+btn_col1, btn_col2 = st.columns(2)
+with btn_col1:
+    do_scan = st.button("🔍 Scan Now", type="primary", use_container_width=True,
+                        help="Tải dữ liệu, lọc Trend Template + RS toàn sàn.")
+with btn_col2:
+    do_pattern = st.button("📐 Pattern Scan", use_container_width=True,
+                           help="Phát hiện VCP / Flat Base / Pullback MA20 từ cache. Chạy nhanh, không cần mạng.")
+
+# ── Pattern Scan ──────────────────────────────────────────────
+if do_pattern:
+    # Use symbols from last scan if available, else all cached files
+    if "scan_rows" in st.session_state:
+        pattern_syms = [r["sym"] for r in st.session_state["scan_rows"]]
+    else:
+        cached_files = [f for f in os.listdir(CACHE_DIR) if f.endswith((".parquet", ".csv"))]
+        pattern_syms = [f.replace("_VN.parquet", ".VN")
+                         .replace("_VN.csv", ".VN")
+                         .replace("_", ".", 1) for f in cached_files]
+        pattern_syms = [s for s in pattern_syms if s.endswith(".VN")]
+
+    if not pattern_syms:
+        st.warning("Chưa có dữ liệu cache. Chạy Scan Now trước.")
+    else:
+        prog2 = st.progress(0, text="Detecting patterns...")
+        pattern_rows = []
+        n2 = len(pattern_syms)
+        for i, sym in enumerate(pattern_syms):
+            prog2.progress((i + 1) / n2, text=f"[{i+1}/{n2}] {sym}")
+            df = load_price_data(sym, use_cache=True)
+            if df is None or df.empty:
+                continue
+            patterns = detect_patterns(df)
+            for p in patterns:
+                pattern_rows.append({
+                    "sym": sym,
+                    **p,
+                })
+        prog2.empty()
+        st.session_state["pattern_rows"] = pattern_rows
+        st.rerun()
+
+if do_scan:
 
     with st.spinner("Lấy danh sách mã HOSE..."):
         symbols = list(VN30_STOCKS.keys()) if scan_mode == "VN30" else get_hose_symbols()
@@ -635,6 +848,50 @@ if "scan_rows" in st.session_state:
             st.error("🔴 Đèn đỏ — không trade mới.")
         else:
             st.warning("Chưa có cổ phiếu nào thoả mãn đủ 10 tiêu chí.")
+
+    # ============================================================
+    # PATTERN MONITOR
+    # ============================================================
+    if "pattern_rows" in st.session_state and st.session_state["pattern_rows"]:
+        st.markdown("---")
+        st.subheader("📐 Pattern Monitor — Breakout Setups")
+
+        p_rows = st.session_state["pattern_rows"]
+
+        # Quality sort order
+        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
+        p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
+                                                       r["pattern"]))
+
+        # Filter by pattern type
+        all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
+        pf_col, _ = st.columns([2, 4])
+        with pf_col:
+            pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
+                                key="pattern_filter")
+
+        filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
+
+        if filtered_p:
+            p_table = []
+            for r in filtered_p:
+                p_table.append({
+                    "Mã":       r["sym"].replace(".VN", ""),
+                    "Pattern":  r["pattern"],
+                    "Quality":  r["quality"],
+                    "Pivot":    r["pivot"],
+                    "Stoploss": r["stoploss"],
+                    "Notes":    r["notes"],
+                })
+            st.dataframe(pd.DataFrame(p_table), use_container_width=True,
+                         hide_index=True)
+            st.caption(
+                f"{len(filtered_p)} pattern(s) detected across "
+                f"{len({r['sym'] for r in filtered_p})} stocks.  "
+                "Pivot = breakout entry price (+1%). Chờ xác nhận volume ≥ 150% avg."
+            )
+        else:
+            st.info("Không có pattern nào khớp bộ lọc.")
 
     # ============================================================
     # FULL RESULTS TABLE

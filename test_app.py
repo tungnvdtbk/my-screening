@@ -632,6 +632,188 @@ class TestLoadPriceDataCache(unittest.TestCase):
                     self.assertLessEqual(len(result), 500)
 
 
+class TestPatternDetection(unittest.TestCase):
+    """detect_patterns / _check_vcp / _check_flat_base / _check_pullback_ma20."""
+
+    # ── helpers ────────────────────────────────────────────────────────
+    def make_vcp_df(self, n=80, seed=7):
+        """
+        Three-window contracting range + declining volume aligned to _check_vcp windows.
+        _check_vcp uses: p1=df.iloc[-60:-40], p2=df.iloc[-40:-20], p3=df.iloc[-20:]
+        With n=80: p1=bars 20-39, p2=bars 40-59, p3=bars 60-79.
+        """
+        rng = np.random.default_rng(seed)
+        idx = pd.date_range(end="2026-01-01", periods=n, freq="B")
+        prices = 50 + np.linspace(0, 10, n) + rng.standard_normal(n) * 0.15
+        highs = prices.copy()
+        lows  = prices.copy()
+        # p1 window (bars 20-39): wide range ≈ 20%
+        highs[20:40] += 5.5;  lows[20:40]  -= 5.5
+        # p2 window (bars 40-59): medium range ≈ 7%
+        highs[40:60] += 2.0;  lows[40:60]  -= 2.0
+        # p3 window (bars 60-79): tight ≈ 1% (natural noise only)
+        # volumes: p1=800k, p2=600k, p3=350k — strict decline each window
+        vol = np.array(
+            [900_000] * 20 +   # bars 0-19 (pre-window, irrelevant)
+            [800_000] * 20 +   # bars 20-39 = p1
+            [600_000] * 20 +   # bars 40-59 = p2
+            [350_000] * 20,    # bars 60-79 = p3
+            dtype=float,
+        )
+        return pd.DataFrame({
+            "Open": prices * 0.99, "High": highs,
+            "Low": lows, "Close": prices, "Volume": vol,
+        }, index=idx)
+
+    def make_flat_base_df(self, n=60, base=50.0, seed=9):
+        """Tight range (< 8 %) over last 40 bars, above MA50."""
+        rng = np.random.default_rng(seed)
+        idx = pd.date_range(end="2026-01-01", periods=n, freq="B")
+        # Prior 20 bars: trending up to base level
+        prior = base - 5 + np.linspace(0, 5, n - 40) + rng.standard_normal(n - 40) * 0.3
+        # Flat base: last 40 bars stay within ±2 of base
+        flat = base + rng.standard_normal(40) * 0.5
+        prices = np.concatenate([prior, flat])
+        vol = np.full(n, 300_000)
+        return pd.DataFrame({
+            "Open": prices * 0.99, "High": prices + 0.5,
+            "Low": prices - 0.5, "Close": prices, "Volume": vol.astype(float),
+        }, index=idx)
+
+    def make_pullback_ma20_df(self, n=60, seed=11):
+        """Stock in uptrend that pulls back to MA20 with low volume."""
+        rng = np.random.default_rng(seed)
+        idx = pd.date_range(end="2026-01-01", periods=n, freq="B")
+        # Strong uptrend for first 50 bars, then gentle pullback for last 10
+        up   = 40 + np.linspace(0, 15, n - 10) + rng.standard_normal(n - 10) * 0.2
+        pull = up[-1] - np.linspace(0, 2, 10) + rng.standard_normal(10) * 0.1
+        prices = np.concatenate([up, pull])
+        # Volume declining in pullback
+        vol = np.concatenate([np.full(n - 10, 500_000), np.full(10, 200_000)])
+        return pd.DataFrame({
+            "Open": prices * 0.99, "High": prices + 0.3,
+            "Low": prices - 0.3, "Close": prices, "Volume": vol.astype(float),
+        }, index=idx)
+
+    # ── detect_patterns wrapper ─────────────────────────────────────────
+    def test_returns_list(self):
+        result = app.detect_patterns(make_uptrend_df(80))
+        self.assertIsInstance(result, list)
+
+    def test_none_df_returns_empty(self):
+        self.assertEqual(app.detect_patterns(None), [])
+
+    def test_too_short_returns_empty(self):
+        self.assertEqual(app.detect_patterns(make_uptrend_df(20)), [])
+
+    def test_pattern_dict_has_required_keys(self):
+        """Every detected pattern must have the 5 required keys."""
+        df = self.make_vcp_df()
+        patterns = app.detect_patterns(df)
+        for p in patterns:
+            for k in ["pattern", "quality", "pivot", "stoploss", "notes"]:
+                self.assertIn(k, p, f"Key '{k}' missing in {p}")
+
+    def test_quality_values_valid(self):
+        df = self.make_vcp_df()
+        patterns = app.detect_patterns(df)
+        for p in patterns:
+            self.assertIn(p["quality"], ["★", "★★", "★★★"])
+
+    # ── VCP ────────────────────────────────────────────────────────────
+    def test_vcp_detected_on_contracting_data(self):
+        df = self.make_vcp_df()
+        p = app._check_vcp(df)
+        self.assertIsNotNone(p, "VCP should be detected")
+        self.assertEqual(p["pattern"], "VCP")
+
+    def test_vcp_pivot_above_recent_high(self):
+        df = self.make_vcp_df()
+        p = app._check_vcp(df)
+        if p:
+            recent_high = float(df["High"].iloc[-20:].max())
+            self.assertGreater(p["pivot"], recent_high * 0.99)
+
+    def test_vcp_stoploss_below_recent_low(self):
+        df = self.make_vcp_df()
+        p = app._check_vcp(df)
+        if p:
+            recent_low = float(df["Low"].iloc[-20:].min())
+            self.assertLessEqual(p["stoploss"], recent_low * 1.01)
+
+    def test_vcp_not_detected_on_expanding_range(self):
+        """Expanding volatility (opposite of VCP) should not trigger."""
+        rng = np.random.default_rng(42)
+        idx = pd.date_range(end="2026-01-01", periods=80, freq="B")
+        prices = 50 + np.linspace(0, 5, 80)
+        highs = prices.copy()
+        lows  = prices.copy()
+        highs[:20] += 1.0   # tight first
+        lows[:20]  -= 1.0
+        highs[20:40] += 3.0  # wider second
+        lows[20:40]  -= 3.0
+        highs[40:] += 6.0   # widest last
+        lows[40:]  -= 6.0
+        vol = np.full(80, 500_000)
+        df = pd.DataFrame({
+            "Open": prices, "High": highs, "Low": lows,
+            "Close": prices, "Volume": vol.astype(float),
+        }, index=idx)
+        p = app._check_vcp(df)
+        self.assertIsNone(p)
+
+    def test_vcp_needs_60_bars(self):
+        df = self.make_vcp_df()
+        self.assertIsNone(app._check_vcp(df.iloc[-50:]))
+
+    # ── Flat Base ──────────────────────────────────────────────────────
+    def test_flat_base_detected(self):
+        df = self.make_flat_base_df(n=80)
+        p = app._check_flat_base(df)
+        self.assertIsNotNone(p, "Flat Base should be detected")
+        self.assertEqual(p["pattern"], "Flat Base")
+
+    def test_flat_base_pivot_above_base_high(self):
+        df = self.make_flat_base_df(n=80)
+        p = app._check_flat_base(df)
+        if p:
+            base_high = float(df["High"].iloc[-40:].max())
+            self.assertGreater(p["pivot"], base_high * 0.99)
+
+    def test_flat_base_not_detected_wide_range(self):
+        """Range > 15 % should not qualify as flat base."""
+        df = make_uptrend_df(80, base=50.0)
+        df = df.copy()
+        df.iloc[-40:, df.columns.get_loc("High")] = df["Close"].iloc[-40:] * 1.10
+        df.iloc[-40:, df.columns.get_loc("Low")]  = df["Close"].iloc[-40:] * 0.88
+        p = app._check_flat_base(df)
+        self.assertIsNone(p)
+
+    # ── Pullback to MA20 ───────────────────────────────────────────────
+    def test_pullback_ma20_detected(self):
+        df = self.make_pullback_ma20_df()
+        p = app._check_pullback_ma20(df)
+        self.assertIsNotNone(p, "Pullback MA20 should be detected")
+        self.assertEqual(p["pattern"], "Pullback MA20")
+
+    def test_pullback_stoploss_below_ma50(self):
+        df = self.make_pullback_ma20_df()
+        p = app._check_pullback_ma20(df)
+        if p:
+            ma50_v = float(df["Close"].rolling(50).mean().iloc[-1])
+            self.assertLess(p["stoploss"], ma50_v + 0.1)
+
+    def test_pullback_not_detected_below_ma50(self):
+        """Downtrend: price below MA50 → no Pullback MA20 signal."""
+        df = make_downtrend_df(80)
+        p = app._check_pullback_ma20(df)
+        self.assertIsNone(p)
+
+    def test_pullback_needs_30_bars(self):
+        df = self.make_pullback_ma20_df()
+        self.assertIsNone(app._check_pullback_ma20(df.iloc[-20:]))
+
+
 # ═════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     unittest.main(verbosity=2)
