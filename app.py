@@ -864,50 +864,6 @@ if "scan_rows" in st.session_state:
             st.warning("Chưa có cổ phiếu nào thoả mãn đủ 10 tiêu chí.")
 
     # ============================================================
-    # PATTERN MONITOR
-    # ============================================================
-    if "pattern_rows" in st.session_state and st.session_state["pattern_rows"]:
-        st.markdown("---")
-        st.subheader("📐 Pattern Monitor — Breakout Setups")
-
-        p_rows = st.session_state["pattern_rows"]
-
-        # Quality sort order
-        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
-        p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
-                                                       r["pattern"]))
-
-        # Filter by pattern type
-        all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
-        pf_col, _ = st.columns([2, 4])
-        with pf_col:
-            pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
-                                key="pattern_filter")
-
-        filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
-
-        if filtered_p:
-            p_table = []
-            for r in filtered_p:
-                p_table.append({
-                    "Mã":       r["sym"].replace(".VN", ""),
-                    "Pattern":  r["pattern"],
-                    "Quality":  r["quality"],
-                    "Pivot":    r["pivot"],
-                    "Stoploss": r["stoploss"],
-                    "Notes":    r["notes"],
-                })
-            st.dataframe(pd.DataFrame(p_table), use_container_width=True,
-                         hide_index=True)
-            st.caption(
-                f"{len(filtered_p)} pattern(s) detected across "
-                f"{len({r['sym'] for r in filtered_p})} stocks.  "
-                "Pivot = breakout entry price (+1%). Chờ xác nhận volume ≥ 150% avg."
-            )
-        else:
-            st.info("Không có pattern nào khớp bộ lọc.")
-
-    # ============================================================
     # FULL RESULTS TABLE
     # ============================================================
     st.markdown("---")
@@ -1069,3 +1025,42 @@ if "scan_rows" in st.session_state:
 
 else:
     st.info("Nhấn **Scan Now** để bắt đầu quét.")
+
+# ── Pattern Monitor — independent of main scan ───────────────────────
+if "pattern_rows" in st.session_state and st.session_state["pattern_rows"]:
+    st.markdown("---")
+    st.subheader("📐 Pattern Monitor — Breakout Setups")
+
+    p_rows = st.session_state["pattern_rows"]
+
+    _q_ord = {"★★★": 0, "★★": 1, "★": 2}
+    p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
+                                                   r["pattern"]))
+
+    all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
+    pf_col, _ = st.columns([2, 4])
+    with pf_col:
+        pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
+                            key="pattern_filter")
+
+    filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
+
+    if filtered_p:
+        p_table = []
+        for r in filtered_p:
+            p_table.append({
+                "Mã":       r["sym"].replace(".VN", ""),
+                "Pattern":  r["pattern"],
+                "Quality":  r["quality"],
+                "Pivot":    r["pivot"],
+                "Stoploss": r["stoploss"],
+                "Notes":    r["notes"],
+            })
+        st.dataframe(pd.DataFrame(p_table), use_container_width=True, hide_index=True)
+        st.caption(
+            f"{len(filtered_p)} pattern(s) detected across "
+            f"{len({r['sym'] for r in filtered_p})} stocks.  "
+            "Pivot = breakout entry price (+1%). Chờ xác nhận volume ≥ 150% avg."
+        )
+    else:
+        st.info("Không có pattern nào khớp bộ lọc.")
