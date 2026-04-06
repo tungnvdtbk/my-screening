@@ -762,6 +762,11 @@ if do_pattern:
                 pattern_rows.append({"sym": sym, **p})
         prog2.empty()
         st.session_state["pattern_rows"] = pattern_rows
+        st.session_state["pattern_scan_meta"] = {
+            "scanned": n2,
+            "found":   len(pattern_rows),
+            "time":    datetime.now().strftime("%H:%M:%S"),
+        }
         st.rerun()
 
 if do_scan:
@@ -1062,48 +1067,59 @@ else:
     st.info("Nhấn **Scan Now** để bắt đầu quét.")
 
 # ── Pattern Monitor — independent of main scan ───────────────────────
-if "pattern_rows" in st.session_state and st.session_state["pattern_rows"]:
+if "pattern_scan_meta" in st.session_state:
     st.markdown("---")
-    st.subheader("📐 Pattern Monitor — Breakout Setups")
+    meta = st.session_state["pattern_scan_meta"]
+    st.subheader(
+        f"📐 Pattern Monitor — {meta['found']} pattern(s) found "
+        f"in {meta['scanned']} symbols  ·  {meta['time']}"
+    )
 
-    p_rows = st.session_state["pattern_rows"]
+    p_rows = st.session_state.get("pattern_rows", [])
 
-    _q_ord = {"★★★": 0, "★★": 1, "★": 2}
-    p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
-                                                   r["pattern"]))
-
-    all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
-    pf_col, _ = st.columns([2, 4])
-    with pf_col:
-        pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
-                            key="pattern_filter")
-
-    filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
-
-    if filtered_p:
-        # Sort confirmed breakouts first
-        filtered_p = sorted(filtered_p,
-                            key=lambda r: (0 if r.get("confirmed") else 1,
-                                           {"★★★": 0, "★★": 1, "★": 2}.get(r["quality"], 3)))
-        p_table = []
-        for r in filtered_p:
-            status = "🔥 BREAKOUT" if r.get("confirmed") else "⏳ Setup"
-            p_table.append({
-                "Mã":       r["sym"].replace(".VN", ""),
-                "Pattern":  r["pattern"],
-                "Status":   status,
-                "Quality":  r["quality"],
-                "Pivot":    r["pivot"],
-                "Stoploss": r["stoploss"],
-                "Notes":    r["notes"],
-            })
-        result_pdf = pd.DataFrame(p_table)
-        confirmed_count = sum(1 for r in filtered_p if r.get("confirmed"))
-        st.dataframe(result_pdf, use_container_width=True, hide_index=True)
-        st.caption(
-            f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
-            f"| 🔥 {confirmed_count} breakout confirmed (price > pivot + vol ≥ 1.5× avg)  "
-            f"| ⏳ {len(filtered_p) - confirmed_count} setup forming"
+    if not p_rows:
+        st.info(
+            f"Scanned **{meta['scanned']}** mã — không có pattern nào thoả mãn điều kiện.  \n"
+            "Lý do thường gặp: thị trường đang downtrend (price < MA50/MA150/MA200), "
+            "hoặc chưa có đủ dữ liệu cache (chạy lại để tải thêm)."
         )
     else:
-        st.info("Không có pattern nào khớp bộ lọc.")
+        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
+        p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
+                                                       r["pattern"]))
+
+        all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
+        pf_col, _ = st.columns([2, 4])
+        with pf_col:
+            pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
+                                key="pattern_filter")
+
+        filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
+
+        if filtered_p:
+            # Sort confirmed breakouts first
+            filtered_p = sorted(filtered_p,
+                                key=lambda r: (0 if r.get("confirmed") else 1,
+                                               {"★★★": 0, "★★": 1, "★": 2}.get(r["quality"], 3)))
+            p_table = []
+            for r in filtered_p:
+                status = "🔥 BREAKOUT" if r.get("confirmed") else "⏳ Setup"
+                p_table.append({
+                    "Mã":       r["sym"].replace(".VN", ""),
+                    "Pattern":  r["pattern"],
+                    "Status":   status,
+                    "Quality":  r["quality"],
+                    "Pivot":    r["pivot"],
+                    "Stoploss": r["stoploss"],
+                    "Notes":    r["notes"],
+                })
+            result_pdf = pd.DataFrame(p_table)
+            confirmed_count = sum(1 for r in filtered_p if r.get("confirmed"))
+            st.dataframe(result_pdf, use_container_width=True, hide_index=True)
+            st.caption(
+                f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
+                f"| 🔥 {confirmed_count} breakout confirmed (price > pivot + vol ≥ 1.5× avg)  "
+                f"| ⏳ {len(filtered_p) - confirmed_count} setup forming"
+            )
+        else:
+            st.info("Không có pattern nào khớp bộ lọc.")
