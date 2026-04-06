@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0e17">
+  <title>Hệ Thống Trend Following — Thị Trường Việt Nam</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #131829;
+      --bg-card2: #1a2035;
+      --border: #2a3050;
+      --text: #e2e8f0;
+      --text-muted: #8892a8;
+      --accent: #6c9cff;
+      --accent-green: #34d399;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a78bfa;
+      --code-bg: #0f1525;
+      --radius: 10px;
+      --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,14,23,0.9);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
+      padding-left: calc(20px + env(safe-area-inset-left));
+      padding-right: calc(20px + env(safe-area-inset-right));
+    }
+    header h1 { font-size: 1rem; font-weight: 700; color: var(--accent); letter-spacing: -0.01em; }
+    header p { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em; text-transform: uppercase; }
+
+    /* MAIN */
+    main {
+      max-width: 780px; margin: 0 auto; padding: 0 16px;
+      padding-left: calc(16px + env(safe-area-inset-left));
+      padding-right: calc(16px + env(safe-area-inset-right));
+    }
+    img, svg, table, pre, .code-wrap, .case-card, .callout, .rule-box, .formula-box, .checklist-card { max-width: 100%; }
+
+    /* HERO */
+    .hero { text-align: center; padding: 48px 0 24px; }
+    .hero-icon { font-size: 3rem; margin-bottom: 16px; }
+    .hero h2 { font-size: 1.7rem; margin-bottom: 10px; line-height: 1.3; letter-spacing: -0.02em; }
+    .hero .tagline { color: var(--text-muted); font-size: 0.92rem; max-width: 520px; margin: 0 auto 20px; }
+    .hero .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+      background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    }
+    .badge.green { border-color: rgba(52,211,153,0.3); color: var(--accent-green); }
+    .badge.blue { border-color: rgba(108,156,255,0.3); color: var(--accent); }
+    .badge.orange { border-color: rgba(245,158,11,0.3); color: var(--accent-orange); }
+
+    .separator { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 28px 0; }
+
+    /* TOC */
+    #toc { padding: 24px 0; }
+    #toc h2 { font-size: 1.3rem; margin-bottom: 6px; }
+    #toc .subtitle { color: var(--text-muted); margin-bottom: 20px; font-size: 0.85rem; }
+    .toc-list { list-style: none; }
+    .toc-list li { border-bottom: 1px solid var(--border); }
+    .toc-list a {
+      display: flex; align-items: center; gap: 12px; padding: 13px 0;
+      color: var(--text); text-decoration: none; font-size: 0.92rem;
+    }
+    .toc-list a:active { opacity: 0.7; }
+    .toc-num {
+      min-width: 30px; height: 30px; border-radius: 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: var(--accent); flex-shrink: 0;
+    }
+
+    /* CHAPTER */
+    .chapter { padding: 40px 0 24px; border-top: 1px solid var(--border); margin-top: 8px; }
+    .chapter-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
+    }
+    .chapter h2 { font-size: 1.35rem; margin-bottom: 20px; word-break: break-word; letter-spacing: -0.01em; }
+
+    /* TABS */
+    .tab-nav {
+      display: flex; gap: 5px; margin-bottom: 24px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+    .tab-link {
+      display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px;
+      border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; color: var(--text-muted);
+      background: var(--bg-card); border: 1px solid var(--border);
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .tab-link:hover, .tab-link:focus { color: var(--accent); border-color: var(--accent); }
+
+    /* SECTION */
+    .section { margin-bottom: 36px; scroll-margin-top: 80px; }
+    .section h3 {
+      font-size: 1.05rem; font-weight: 700; margin-bottom: 16px;
+      color: var(--accent); display: flex; align-items: center; gap: 8px;
+    }
+    .section h4 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 10px; color: var(--text); }
+    .section p { margin-bottom: 12px; }
+    .section ul, .section ol { padding-left: 20px; margin-bottom: 14px; }
+    .section li { margin-bottom: 6px; }
+    strong { color: var(--accent); font-weight: 600; }
+    em { color: var(--accent-orange); font-style: normal; font-weight: 500; }
+
+    /* RULE BOX */
+    .rule-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-green); border-radius: var(--radius);
+      padding: 16px 18px; margin: 16px 0; font-size: 0.9rem;
+    }
+    .rule-box.warning { border-left-color: var(--accent-red); }
+    .rule-box.caution { border-left-color: var(--accent-orange); }
+    .rule-box.principle { border-left-color: var(--accent-purple); }
+    .rule-box.info { border-left-color: var(--accent); }
+    .rule-box p { margin-bottom: 8px; }
+    .rule-box p:last-child { margin-bottom: 0; }
+    .rule-title { font-weight: 700; color: var(--accent); display: block; margin-bottom: 6px; font-size: 0.92rem; }
+
+    /* FORMULA BOX */
+    .formula-box {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin: 16px 0; font-family: var(--font-mono); font-size: 0.85rem;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; word-break: break-all; line-height: 1.8;
+    }
+    .formula-box .label {
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-size: 0.7rem; font-weight: 700; color: var(--accent-purple);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; display: block;
+    }
+
+    /* TABLES */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 16px 0; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { background: var(--bg-card2); padding: 10px 14px; text-align: left; font-weight: 700; color: var(--text-muted); white-space: nowrap; border-bottom: 1px solid var(--border); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); word-break: break-word; }
+    tr:last-child td { border-bottom: none; }
+
+    /* CASE CARD */
+    .case-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin: 14px 0; }
+    .case-card-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .case-card-title.scenario { color: var(--accent); }
+    .case-card-title.req { color: var(--accent-orange); }
+    .case-card-title.solution { color: var(--accent-green); }
+    .case-card-title.result { color: var(--accent-purple); }
+    .case-card-title.lessons { color: var(--accent-orange); }
+    .case-card p { margin-bottom: 8px; }
+    .case-card ul { padding-left: 18px; }
+    .case-card li { margin-bottom: 5px; }
+
+    /* CALLOUT */
+    .callout { border-left: 3px solid var(--accent); background: var(--bg-card); padding: 14px 16px; border-radius: 0 var(--radius) var(--radius) 0; margin: 16px 0; font-size: 0.9rem; }
+    .callout.warning { border-color: var(--accent-orange); }
+    .callout.tip { border-color: var(--accent-green); }
+    .callout.danger { border-color: var(--accent-red); }
+    .callout .cl-title { font-weight: 700; display: block; margin-bottom: 4px; }
+
+    /* DETAILS */
+    details { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin: 12px 0; }
+    summary { padding: 14px 16px; cursor: pointer; font-weight: 700; font-size: 0.9rem; color: var(--accent); list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: '▸ '; font-size: 0.8rem; }
+    details[open] summary::before { content: '▾ '; }
+    details .detail-content { padding: 0 16px 16px; }
+
+    /* CHECKLIST CARD */
+    .checklist-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px; margin: 16px 0;
+    }
+    .checklist-card .cc-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--accent-green); margin-bottom: 12px;
+    }
+    .cl-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid rgba(42,48,80,0.5);
+      font-size: 0.88rem;
+    }
+    .cl-item:last-child { border-bottom: none; }
+    .cl-box {
+      min-width: 20px; height: 20px; border-radius: 4px;
+      border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; color: var(--accent-green); flex-shrink: 0; margin-top: 2px;
+    }
+
+    /* PHASE INDICATOR */
+    .phase {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .phase.pre { background: rgba(108,156,255,0.1); color: var(--accent); border: 1px solid rgba(108,156,255,0.2); }
+    .phase.market { background: rgba(52,211,153,0.1); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.2); }
+    .phase.post { background: rgba(167,139,250,0.1); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.2); }
+
+    /* BLOCKQUOTE */
+    blockquote { border-left: 3px solid var(--accent-purple); padding: 12px 16px; margin: 16px 0; background: var(--bg-card); border-radius: 0 var(--radius) var(--radius) 0; font-style: italic; color: var(--text-muted); }
+    blockquote cite { display: block; margin-top: 8px; font-style: normal; font-weight: 700; color: var(--accent-purple); font-size: 0.82rem; }
+
+    /* METRIC ROW */
+    .metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 16px 0; }
+    .metric {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; text-align: center;
+    }
+    .metric .m-value { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+    .metric .m-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .metric.green .m-value { color: var(--accent-green); }
+    .metric.orange .m-value { color: var(--accent-orange); }
+    .metric.red .m-value { color: var(--accent-red); }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,14,23,0.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 20px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      padding-left: calc(20px + env(safe-area-inset-left));
+      padding-right: calc(20px + env(safe-area-inset-right));
+      gap: 12px;
+    }
+    .nav-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 20px; text-decoration: none;
+      font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+      background: var(--bg-card); border: 1px solid var(--border);
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .nav-btn:active { transform: scale(0.95); }
+    .nav-btn.home { color: var(--accent); border-color: rgba(108,156,255,0.4); }
+    .nav-spacer { flex: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Trend Following System</h1>
+  <p>Thị trường Việt Nam · Phiên bản 1.0</p>
+</header>
+
+<main>
+
+<div class="hero">
+  <div class="hero-icon">🐉</div>
+  <h2>Hệ Thống Giao Dịch Theo Xu Hướng</h2>
+  <p class="tagline">Thiết kế riêng cho HOSE/HNX — đặc thù T+2.5, biên độ ±7%, phiên ATC, thanh khoản Việt Nam. Đầy đủ từ triết lý đến từng bước hành động.</p>
+  <div class="badge-row">
+    <span class="badge green">Swing Trading</span>
+    <span class="badge blue">5-25 phiên/vị thế</span>
+    <span class="badge orange">HOSE · HNX</span>
+  </div>
+</div>
+
+<div class="separator"></div>
+
+<!-- TOC -->
+<section id="toc">
+  <h2>Mục lục hệ thống</h2>
+  <p class="subtitle">10 module · Đọc tuần tự lần đầu, sau đó tra cứu theo module</p>
+  <ul class="toc-list">
+    <li><a href="#ch1"><span class="toc-num">01</span> Triết Lý & Tuyên Ngôn Giao Dịch</a></li>
+    <li><a href="#ch2"><span class="toc-num">02</span> Đặc Thù Thị Trường Việt Nam</a></li>
+    <li><a href="#ch3"><span class="toc-num">03</span> Bộ Lọc Thị Trường Chung (Market Filter)</a></li>
+    <li><a href="#ch4"><span class="toc-num">04</span> Bộ Lọc Cổ Phiếu (Stock Scanner)</a></li>
+    <li><a href="#ch5"><span class="toc-num">05</span> Setup Vào Lệnh & Điểm Mua</a></li>
+    <li><a href="#ch6"><span class="toc-num">06</span> Quản Trị Vốn & Position Sizing</a></li>
+    <li><a href="#ch7"><span class="toc-num">07</span> Thoát Lệnh — Stop Loss & Take Profit</a></li>
+    <li><a href="#ch8"><span class="toc-num">08</span> Quy Trình Hàng Ngày (Daily Routine)</a></li>
+    <li><a href="#ch9"><span class="toc-num">09</span> Nhật Ký & Đánh Giá Hiệu Suất</a></li>
+    <li><a href="#ch10"><span class="toc-num">10</span> Recovery Protocol & Quy Tắc Sắt</a></li>
+  </ul>
+</section>
+
+<!-- ==================== CHAPTER 1 ==================== -->
+<section id="ch1" class="chapter">
+  <div class="chapter-label">Module 01</div>
+  <h2>Triết Lý & Tuyên Ngôn Giao Dịch</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch1-core" class="tab-link">🧭 Triết lý</a>
+    <a href="#ch1-identity" class="tab-link">🪪 Bản ngã</a>
+    <a href="#ch1-oath" class="tab-link">📜 Tuyên ngôn</a>
+  </nav>
+
+  <div id="ch1-core" class="section">
+    <h3>🧭 Triết lý cốt lõi</h3>
+
+    <div class="rule-box principle">
+      <span class="rule-title">Định nghĩa hệ thống này</span>
+      <p>Đây là hệ thống <strong>Swing Trading theo xu hướng</strong>, thiết kế cho thị trường cổ phiếu Việt Nam (HOSE/HNX). Thời gian giữ vị thế trung bình 5-25 phiên giao dịch. Mục tiêu: bắt phần giữa của sóng tăng trung hạn, không đoán đỉnh đáy.</p>
+    </div>
+
+    <p><strong>5 niềm tin nền tảng — không thương lượng:</strong></p>
+
+    <ol>
+      <li><strong>Xu hướng là thực tế duy nhất.</strong> Tôi không dự đoán tương lai. Tôi đọc xu hướng hiện tại và đi cùng nó. Khi xu hướng thay đổi, tôi thay đổi.</li>
+      <li><strong>Tôi kinh doanh xác suất, không kinh doanh chắc chắn.</strong> Mỗi lệnh chỉ là 1 mẫu trong chuỗi 200+ lệnh. Kết quả từng lệnh không có ý nghĩa — chỉ tổng thể mới có ý nghĩa.</li>
+      <li><strong>Bảo toàn vốn là ưu tiên #1.</strong> Tôi không thể kiếm tiền nếu đã hết tiền. Mọi quyết định đều qua lăng kính: "Nếu sai, tôi mất bao nhiêu?"</li>
+      <li><strong>Kỷ luật tạo ra tự do.</strong> Tuân thủ hệ thống 100% thời gian không phải gò bó — nó giải phóng tôi khỏi cảm xúc.</li>
+      <li><strong>Ít hơn là nhiều hơn.</strong> Tôi chỉ vào những lệnh tốt nhất. 6-12 lệnh/tháng chất lượng cao hơn 50 lệnh tùy hứng.</li>
+    </ol>
+  </div>
+
+  <div id="ch1-identity" class="section">
+    <h3>🪪 Bản ngã giao dịch</h3>
+
+    <div class="rule-box info">
+      <span class="rule-title">Tôi là ai trong thị trường?</span>
+      <p><strong>Phong cách:</strong> Swing Trend Follower</p>
+      <p><strong>Timeframe chính:</strong> Daily chart (D1)</p>
+      <p><strong>Timeframe hỗ trợ:</strong> Weekly (W1) cho hướng lớn, H4 cho timing</p>
+      <p><strong>Thị trường:</strong> HOSE (ưu tiên) + HNX (chọn lọc)</p>
+      <p><strong>Số vị thế tối đa:</strong> 5-8 cùng lúc</p>
+      <p><strong>Thời gian giữ:</strong> 5-25 phiên (1-5 tuần)</p>
+      <p><strong>Thời gian dành cho trading:</strong> 45 phút tối (phân tích) + 15 phút sáng (thực thi)</p>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric green"><div class="m-value">40-50%</div><div class="m-label">Win Rate kỳ vọng</div></div>
+      <div class="metric"><div class="m-value">≥ 3:1</div><div class="m-label">R:R trung bình</div></div>
+      <div class="metric orange"><div class="m-value">6-12</div><div class="m-label">Lệnh/tháng</div></div>
+      <div class="metric red"><div class="m-value">≤ 10%</div><div class="m-label">Max Drawdown</div></div>
+    </div>
+
+    <p>Expectancy kỳ vọng với Win Rate 45% và R:R 3:1:</p>
+    <div class="formula-box">
+      <span class="label">Expectancy</span>
+      E = (Win% × Avg Win) - (Loss% × Avg Loss)<br>
+      E = (0.45 × 3R) - (0.55 × 1R) = 1.35R - 0.55R = <strong>+0.80R / lệnh</strong><br><br>
+      Trên 100 lệnh: +80R<br>
+      Với Risk 1%/lệnh: +80% lợi nhuận trước compounding
+    </div>
+  </div>
+
+  <div id="ch1-oath" class="section">
+    <h3>📜 Tuyên ngôn giao dịch — Đọc mỗi sáng</h3>
+
+    <div class="rule-box principle">
+      <p><em>"Tôi là một nhà quản lý rủi ro. Công việc của tôi không phải dự đoán đúng — mà là kiểm soát rủi ro khi sai và để lợi nhuận chạy khi đúng.</em></p>
+      <p><em>Hôm nay tôi sẽ tuân thủ hệ thống 100%. Nếu không có setup đạt chuẩn, tôi sẽ vui vẻ ngồi ngoài. Cash là vị thế.</em></p>
+      <p><em>Tôi không sợ thua lệnh — thua lệnh là chi phí kinh doanh. Tôi sợ phá vỡ kỷ luật — vì đó là cách duy nhất để phá sản.</em></p>
+      <p><em>Tôi không giao dịch vì nhàm chán, vì sợ bỏ lỡ, hay vì muốn gỡ vốn. Tôi giao dịch khi và chỉ khi hệ thống ra tín hiệu."</em></p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 2 ==================== -->
+<section id="ch2" class="chapter">
+  <div class="chapter-label">Module 02</div>
+  <h2>Đặc Thù Thị Trường Việt Nam</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch2-struct" class="tab-link">🏗️ Cấu trúc</a>
+    <a href="#ch2-edges" class="tab-link">⚡ Edge & Trap</a>
+    <a href="#ch2-adapt" class="tab-link">🔧 Điều chỉnh</a>
+  </nav>
+
+  <div id="ch2-struct" class="section">
+    <h3>🏗️ Cấu trúc thị trường VN cần nắm</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Yếu tố</th><th>HOSE</th><th>HNX</th><th>Ảnh hưởng trading</th></tr></thead>
+        <tbody>
+          <tr><td>Biên độ giá</td><td>±7%/ngày</td><td>±10%/ngày</td><td>Stop loss phải tính theo % thực tế, không chỉ kỹ thuật</td></tr>
+          <tr><td>Thanh toán</td><td>T+2.5 (bán T+0 chiều, tiền về T+2)</td><td>T+2</td><td>Không thể mua-bán cùng ngày linh hoạt</td></tr>
+          <tr><td>Phiên ATC</td><td>14:30-14:45</td><td>14:30-14:45</td><td>Biến động lớn cuối phiên, cẩn thận market order</td></tr>
+          <tr><td>Bước giá</td><td>10đ/50đ/100đ tùy mức</td><td>100đ</td><td>Ảnh hưởng stop loss chính xác</td></tr>
+          <tr><td>Lô giao dịch</td><td>100 cổ phiếu</td><td>100 cổ phiếu</td><td>Position size phải làm tròn về bội 100</td></tr>
+          <tr><td>Phí GD</td><td>~0.15-0.35%</td><td>~0.15-0.35%</td><td>Mua + bán ≈ 0.3-0.7% → cần R:R cao để cover</td></tr>
+          <tr><td>Thuế bán</td><td>0.1%</td><td>0.1%</td><td>Cộng thêm vào chi phí thoát lệnh</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warning">
+      <span class="cl-title">⚠️ Tổng chi phí mỗi round-trip (mua + bán):</span>
+      Phí mua (~0.15%) + Phí bán (~0.15%) + Thuế bán (0.1%) = <strong>~0.4%</strong>. Với 10 lệnh/tháng × 12 tháng = 120 lệnh/năm → chi phí ~48% nếu full position. Đây là lý do <strong>phải có R:R cao và KHÔNG overtrading</strong>.
+    </div>
+  </div>
+
+  <div id="ch2-edges" class="section">
+    <h3>⚡ Edge & Trap đặc thù VN</h3>
+
+    <h4>Edge (lợi thế có thể khai thác):</h4>
+
+    <div class="rule-box">
+      <span class="rule-title">1. Thị trường retail-dominant</span>
+      <p>~85% giao dịch là nhà đầu tư cá nhân → hành vi bầy đàn mạnh, pattern tâm lý rõ ràng. Cổ phiếu trend mạnh hơn, dài hơn so với thị trường institution-dominant.</p>
+    </div>
+
+    <div class="rule-box">
+      <span class="rule-title">2. T+2.5 tạo momentum kéo dài</span>
+      <p>Không short được (hầu hết) + T+2 khiến nhà đầu tư phải hold qua đêm → khi trend hình thành, nó kéo dài hơn vì không có lực bán ngắn hạn nhanh.</p>
+    </div>
+
+    <div class="rule-box">
+      <span class="rule-title">3. Thông tin bất đối xứng rõ rệt</span>
+      <p>Smart money (tổ chức, insider) hành động trước tin ra → volume + price action thường "nói trước" fundamentals 1-4 tuần. Đọc cấu trúc giá-volume = đọc hành vi smart money.</p>
+    </div>
+
+    <h4>Trap (bẫy cần tránh):</h4>
+
+    <div class="rule-box warning">
+      <span class="rule-title">1. Bẫy thanh khoản</span>
+      <p>Nhiều cổ phiếu trông đẹp trên chart nhưng thanh khoản < 50K cổ/phiên → không thoát được khi cần. <strong>Quy tắc: chỉ trade cổ phiếu có KLGD trung bình 20 phiên ≥ 200,000 cổ.</strong></p>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title">2. Bẫy phiên ATC</span>
+      <p>Giá ATC có thể lệch 1-3% so với giá liên tục → đặt lệnh LO (limit order) thay vì ATO/ATC cho entry. Chỉ dùng ATC khi cần thoát khẩn cấp.</p>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title">3. Bẫy "cổ phiếu rẻ"</span>
+      <p>VN có nhiều cổ phiếu penny (< 10,000 VNĐ) bị thao túng. Hệ thống này chỉ giao dịch cổ phiếu ≥ 15,000 VNĐ/cp.</p>
+    </div>
+  </div>
+
+  <div id="ch2-adapt" class="section">
+    <h3>🔧 Điều chỉnh hệ thống cho VN</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Yếu tố</th><th>Hệ thống gốc (US)</th><th>Điều chỉnh cho VN</th><th>Lý do</th></tr></thead>
+        <tbody>
+          <tr><td>Stop loss</td><td>Theo kỹ thuật thuần</td><td>Tối thiểu 5%, tối đa 10%</td><td>Biên độ ±7% HOSE, biến động cao hơn US</td></tr>
+          <tr><td>Position hold</td><td>Flexible</td><td>Tối thiểu T+3 (tránh bán sớm vì T+2)</td><td>Bán T+0 chiều, tiền T+2 → cần buffer</td></tr>
+          <tr><td>Volume filter</td><td>50-day avg</td><td>20-day avg (thị trường VN thay đổi nhanh)</td><td>Thanh khoản VN biến động mạnh theo mùa</td></tr>
+          <tr><td>MA settings</td><td>MA50/150/200</td><td>MA20/50/150 (weekly: MA10/30)</td><td>VN volatility cao hơn, cycle ngắn hơn</td></tr>
+          <tr><td>RS calculation</td><td>vs S&P500</td><td>vs VN-Index</td><td>Phải benchmark nội địa</td></tr>
+          <tr><td>Gap overnight</td><td>Thường xuyên</td><td>Ít gap lớn (trừ sau nghỉ lễ)</td><td>Không pre/after market</td></tr>
+          <tr><td>Short selling</td><td>Tự do</td><td>Gần như không có</td><td>Chỉ có thể Long → downtrend = cash</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Hệ quả quan trọng của việc KHÔNG short được:</span>
+      Khi thị trường chung downtrend, <strong>cash 100% là vị thế tối ưu</strong>. Không cần ép trade. Hệ thống này có chế độ "OFF" rõ ràng — đó là khi Market Filter đèn đỏ.
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 3 ==================== -->
+<section id="ch3" class="chapter">
+  <div class="chapter-label">Module 03</div>
+  <h2>Bộ Lọc Thị Trường Chung (Market Filter)</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch3-system" class="tab-link">🚦 Hệ thống đèn</a>
+    <a href="#ch3-breadth" class="tab-link">📊 Market Breadth</a>
+    <a href="#ch3-rules" class="tab-link">⚙️ Quy tắc</a>
+  </nav>
+
+  <div id="ch3-system" class="section">
+    <h3>🚦 Hệ thống 3 đèn</h3>
+
+    <p>Trước khi nhìn BẤT KỲ cổ phiếu nào, phải xác định trạng thái thị trường chung. 75% cổ phiếu đi cùng hướng thị trường chung — trade ngược dòng là tự sát.</p>
+
+    <div class="rule-box" style="border-left-color: var(--accent-green);">
+      <span class="rule-title" style="color: var(--accent-green);">🟢 ĐÈN XANH — Full Offensive</span>
+      <p><strong>Điều kiện (cần TẤT CẢ):</strong></p>
+      <p>☐ VN-Index > MA50 daily</p>
+      <p>☐ MA20 > MA50 (golden cross gần đây hoặc đã cross)</p>
+      <p>☐ VN-Index đang tạo Higher High hoặc Higher Low trên daily</p>
+      <p>☐ Market Breadth: ≥ 55% cổ phiếu HOSE trên MA50 của chúng</p>
+      <p><strong>→ Hành động:</strong> Trade bình thường. Mở tối đa 5-8 vị thế. Risk/lệnh 1%.</p>
+    </div>
+
+    <div class="rule-box caution">
+      <span class="rule-title" style="color: var(--accent-orange);">🟡 ĐÈN VÀNG — Defensive</span>
+      <p><strong>Điều kiện (bất kỳ 1 trong các trường hợp):</strong></p>
+      <p>• VN-Index > MA50 nhưng MA20 đang cắt xuống gần MA50</p>
+      <p>• VN-Index trading quanh MA50 (chênh lệch < 2%)</p>
+      <p>• Market Breadth: 40-55% cổ phiếu HOSE trên MA50</p>
+      <p>• VN-Index sideways > 3 tuần, không rõ hướng</p>
+      <p><strong>→ Hành động:</strong> Giảm 50% exposure. Tối đa 3 vị thế. Risk/lệnh 0.5%. Chỉ mua cổ phiếu RS ≥ 85.</p>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title" style="color: var(--accent-red);">🔴 ĐÈN ĐỎ — Cash Mode</span>
+      <p><strong>Điều kiện (bất kỳ 1 trong các trường hợp):</strong></p>
+      <p>• VN-Index < MA50 daily</p>
+      <p>• MA20 < MA50 (death cross)</p>
+      <p>• VN-Index đang tạo Lower High + Lower Low</p>
+      <p>• Market Breadth: < 40% cổ phiếu HOSE trên MA50</p>
+      <p><strong>→ Hành động:</strong> KHÔNG MỞ VỊ THẾ MỚI. Chốt dần vị thế hiện có. Cash 80-100%. Dùng thời gian để nghiên cứu, review journal.</p>
+    </div>
+  </div>
+
+  <div id="ch3-breadth" class="section">
+    <h3>📊 Market Breadth — Đo sức khỏe thật</h3>
+
+    <p>VN-Index có thể bị méo bởi 10-15 cổ phiếu vốn hóa lớn (VHM, VCB, VIC, HPG...). Market breadth cho bức tranh thật:</p>
+
+    <div class="formula-box">
+      <span class="label">Cách tính Market Breadth đơn giản</span>
+      Breadth = (Số CP trên MA50) / (Tổng số CP HOSE) × 100%<br><br>
+      Nguồn: Tự tính trên bộ lọc của các platform VN<br>
+      (TradingView, Fireant, Simplize, VnDirect chart)<br><br>
+      Hoặc dùng proxy: Advance/Decline ratio<br>
+      A/D = Số CP tăng / Số CP giảm trong phiên<br>
+      MA5(A/D) > 1.2 → Thị trường khỏe<br>
+      MA5(A/D) < 0.8 → Thị trường yếu
+    </div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Divergence cực kỳ quan trọng:</span>
+      Nếu VN-Index tạo New High nhưng Breadth giảm (ít CP tham gia tăng) → cảnh báo sớm đỉnh thị trường. Ngược lại, VN-Index tạo New Low nhưng Breadth cải thiện → đáy có thể gần. Đây là tín hiệu mạnh nhất để chuyển đèn.
+    </div>
+  </div>
+
+  <div id="ch3-rules" class="section">
+    <h3>⚙️ Quy tắc chuyển đèn</h3>
+
+    <div class="rule-box info">
+      <span class="rule-title">Kiểm tra đèn mỗi tối thứ 6 (cuối tuần)</span>
+      <p>Market Filter được đánh giá <strong>1 lần/tuần</strong> vào cuối phiên thứ 6, dựa trên chart Weekly. Không thay đổi đèn giữa tuần trừ khi có tín hiệu cực mạnh (VD: VN-Index giảm > 5% trong 1 tuần).</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chuyển đèn</th><th>Tín hiệu</th><th>Hành động ngay</th></tr></thead>
+        <tbody>
+          <tr><td>🟢 → 🟡</td><td>VN-Index close dưới MA20 + breadth < 55%</td><td>Không mở vị thế mới. Siết trailing stop vị thế hiện có.</td></tr>
+          <tr><td>🟡 → 🔴</td><td>VN-Index close dưới MA50 + breadth < 40%</td><td>Bán 50% portfolio ngay phiên đầu tuần. Trail phần còn lại.</td></tr>
+          <tr><td>🔴 → 🟡</td><td>VN-Index recover trên MA50 + breadth > 40%</td><td>Chờ thêm 1 tuần xác nhận. Nếu giữ → chuyển vàng.</td></tr>
+          <tr><td>🟡 → 🟢</td><td>MA20 > MA50 + breadth > 55% + HH/HL</td><td>Bắt đầu scan setup. Mở vị thế pilot (size nhỏ) trước.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout danger">
+      <span class="cl-title">🔴 Quy tắc sắt #1 — KHÔNG BAO GIỜ mua mới khi Đèn Đỏ.</span>
+      Không có ngoại lệ. Không có "cổ phiếu này đặc biệt". Khi đèn đỏ, 100% thời gian dành cho nghiên cứu, xây watchlist, và review journal. Đây là cách bạn sống sót qua bear market.
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 4 ==================== -->
+<section id="ch4" class="chapter">
+  <div class="chapter-label">Module 04</div>
+  <h2>Bộ Lọc Cổ Phiếu (Stock Scanner)</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch4-template" class="tab-link">📋 Trend Template VN</a>
+    <a href="#ch4-rs" class="tab-link">💪 Relative Strength</a>
+    <a href="#ch4-fundamental" class="tab-link">📊 Fundamental</a>
+    <a href="#ch4-summary" class="tab-link">✅ Tóm tắt</a>
+  </nav>
+
+  <div id="ch4-template" class="section">
+    <h3>📋 Trend Template — Phiên bản Việt Nam</h3>
+
+    <p>Mỗi tối, từ toàn bộ sàn HOSE (~400 CP), lọc qua bộ 10 tiêu chí dưới đây. Chỉ cổ phiếu qua đủ 10/10 mới vào watchlist.</p>
+
+    <div class="checklist-card">
+      <div class="cc-title">✅ 10 Tiêu chí bắt buộc</div>
+
+      <div class="cl-item"><div class="cl-box">1</div><div>Giá đóng cửa > MA50 daily</div></div>
+      <div class="cl-item"><div class="cl-box">2</div><div>Giá đóng cửa > MA150 daily (≈ 30 tuần)</div></div>
+      <div class="cl-item"><div class="cl-box">3</div><div>MA50 > MA150</div></div>
+      <div class="cl-item"><div class="cl-box">4</div><div>MA150 đã tăng ít nhất 4 tuần liên tiếp</div></div>
+      <div class="cl-item"><div class="cl-box">5</div><div>Giá hiện tại ≥ 25% trên đáy 52 tuần</div></div>
+      <div class="cl-item"><div class="cl-box">6</div><div>Giá hiện tại trong phạm vi 30% so với đỉnh 52 tuần</div></div>
+      <div class="cl-item"><div class="cl-box">7</div><div>KLGD trung bình 20 phiên ≥ 200,000 cổ</div></div>
+      <div class="cl-item"><div class="cl-box">8</div><div>Giá cổ phiếu ≥ 15,000 VNĐ</div></div>
+      <div class="cl-item"><div class="cl-box">9</div><div>Relative Strength vs VN-Index ≥ 80 (top 20%)</div></div>
+      <div class="cl-item"><div class="cl-box">10</div><div>Không có dấu hiệu distribution (volume tăng khi giá giảm liên tục > 3 phiên)</div></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Mẹo thực tế:</span>
+      Dùng bộ lọc trên Fireant, Simplize, hoặc TradingView để scan tự động tiêu chí 1-8. Tiêu chí 9-10 phải tự đánh giá thủ công trên chart. Mỗi tối mất khoảng 20-30 phút cho quy trình này.
+    </div>
+  </div>
+
+  <div id="ch4-rs" class="section">
+    <h3>💪 Relative Strength (RS) — Tự tính cho VN</h3>
+
+    <p>RS đo cổ phiếu đang mạnh hơn hay yếu hơn thị trường chung. Chỉ mua cổ phiếu mạnh hơn VN-Index.</p>
+
+    <div class="formula-box">
+      <span class="label">Công thức RS cho thị trường VN</span>
+      RS_raw = (Perf_1M × 0.25) + (Perf_3M × 0.35) + (Perf_6M × 0.25) + (Perf_12M × 0.15)<br><br>
+      Perf_1M = (Giá hiện tại / Giá 1 tháng trước - 1) × 100<br>
+      Perf_3M = (Giá hiện tại / Giá 3 tháng trước - 1) × 100<br>
+      Perf_6M = (Giá hiện tại / Giá 6 tháng trước - 1) × 100<br>
+      Perf_12M = (Giá hiện tại / Giá 12 tháng trước - 1) × 100<br><br>
+      Tính RS_raw cho toàn bộ HOSE (~400 CP)<br>
+      Xếp hạng percentile:<br>
+      RS ≥ 90 → Top 10% → ★★★ (A+ candidate)<br>
+      RS 80-89 → Top 20% → ★★ (A candidate)<br>
+      RS 70-79 → Top 30% → ★ (Chỉ trade khi Đèn Xanh)<br>
+      RS < 70 → LOẠI
+    </div>
+
+    <div class="rule-box caution">
+      <span class="rule-title">Trọng số nghiêng về ngắn hạn (1M, 3M) vì:</span>
+      <p>Thị trường VN quay vòng ngành nhanh hơn US. Cổ phiếu có thể leader 6 tháng rồi laggard 3 tháng sau. Trọng số 1M + 3M = 60% giúp bắt rotation sớm.</p>
+    </div>
+  </div>
+
+  <div id="ch4-fundamental" class="section">
+    <h3>📊 Fundamental Catalyst — Bổ sung, không thay thế kỹ thuật</h3>
+
+    <p>Hệ thống này là kỹ thuật thuần (technical-driven). Nhưng fundamental catalyst giúp tăng conviction và xác nhận smart money đang mua vì lý do thực:</p>
+
+    <div class="rule-box">
+      <span class="rule-title">Catalyst mạnh (ưu tiên vào lệnh):</span>
+      <p>• EPS quý gần nhất tăng ≥ 20% YoY</p>
+      <p>• Doanh thu quý tăng ≥ 15% YoY</p>
+      <p>• Ngành đang có tailwind vĩ mô (VD: BĐS khi lãi suất giảm, Thép khi giá thế giới tăng)</p>
+      <p>• Insider buying (cổ đông lớn/ban lãnh đạo đăng ký mua)</p>
+    </div>
+
+    <div class="rule-box caution">
+      <span class="rule-title">Red flag fundamental — LOẠI ngay:</span>
+      <p>• Lỗ 2 quý liên tiếp</p>
+      <p>• Nợ/Vốn chủ sở hữu > 3 (trừ ngân hàng/tài chính)</p>
+      <p>• Dòng tiền hoạt động âm 3 quý liên tiếp</p>
+      <p>• Vừa phát hành thêm cổ phiếu dilutive > 10%</p>
+      <p>• Kiểm toán có ý kiến ngoại trừ/từ chối</p>
+    </div>
+
+    <div class="callout warning">
+      <span class="cl-title">⚠️ Fundamental KHÔNG override Technical:</span>
+      Nếu fundamental tuyệt vời nhưng chart xấu (không qua Trend Template), KHÔNG MUA. Smart money biết fundamental trước bạn — nếu họ chưa mua (chart chưa tăng), bạn cũng chưa nên.
+    </div>
+  </div>
+
+  <div id="ch4-summary" class="section">
+    <h3>✅ Quy trình lọc tóm tắt</h3>
+    <p>~400 CP HOSE → Trend Template 10 tiêu chí → ~20-40 CP → RS ≥ 80 → ~10-20 CP → Kiểm tra chart thủ công (cấu trúc, volume) → ~5-10 CP vào Watchlist → Chờ Setup (Module 05).</p>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 5 ==================== -->
+<section id="ch5" class="chapter">
+  <div class="chapter-label">Module 05</div>
+  <h2>Setup Vào Lệnh & Điểm Mua</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch5-setups" class="tab-link">🎯 3 Setup</a>
+    <a href="#ch5-checklist" class="tab-link">✅ Checklist</a>
+    <a href="#ch5-execution" class="tab-link">⚡ Thực thi</a>
+  </nav>
+
+  <div id="ch5-setups" class="section">
+    <h3>🎯 3 Setup duy nhất — Không trade setup nào khác</h3>
+
+    <details>
+      <summary>Setup A: VCP Breakout (Ưu tiên #1)</summary>
+      <div class="detail-content">
+        <p><strong>Mô tả:</strong> Cổ phiếu đã qua Trend Template, đang trong Stage 2, và hình thành mô hình nén biến động (Volatility Contraction Pattern).</p>
+
+        <p><strong>Nhận dạng VCP trên chart:</strong></p>
+        <ul>
+          <li>Ít nhất 2-3 đợt co giá (contraction), mỗi đợt biên độ nhỏ hơn đợt trước</li>
+          <li>VD: T1 giảm 15% → T2 giảm 8% → T3 giảm 3-4%</li>
+          <li>Volume giảm dần qua mỗi đợt co (quan trọng!)</li>
+          <li>Tổng thời gian base: 3-12 tuần (VN thường 3-8 tuần)</li>
+          <li>Giá nén vào vùng rất hẹp ở cuối pattern (tight closing prices)</li>
+        </ul>
+
+        <p><strong>Điểm mua (Pivot Point):</strong></p>
+        <ul>
+          <li>Mua khi giá vượt đỉnh cao nhất trong base + 1-2%</li>
+          <li>Volume phải ≥ 150% average 20 phiên</li>
+          <li>Mua trong nửa đầu phiên (9:15-11:30) nếu volume xác nhận sớm</li>
+          <li>Nếu volume yếu khi breakout → KHÔNG MUA, chờ xác nhận</li>
+        </ul>
+
+        <p><strong>Stop loss:</strong> Đặt ngay dưới đáy thấp nhất của contraction cuối cùng (thường 5-8% dưới pivot).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Setup B: Pullback to MA20 trong Uptrend (Ưu tiên #2)</summary>
+      <div class="detail-content">
+        <p><strong>Mô tả:</strong> Cổ phiếu đã breakout thành công, đang trong uptrend rõ ràng, và pullback về kiểm tra MA20 daily.</p>
+
+        <p><strong>Nhận dạng:</strong></p>
+        <ul>
+          <li>Cổ phiếu đã tăng ≥ 15% từ base breakout gần nhất</li>
+          <li>Đang tạo cấu trúc HH-HL rõ ràng</li>
+          <li>Pullback về vùng MA20 daily (chạm hoặc rất gần)</li>
+          <li>Volume GIẢM trong quá trình pullback (quan trọng!)</li>
+          <li>Không có phiên panic sell (volume gấp 3x + giá giảm > 4%)</li>
+        </ul>
+
+        <p><strong>Điểm mua:</strong></p>
+        <ul>
+          <li>Mua khi giá chạm MA20 + xuất hiện reversal candle (pin bar, engulfing, inside bar breakout)</li>
+          <li>Hoặc mua khi giá bounce từ MA20 và vượt high của phiên trước</li>
+          <li>Volume ở phiên bounce nên tăng vs phiên pullback trước đó</li>
+        </ul>
+
+        <p><strong>Stop loss:</strong> Đặt dưới MA50 hoặc dưới swing low gần nhất (thường 5-7%).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Setup C: Breakout Base Dài Hạn (Setup Hiếm, R:R Cao Nhất)</summary>
+      <div class="detail-content">
+        <p><strong>Mô tả:</strong> Cổ phiếu tích lũy > 3 tháng (Stage 1 chuyển Stage 2), vừa breakout range dài hạn lần đầu tiên.</p>
+
+        <p><strong>Nhận dạng:</strong></p>
+        <ul>
+          <li>Base tích lũy 3-12 tháng, giá đi ngang trong range hẹp</li>
+          <li>MA150 chuyển từ giảm/ngang sang bắt đầu tăng</li>
+          <li>Volume khô kiệt trong base (< 50% average dài hạn)</li>
+          <li>Đột ngột: volume tăng mạnh (≥ 200% avg) + giá vượt resistance dài hạn</li>
+          <li>Có fundamental catalyst rõ ràng (đây là setup cần cả FA + TA)</li>
+        </ul>
+
+        <p><strong>Điểm mua:</strong> Khi giá close trên resistance dài hạn với volume ≥ 200% avg. Mua chia 2 phần: 60% ngay, 40% sau 2-3 phiên nếu giá giữ trên pivot.</p>
+
+        <p><strong>Stop loss:</strong> Đặt dưới top resistance cũ (giờ thành support) — thường 7-10%.</p>
+
+        <p><strong>Lưu ý:</strong> Setup này xuất hiện 2-4 lần/quý. Khi xuất hiện, thường cho R:R 5:1 trở lên. Đáng chờ đợi.</p>
+      </div>
+    </details>
+  </div>
+
+  <div id="ch5-checklist" class="section">
+    <h3>✅ Pre-Entry Checklist — 12 điểm sống còn</h3>
+
+    <p>Trước MỖI lệnh, đi qua 12 điểm. In ra, dán cạnh màn hình. Thiếu 1 = KHÔNG VÀO LỆNH.</p>
+
+    <div class="checklist-card">
+      <div class="cc-title">🚦 Market</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Đèn thị trường = 🟢 hoặc 🟡?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Nếu 🟡: CP này có RS ≥ 85?</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">📋 Stock Filter</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Qua Trend Template 10/10?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>RS ≥ 80?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Không có red flag fundamental?</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">🎯 Setup</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Setup A, B, hoặc C rõ ràng?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Volume xác nhận?</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">💰 Risk Management</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Stop loss đã xác định? (giá cụ thể: _____)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Risk ≤ 1% tài khoản? (số tiền: _____)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Position size đã tính? (số cổ: _____)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>R:R ≥ 3:1? (Target: _____)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Tổng risk mở (gồm lệnh này) ≤ 6%?</div></div>
+    </div>
+  </div>
+
+  <div id="ch5-execution" class="section">
+    <h3>⚡ Cách thực thi trên sàn VN</h3>
+
+    <div class="rule-box info">
+      <span class="rule-title">Quy trình đặt lệnh cụ thể</span>
+      <p><strong>Bước 1 — Tối hôm trước:</strong> Xác định CP trong watchlist có setup, tính entry price, stop loss, size. Ghi vào journal.</p>
+      <p><strong>Bước 2 — Sáng 8:50:</strong> Kiểm tra tin tức overnight. Nếu không có gì bất thường, chuẩn bị lệnh.</p>
+      <p><strong>Bước 3 — 9:15 (sau ATO):</strong> Quan sát giá mở cửa + volume 15 phút đầu. Nếu CP gap up nhẹ (1-3%) với volume mạnh → tín hiệu tốt. Nếu gap up quá xa (> 5%) → KHÔNG ĐUỔI GIÁ.</p>
+      <p><strong>Bước 4 — Đặt lệnh LO:</strong> Đặt lệnh giới hạn (LO) tại giá entry đã xác định. KHÔNG dùng lệnh ATO/ATC cho entry.</p>
+      <p><strong>Bước 5 — Nếu không khớp trong phiên:</strong> Hủy lệnh. Đánh giá lại tối. Setup vẫn còn → thử lại ngày mai. Setup đã hỏng → bỏ qua.</p>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title">3 lỗi thực thi phổ biến ở VN — TRÁNH:</span>
+      <p>1. <strong>Đuổi giá gap up > 5%:</strong> Entry quá xa pivot → stop loss quá xa → R:R xấu → lệnh không đáng vào.</p>
+      <p>2. <strong>Mua bằng lệnh MP (market price):</strong> Spread có thể lớn → bị fill giá xấu. Luôn dùng LO.</p>
+      <p>3. <strong>Mua trong phiên ATC:</strong> Biến động cuối phiên không dự đoán được. Entry chỉ trong phiên liên tục (9:15-14:30).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 6 ==================== -->
+<section id="ch6" class="chapter">
+  <div class="chapter-label">Module 06</div>
+  <h2>Quản Trị Vốn & Position Sizing</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch6-core" class="tab-link">🧮 Công thức</a>
+    <a href="#ch6-examples" class="tab-link">📊 Ví dụ thực tế</a>
+    <a href="#ch6-portfolio" class="tab-link">📁 Portfolio</a>
+  </nav>
+
+  <div id="ch6-core" class="section">
+    <h3>🧮 Công thức Position Sizing cho VN</h3>
+
+    <div class="formula-box">
+      <span class="label">Position Size Formula</span>
+      Account = Tổng tài khoản hiện tại (VNĐ)<br>
+      Risk% = 1% (mặc định) hoặc 0.5% (đèn vàng)<br>
+      Risk_VND = Account × Risk%<br>
+      Entry = Giá mua dự kiến<br>
+      StopLoss = Giá cắt lỗ<br>
+      Risk_per_share = Entry - StopLoss<br><br>
+      <strong>Số cổ phiếu = Risk_VND / Risk_per_share</strong><br>
+      → Làm tròn XUỐNG về bội số 100 (lô VN)<br><br>
+      Giá trị vị thế = Số cổ × Entry<br>
+      % Portfolio = Giá trị vị thế / Account × 100%
+    </div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Quy tắc bổ sung:</span>
+      Dù position size formula cho phép, KHÔNG BAO GIỜ để 1 vị thế > 25% tài khoản. Nếu stop loss rất gần (2-3%), formula có thể cho size lớn → cap tại 25%.
+    </div>
+  </div>
+
+  <div id="ch6-examples" class="section">
+    <h3>📊 Ví dụ thực tế — Tài khoản 500 triệu</h3>
+
+    <div class="case-card">
+      <div class="case-card-title scenario">🎯 Ví dụ 1: VCP Breakout — Stop xa</div>
+      <p>Cổ phiếu HPG: Entry 28,500 / Stop Loss 26,200 / Target 35,000</p>
+      <p>Risk/share = 28,500 - 26,200 = 2,300 VNĐ (8.1%)</p>
+      <p>Risk_VND = 500,000,000 × 1% = 5,000,000</p>
+      <p>Số cổ = 5,000,000 / 2,300 = 2,173 → làm tròn = <strong>2,100 cổ</strong></p>
+      <p>Giá trị vị thế = 2,100 × 28,500 = 59,850,000 (12% portfolio)</p>
+      <p>R:R = (35,000 - 28,500) / 2,300 = 2.83:1 ✅</p>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-title scenario">🎯 Ví dụ 2: Pullback MA20 — Stop gần</div>
+      <p>Cổ phiếu FPT: Entry 92,000 / Stop Loss 87,500 / Target 106,000</p>
+      <p>Risk/share = 92,000 - 87,500 = 4,500 VNĐ (4.9%)</p>
+      <p>Risk_VND = 5,000,000</p>
+      <p>Số cổ = 5,000,000 / 4,500 = 1,111 → làm tròn = <strong>1,100 cổ</strong></p>
+      <p>Giá trị vị thế = 1,100 × 92,000 = 101,200,000 (20.2% portfolio)</p>
+      <p>R:R = (106,000 - 92,000) / 4,500 = 3.11:1 ✅</p>
+    </div>
+
+    <div class="case-card">
+      <div class="case-card-title scenario">🎯 Ví dụ 3: Đèn Vàng — Risk giảm</div>
+      <p>Cùng FPT nhưng thị trường đèn vàng → Risk 0.5%</p>
+      <p>Risk_VND = 500,000,000 × 0.5% = 2,500,000</p>
+      <p>Số cổ = 2,500,000 / 4,500 = 555 → <strong>500 cổ</strong></p>
+      <p>Giá trị vị thế = 46,000,000 (9.2% portfolio)</p>
+      <p>→ Tự động giảm 50% exposure khi thị trường không thuận.</p>
+    </div>
+  </div>
+
+  <div id="ch6-portfolio" class="section">
+    <h3>📁 Quy tắc quản lý Portfolio</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Quy tắc</th><th>Đèn Xanh</th><th>Đèn Vàng</th><th>Đèn Đỏ</th></tr></thead>
+        <tbody>
+          <tr><td>Risk/lệnh</td><td>1%</td><td>0.5%</td><td>N/A (không trade)</td></tr>
+          <tr><td>Max vị thế cùng lúc</td><td>5-8</td><td>3</td><td>0</td></tr>
+          <tr><td>Tổng risk mở tối đa</td><td>6%</td><td>3%</td><td>0%</td></tr>
+          <tr><td>Max 1 vị thế</td><td>25% portfolio</td><td>15% portfolio</td><td>N/A</td></tr>
+          <tr><td>Max cùng ngành</td><td>2 CP, 35% portfolio</td><td>1 CP, 15% portfolio</td><td>N/A</td></tr>
+          <tr><td>Cash tối thiểu</td><td>20%</td><td>50%</td><td>80-100%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rule-box caution">
+      <span class="rule-title">Correlation Risk — Sát thủ thầm lặng</span>
+      <p>5 vị thế đều ngành ngân hàng = thực tế chỉ có 1 vị thế rất lớn. Khi ngành banking giảm, tất cả cùng giảm. <strong>Quy tắc: tối đa 2 cổ phiếu cùng ngành, tổng không quá 35% portfolio.</strong></p>
+    </div>
+
+    <div class="rule-box">
+      <span class="rule-title">Pyramiding — Thêm vào vị thế thắng (cho trader nâng cao)</span>
+      <p>Chỉ thêm vị thế khi:</p>
+      <p>1. Vị thế hiện tại đã lãi ≥ 1R (đã kéo stop lên breakeven)</p>
+      <p>2. Cổ phiếu tạo setup mới (VD: pullback to MA20 sau breakout đầu tiên)</p>
+      <p>3. Thêm tối đa 50% size ban đầu</p>
+      <p>4. Tổng risk sau khi thêm vẫn ≤ 1.5% tài khoản cho cổ phiếu đó</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 7 ==================== -->
+<section id="ch7" class="chapter">
+  <div class="chapter-label">Module 07</div>
+  <h2>Thoát Lệnh — Stop Loss & Take Profit</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch7-stop" class="tab-link">🛑 Stop Loss</a>
+    <a href="#ch7-trail" class="tab-link">📈 Trailing & TP</a>
+    <a href="#ch7-emergency" class="tab-link">🚨 Thoát khẩn cấp</a>
+  </nav>
+
+  <div id="ch7-stop" class="section">
+    <h3>🛑 Stop Loss — 4 loại, dùng theo tình huống</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Loại Stop</th><th>Cách đặt</th><th>Khi nào dùng</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Initial Stop</strong></td><td>Dưới swing low / dưới base</td><td>Ngay khi vào lệnh. Bắt buộc.</td></tr>
+          <tr><td><strong>Breakeven Stop</strong></td><td>Kéo stop lên giá entry + phí</td><td>Khi lãi ≥ 1R</td></tr>
+          <tr><td><strong>Trailing Stop</strong></td><td>Dưới MA20 hoặc dưới swing low gần nhất</td><td>Khi lãi ≥ 2R</td></tr>
+          <tr><td><strong>Time Stop</strong></td><td>Thoát nếu không chạy</td><td>5-7 phiên sau entry không chuyển biến</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title">Đặc biệt cho VN — Stop Loss TINH THẦN, không phải lệnh tự động</span>
+      <p>Hầu hết broker VN không hỗ trợ stop loss tự động đáng tin cậy. Bạn phải:</p>
+      <p>1. Ghi stop loss vào journal/notes</p>
+      <p>2. Đặt cảnh báo giá (price alert) trên app broker hoặc TradingView</p>
+      <p>3. Khi alert kích hoạt → mở app → đặt lệnh bán LO tại giá stop hoặc thấp hơn 1 bước giá</p>
+      <p>4. Nếu giá gap qua stop (mở cửa dưới stop) → BÁN NGAY giá mở cửa, không chờ hồi</p>
+    </div>
+
+    <div class="rule-box" style="border-left-color: var(--accent-red);">
+      <span class="rule-title" style="color: var(--accent-red);">TUYỆT ĐỐI KHÔNG: Dời stop loss xa hơn</span>
+      <p>Khi giá tiến gần stop loss, não sẽ nói: "Chỉ cần dời thêm 2% nữa thôi, sẽ hồi." — Đây là lúc bạn phải CỨNG RẮN NHẤT. Dời stop xa = phá hủy toàn bộ hệ thống. 1 lần dời = tạo thói quen. Thói quen này sẽ giết tài khoản.</p>
+    </div>
+  </div>
+
+  <div id="ch7-trail" class="section">
+    <h3>📈 Hệ thống Trailing & Take Profit</h3>
+
+    <div class="rule-box principle">
+      <span class="rule-title">Phương pháp Hybrid Exit — Mặc định cho mọi lệnh</span>
+      <p><strong>Giai đoạn 1 — Bảo vệ (0 → 1R lãi):</strong></p>
+      <p>Giữ nguyên initial stop. Quan sát. Không làm gì.</p>
+      <p><strong>Giai đoạn 2 — An toàn (1R → 2R lãi):</strong></p>
+      <p>Kéo stop lên breakeven (entry + phí). Bạn giờ "chơi bằng tiền thị trường".</p>
+      <p><strong>Giai đoạn 3 — Thu hoạch (2R lãi trở lên):</strong></p>
+      <p>Bán 50% vị thế. Chốt lãi thật. Phần 50% còn lại → trailing theo MA20 daily.</p>
+      <p><strong>Giai đoạn 4 — Để lãi chạy (3R+ lãi):</strong></p>
+      <p>Trailing MA20. Khi giá close DƯỚI MA20 → bán phần còn lại. Hoặc nếu thấy dấu hiệu climax top → bán hết.</p>
+    </div>
+
+    <h4>Dấu hiệu Climax Top — Bán hết ngay:</h4>
+    <div class="rule-box warning">
+      <p>• Gap up + giá tăng > 5% trong 1 phiên + volume ≥ 300% average</p>
+      <p>• Tăng ≥ 25% trong 2-3 tuần liên tục (parabolic move)</p>
+      <p>• Dải Bollinger mở rộng cực đại + giá close ngoài upper band 2 phiên liên tiếp</p>
+      <p>• Bạn thấy cổ phiếu xuất hiện trên mọi nhóm chat, Facebook, YouTube → đó là khi bạn BÁN, không phải MUA</p>
+    </div>
+  </div>
+
+  <div id="ch7-emergency" class="section">
+    <h3>🚨 Thoát khẩn cấp</h3>
+
+    <div class="rule-box" style="border-left-color: var(--accent-red);">
+      <span class="rule-title" style="color: var(--accent-red);">Emergency Exit — Bán TẤT CẢ vị thế ngay lập tức khi:</span>
+      <p>• VN-Index giảm > 3% trong 1 phiên (crash signal)</p>
+      <p>• Circuit breaker bị trigger</p>
+      <p>• Tin Black Swan (chiến tranh, đại dịch, khủng hoảng tài chính toàn cầu)</p>
+      <p>• Portfolio drawdown chạm -8% từ đỉnh equity</p>
+      <p>→ Bán bằng lệnh LO giá sàn nếu cần. Cash 100%. Chờ ít nhất 5 phiên trước khi đánh giá lại.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 8 ==================== -->
+<section id="ch8" class="chapter">
+  <div class="chapter-label">Module 08</div>
+  <h2>Quy Trình Hàng Ngày (Daily Routine)</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch8-evening" class="tab-link">🌙 Tối (phân tích)</a>
+    <a href="#ch8-morning" class="tab-link">☀️ Sáng (thực thi)</a>
+    <a href="#ch8-weekend" class="tab-link">📅 Cuối tuần</a>
+  </nav>
+
+  <div id="ch8-evening" class="section">
+    <h3>🌙 Quy trình tối (20:00-21:00) — 45 phút</h3>
+
+    <div class="phase pre">PRE-MARKET ANALYSIS</div>
+
+    <div class="checklist-card">
+      <div class="cc-title">Bước 1: Market Check (10 phút)</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>VN-Index close trên/dưới MA nào? Đèn gì?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Advance/Decline ratio hôm nay?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Volume toàn sàn so với 20-day average?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Có tin vĩ mô quan trọng? (FED, SBV, GDP, CPI...)</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">Bước 2: Portfolio Review (10 phút)</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Kiểm tra từng vị thế mở: giá vs stop loss, trailing cần cập nhật?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Có vị thế nào cần bán ngày mai? (chạm stop, time stop, trailing)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Tổng risk mở hiện tại = ?%</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">Bước 3: Scan & Setup (20 phút)</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Chạy Stock Scanner (Module 04)</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Kiểm tra watchlist: có CP nào đang hình thành setup A/B/C?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Nếu có setup → điền Pre-Entry Checklist 12 điểm</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Ghi entry price, stop loss, size vào journal cho ngày mai</div></div>
+    </div>
+
+    <div class="checklist-card">
+      <div class="cc-title">Bước 4: Plan Tomorrow (5 phút)</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Viết 1-3 câu: "Ngày mai tôi sẽ [hành động cụ thể]"</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Nếu không có gì để làm → ghi: "Ngày mai: theo dõi, không trade"</div></div>
+    </div>
+  </div>
+
+  <div id="ch8-morning" class="section">
+    <h3>☀️ Quy trình sáng (8:50-9:30) — 15-20 phút</h3>
+
+    <div class="phase market">EXECUTION</div>
+
+    <div class="rule-box info">
+      <span class="rule-title">8:50 — Chuẩn bị</span>
+      <p>Đọc lại kế hoạch tối qua. Kiểm tra tin overnight (US market, Dow, S&P500, giá dầu, vàng). Nếu có sự kiện bất thường → điều chỉnh hoặc cancel kế hoạch.</p>
+    </div>
+
+    <div class="rule-box info">
+      <span class="rule-title">9:00-9:15 — Phiên ATO</span>
+      <p>KHÔNG đặt lệnh. Chỉ quan sát giá mở cửa + volume đầu phiên.</p>
+    </div>
+
+    <div class="rule-box info">
+      <span class="rule-title">9:15-9:30 — Thực thi</span>
+      <p>Nếu kế hoạch MUA: kiểm tra giá có ở vùng entry plan → đặt LO.</p>
+      <p>Nếu kế hoạch BÁN (stop loss/trailing): kiểm tra giá → đặt LO bán.</p>
+      <p>Nếu KHÔNG có kế hoạch: TẮT APP. Đi làm việc khác.</p>
+    </div>
+
+    <div class="callout danger">
+      <span class="cl-title">🔴 Sau 9:30 → không nhìn bảng giá nữa.</span>
+      Trừ khi có price alert chạm stop loss. Nhìn bảng giá liên tục = overtrading = thua lỗ. Phân tích tối, thực thi sáng, nghỉ ngơi ban ngày.
+    </div>
+  </div>
+
+  <div id="ch8-weekend" class="section">
+    <h3>📅 Quy trình cuối tuần (Thứ 7 hoặc CN — 60 phút)</h3>
+
+    <div class="phase post">WEEKLY REVIEW</div>
+
+    <div class="checklist-card">
+      <div class="cc-title">Weekly Review Checklist</div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Cập nhật Market Filter: đèn gì cho tuần tới?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Review tất cả lệnh tuần qua: tuân thủ hệ thống? Discipline Score?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Tính P&L tuần: +/- bao nhiêu R?</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Có lệnh nào vi phạm kỷ luật? Phân tích nguyên nhân.</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Scan toàn bộ HOSE trên Weekly chart → cập nhật watchlist</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Kiểm tra lịch BCTC, sự kiện tuần tới</div></div>
+      <div class="cl-item"><div class="cl-box">☐</div><div>Viết 1 đoạn: "Tuần tới tôi sẽ tập trung vào..." và "Tôi sẽ tránh..."</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 9 ==================== -->
+<section id="ch9" class="chapter">
+  <div class="chapter-label">Module 09</div>
+  <h2>Nhật Ký & Đánh Giá Hiệu Suất</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch9-journal" class="tab-link">📓 Mẫu nhật ký</a>
+    <a href="#ch9-metrics" class="tab-link">📊 KPI tracking</a>
+    <a href="#ch9-review" class="tab-link">🔄 Review cycle</a>
+  </nav>
+
+  <div id="ch9-journal" class="section">
+    <h3>📓 Mẫu nhật ký giao dịch</h3>
+
+    <p>Mỗi lệnh ghi đủ 3 phần. Dùng Excel, Google Sheets, hoặc sổ tay — miễn ghi đủ.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Trường</th><th>Ghi gì</th><th>Ví dụ</th></tr></thead>
+        <tbody>
+          <tr><td colspan="3" style="background:var(--bg-card2);font-weight:700;color:var(--accent);">TRƯỚC LỆNH</td></tr>
+          <tr><td>Ngày</td><td>Ngày entry</td><td>15/03/2025</td></tr>
+          <tr><td>Mã CP</td><td>Ticker</td><td>FPT</td></tr>
+          <tr><td>Setup</td><td>A, B, hoặc C</td><td>Setup A — VCP Breakout</td></tr>
+          <tr><td>Đèn thị trường</td><td>Xanh/Vàng</td><td>🟢 Xanh</td></tr>
+          <tr><td>Entry Price</td><td>Giá mua</td><td>92,500</td></tr>
+          <tr><td>Stop Loss</td><td>Giá cắt lỗ</td><td>87,000 (-5.9%)</td></tr>
+          <tr><td>Target</td><td>Giá mục tiêu</td><td>108,000 (+16.8%)</td></tr>
+          <tr><td>R:R</td><td>Reward/Risk</td><td>2.83:1</td></tr>
+          <tr><td>Size</td><td>Số cổ phiếu</td><td>900 cổ</td></tr>
+          <tr><td>Risk VNĐ</td><td>Tiền rủi ro</td><td>4,950,000 (0.99%)</td></tr>
+          <tr><td>Lý do vào</td><td>1-2 câu ngắn</td><td>VCP 3 contractions, volume dry-up, RS 88</td></tr>
+          <tr><td colspan="3" style="background:var(--bg-card2);font-weight:700;color:var(--accent-orange);">TRONG LỆNH</td></tr>
+          <tr><td>Cảm xúc</td><td>Tự đánh giá 1-10</td><td>Tự tin: 7/10, Lo lắng: 3/10</td></tr>
+          <tr><td>Có muốn dời stop?</td><td>Y/N + lý do</td><td>N — Tuân thủ hệ thống</td></tr>
+          <tr><td>Trailing update</td><td>Mốc kéo stop</td><td>Ngày X: lên BE. Ngày Y: bán 50%.</td></tr>
+          <tr><td colspan="3" style="background:var(--bg-card2);font-weight:700;color:var(--accent-green);">SAU LỆNH</td></tr>
+          <tr><td>Ngày thoát</td><td>Ngày exit</td><td>28/03/2025</td></tr>
+          <tr><td>Exit Price</td><td>Giá bán</td><td>50%@106,000 + 50%@101,500</td></tr>
+          <tr><td>P&L (VNĐ)</td><td>Lãi/lỗ</td><td>+11,475,000</td></tr>
+          <tr><td>P&L (R)</td><td>Bội số R</td><td>+2.32R</td></tr>
+          <tr><td>Tuân thủ?</td><td>YES/NO</td><td>YES — 100% theo plan</td></tr>
+          <tr><td>Bài học</td><td>1 câu</td><td>VCP breakout + volume = setup mạnh nhất Q1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="ch9-metrics" class="section">
+    <h3>📊 KPI cần theo dõi</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>KPI</th><th>Công thức</th><th>Mục tiêu</th><th>Cảnh báo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Win Rate</strong></td><td>Lệnh thắng / Tổng lệnh</td><td>40-55%</td><td>< 30% → review setup</td></tr>
+          <tr><td><strong>Average Win/Loss</strong></td><td>Avg Win R / Avg Loss R</td><td>≥ 2.5:1</td><td>< 1.5:1 → bán quá sớm hoặc cắt lỗ quá xa</td></tr>
+          <tr><td><strong>Expectancy</strong></td><td>(WR×AvgWin)-(LR×AvgLoss)</td><td>≥ +0.5R</td><td>< 0 → hệ thống có vấn đề</td></tr>
+          <tr><td><strong>Discipline Score</strong></td><td>Lệnh tuân thủ / Tổng</td><td>≥ 90%</td><td>< 80% → DỪNG trade thật</td></tr>
+          <tr><td><strong>Profit Factor</strong></td><td>Tổng lãi / Tổng lỗ</td><td>≥ 2.0</td><td>< 1.5 → review toàn bộ</td></tr>
+          <tr><td><strong>Max Drawdown</strong></td><td>Từ đỉnh equity đến đáy</td><td>≤ 10%</td><td>> 15% → kích hoạt Recovery</td></tr>
+          <tr><td><strong>Recovery Factor</strong></td><td>Net Profit / Max DD</td><td>≥ 3.0</td><td>< 1.5 → risk quá lớn</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Expectancy — Số quan trọng nhất</span>
+      E = (Win% × Avg Win in R) - (Loss% × Avg Loss in R)<br><br>
+      VD thực tế sau 50 lệnh:<br>
+      Win Rate = 44% (22/50), Avg Win = 2.8R, Avg Loss = 1.0R<br>
+      E = (0.44 × 2.8) - (0.56 × 1.0) = 1.232 - 0.56 = <strong>+0.672R/lệnh</strong><br><br>
+      → Cứ mỗi lệnh, trung bình lãi 0.672R<br>
+      → 120 lệnh/năm × 0.672R × 1% = +80.6% năm (trước compounding)
+    </div>
+  </div>
+
+  <div id="ch9-review" class="section">
+    <h3>🔄 Review Cycle</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chu kỳ</th><th>Thời gian</th><th>Nội dung</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Daily</strong></td><td>5 phút tối</td><td>Ghi nhật ký lệnh mới/cập nhật lệnh mở</td></tr>
+          <tr><td><strong>Weekly</strong></td><td>60 phút cuối tuần</td><td>Discipline Score, P&L tuần, Market Filter update</td></tr>
+          <tr><td><strong>Monthly</strong></td><td>2 giờ cuối tháng</td><td>Tính đầy đủ KPI, so sánh với tháng trước, xác định pattern setup nào hoạt động tốt/kém</td></tr>
+          <tr><td><strong>Quarterly</strong></td><td>Nửa ngày</td><td>Review toàn diện: equity curve, drawdown history, so sánh với benchmark (VN-Index). Quyết định điều chỉnh hệ thống nếu cần (dựa trên ≥ 50 lệnh data)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warning">
+      <span class="cl-title">⚠️ Quy tắc thay đổi hệ thống:</span>
+      KHÔNG thay đổi hệ thống dựa trên < 50 lệnh. Biến động ngắn hạn không có ý nghĩa thống kê. Chỉ điều chỉnh khi có đủ data (≥ 50 lệnh) VÀ vấn đề rõ ràng, nhất quán (không phải 1-2 lệnh xui rủi).
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CHAPTER 10 ==================== -->
+<section id="ch10" class="chapter">
+  <div class="chapter-label">Module 10</div>
+  <h2>Recovery Protocol & Quy Tắc Sắt</h2>
+
+  <nav class="tab-nav">
+    <a href="#ch10-recovery" class="tab-link">🔧 Recovery</a>
+    <a href="#ch10-iron" class="tab-link">⛓️ Quy tắc sắt</a>
+    <a href="#ch10-final" class="tab-link">🎯 Lời kết</a>
+  </nav>
+
+  <div id="ch10-recovery" class="section">
+    <h3>🔧 Recovery Protocol — Khi mọi thứ đi sai</h3>
+
+    <p>Drawdown là tất yếu. Chuỗi thua là tất yếu. Vấn đề không phải "có xảy ra không" mà là "xử lý thế nào". Recovery Protocol được kích hoạt tự động theo ngưỡng:</p>
+
+    <div class="rule-box" style="border-left-color: var(--accent-orange);">
+      <span class="rule-title" style="color: var(--accent-orange);">⚡ LEVEL 1 — Cảnh giác (Drawdown 3-5% hoặc 3 lệnh thua liên tiếp)</span>
+      <p>→ Giảm risk/lệnh xuống 0.5%</p>
+      <p>→ Max 3 vị thế cùng lúc</p>
+      <p>→ Chỉ trade Setup A (VCP Breakout) — setup có edge cao nhất</p>
+      <p>→ Duy trì cho đến khi có 2 lệnh thắng liên tiếp</p>
+    </div>
+
+    <div class="rule-box" style="border-left-color: var(--accent-red);">
+      <span class="rule-title" style="color: var(--accent-red);">🔴 LEVEL 2 — Dừng (Drawdown 5-8% hoặc 5 lệnh thua liên tiếp)</span>
+      <p>→ DỪNG trade thật ít nhất 1 tuần</p>
+      <p>→ Chuyển sang paper trade (mô phỏng)</p>
+      <p>→ Review toàn bộ lệnh thua: nguyên nhân là hệ thống hay kỷ luật?</p>
+      <p>→ Nếu hệ thống: cần ≥ 30 lệnh paper trade dương trước khi quay lại</p>
+      <p>→ Nếu kỷ luật: đọc lại Module 01, ghi nhật ký cảm xúc 1 tuần</p>
+    </div>
+
+    <div class="rule-box warning">
+      <span class="rule-title" style="color: var(--accent-red);">🚨 LEVEL 3 — Reset (Drawdown > 10% hoặc phá vỡ kỷ luật nghiêm trọng)</span>
+      <p>→ DỪNG hoàn toàn 1 tháng</p>
+      <p>→ Rút 50% vốn ra khỏi tài khoản chứng khoán</p>
+      <p>→ Dành 1 tháng: đọc lại toàn bộ hệ thống, paper trade ≥ 50 lệnh</p>
+      <p>→ Quay lại với 50% vốn, risk 0.5%/lệnh, tăng dần khi Discipline Score ≥ 90% trong 4 tuần liên tiếp</p>
+    </div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Recovery KHÔNG phải thất bại — đó là kỷ luật.</span>
+      Mọi trader chuyên nghiệp đều có drawdown protocol. Nó tồn tại để bảo vệ bạn khỏi chính mình trong những lúc tệ nhất. Kích hoạt recovery = bạn đang làm đúng.
+    </div>
+  </div>
+
+  <div id="ch10-iron" class="section">
+    <h3>⛓️ 10 Quy Tắc Sắt — Vi phạm = Tự phạt</h3>
+
+    <p>Đây là 10 quy tắc KHÔNG BAO GIỜ được phá vỡ. Mỗi lần vi phạm: tự phạt bằng cách dừng trade 3 ngày + ghi vào journal lý do vi phạm.</p>
+
+    <div class="rule-box warning">
+      <p><strong>1.</strong> Không mua khi Đèn Đỏ.</p>
+      <p><strong>2.</strong> Mỗi lệnh risk ≤ 1% tài khoản (0.5% đèn vàng).</p>
+      <p><strong>3.</strong> Stop loss xác định TRƯỚC khi vào lệnh. Không dời xa.</p>
+      <p><strong>4.</strong> Không mua cổ phiếu không qua Trend Template.</p>
+      <p><strong>5. </strong> Không mua không có setup A, B, hoặc C.</p>
+      <p><strong>6.</strong> Không revenge trade. 3 lệnh thua trong ngày → tắt app.</p>
+      <p><strong>7.</strong> Không trung bình giá xuống. KHÔNG BAO GIỜ.</p>
+      <p><strong>8.</strong> Không trade theo tip, tin đồn, group chat.</p>
+      <p><strong>9.</strong> Ghi nhật ký MỌI lệnh. Lệnh không ghi = lệnh vi phạm.</p>
+      <p><strong>10.</strong> Recovery Protocol tự động khi chạm ngưỡng. Không override.</p>
+    </div>
+
+    <div class="formula-box">
+      <span class="label">Hệ thống tự phạt</span>
+      Vi phạm 1 quy tắc sắt → Dừng trade 3 ngày + ghi journal<br>
+      Vi phạm 2 quy tắc trong 1 tuần → Dừng trade 1 tuần<br>
+      Vi phạm 3+ quy tắc trong 1 tháng → Kích hoạt Recovery Level 2<br><br>
+      Mục đích: tạo hậu quả thật cho hành vi xấu → não học cách tránh.
+    </div>
+  </div>
+
+  <div id="ch10-final" class="section">
+    <h3>🎯 Lộ trình triển khai</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Giai đoạn</th><th>Thời gian</th><th>Mục tiêu</th><th>Tiêu chí chuyển tiếp</th></tr></thead>
+        <tbody>
+          <tr><td><strong>0. Học</strong></td><td>1-2 tuần</td><td>Đọc kỹ toàn bộ 10 module. Hiểu mọi quy tắc.</td><td>Có thể giải thích mọi quy tắc mà không cần mở sách</td></tr>
+          <tr><td><strong>1. Paper Trade</strong></td><td>4-8 tuần</td><td>Giao dịch mô phỏng. Ghi nhật ký như thật.</td><td>≥ 50 lệnh + Discipline Score ≥ 90% + Expectancy > 0</td></tr>
+          <tr><td><strong>2. Pilot</strong></td><td>4-8 tuần</td><td>Trade thật với 30% vốn dự định. Risk 0.5%.</td><td>≥ 30 lệnh thật + DS ≥ 90% + Equity không giảm > 5%</td></tr>
+          <tr><td><strong>3. Standard</strong></td><td>Liên tục</td><td>Trade bình thường. 100% vốn. Risk 1%.</td><td>Maintain DS ≥ 85% + Max DD ≤ 10% + Review quarterly</td></tr>
+          <tr><td><strong>4. Advanced</strong></td><td>Sau 1 năm</td><td>Pyramiding, sector rotation, tăng size.</td><td>≥ 200 lệnh + Track record ≥ 1 năm + Sharpe > 1.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="callout tip">
+      <span class="cl-title">💡 Lời kết từ hệ thống:</span>
+      Bạn đang cầm trong tay một hệ thống hoàn chỉnh. Nó không hoàn hảo — không hệ thống nào hoàn hảo. Nhưng nó có edge dương, có quy tắc rõ ràng, và có cơ chế tự bảo vệ. Thứ duy nhất quyết định thành bại bây giờ là <strong>bạn có tuân thủ nó không</strong>. Hệ thống tốt + kỷ luật kém = thua lỗ. Hệ thống trung bình + kỷ luật tốt = lợi nhuận. Bạn đã có hệ thống tốt. Giờ hãy xây kỷ luật.
+    </div>
+
+    <blockquote>
+      "The market does not know you exist. You cannot take it personally."
+      <cite>— Mark Douglas</cite>
+    </blockquote>
+  </div>
+</section>
+
+</main>
+
+<nav class="bottom-nav">
+  <a href="#toc" class="nav-btn">← Trước</a>
+  <span class="nav-spacer"></span>
+  <a href="#toc" class="nav-btn home">⌂ Mục lục</a>
+  <span class="nav-spacer"></span>
+  <a href="#ch2" class="nav-btn">Tiếp →</a>
+</nav>
+
+<script>
+  var chapters = Array.from(document.querySelectorAll('.chapter'));
+  var prevBtn = document.querySelector('.bottom-nav a:first-child');
+  var nextBtn = document.querySelector('.bottom-nav a:last-child');
+  if (chapters.length > 0 && 'IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var idx = chapters.indexOf(entry.target);
+          prevBtn.href = idx > 0 ? '#' + chapters[idx-1].id : '#toc';
+          prevBtn.textContent = idx > 0 ? '\u2190 Tr\u01B0\u1EDBc' : '\u2190 M\u1EE5c l\u1EE5c';
+          nextBtn.href = idx < chapters.length-1 ? '#' + chapters[idx+1].id : '#toc';
+          nextBtn.textContent = idx < chapters.length-1 ? 'Ti\u1EBFp \u2192' : 'M\u1EE5c l\u1EE5c \u2192';
+        }
+      });
+    }, { threshold: 0.12 });
+    chapters.forEach(function(c) { obs.observe(c); });
+  }
+</script>
+
+</body>
+</html>

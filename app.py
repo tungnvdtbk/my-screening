@@ -1,63 +1,225 @@
+from __future__ import annotations
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import json
+import os
 from datetime import datetime, timedelta
 from io import BytesIO
-from sqlalchemy import create_engine
+
 try:
     from vnstock3 import Vnstock
     HAS_VNSTOCK = True
 except ImportError:
     HAS_VNSTOCK = False
 
-# =============================
+# ============================================================
 # CONFIG
-# =============================
+# ============================================================
 DATA_PATH = "./data"
-engine = create_engine(f"sqlite:///{DATA_PATH}/trades.db")
+CACHE_DIR = f"{DATA_PATH}/cache"
+SYMBOLS_CACHE_FILE = f"{DATA_PATH}/hose_symbols.json"
+os.makedirs(CACHE_DIR, exist_ok=True)
 
+MIN_VOL_20 = 200_000    # avg 20-session volume ≥ 200,000 shares
+MIN_PRICE = 15          # ≥ 15,000 VND (yfinance returns VN prices in thousands)
+RS_MIN = 80             # RS percentile threshold
+TOP_N = 5               # number of top stocks to highlight
+
+# VN30 as fallback symbol list
 VN30_STOCKS = {
-    # Banking
     "ACB.VN": "Banking", "BID.VN": "Banking", "CTG.VN": "Banking",
     "HDB.VN": "Banking", "LPB.VN": "Banking", "MBB.VN": "Banking",
     "SHB.VN": "Banking", "SSB.VN": "Banking", "STB.VN": "Banking",
     "TCB.VN": "Banking", "TPB.VN": "Banking", "VCB.VN": "Banking",
     "VIB.VN": "Banking", "VPB.VN": "Banking",
-    # Real Estate
     "BCM.VN": "Real Estate", "KDH.VN": "Real Estate", "VHM.VN": "Real Estate",
-    # Retail
-    "MSN.VN": "Retail", "MWG.VN": "Retail", "SAB.VN": "Retail", "VNM.VN": "Retail",
-    # Industrial / Production
-    "GAS.VN": "Energy", "GVR.VN": "Industrial", "HPG.VN": "Industrial",
-    "PLX.VN": "Energy", "POW.VN": "Energy",
-    # Technology
+    "MSN.VN": "Retail",     "MWG.VN": "Retail", "SAB.VN": "Retail", "VNM.VN": "Retail",
+    "GAS.VN": "Energy",     "GVR.VN": "Industrial", "HPG.VN": "Industrial",
+    "PLX.VN": "Energy",     "POW.VN": "Energy",
     "FPT.VN": "Technology",
-    # Insurance
     "BVH.VN": "Insurance",
-    # Financial Services
     "SSI.VN": "Financial Services",
-    # Aviation
     "VJC.VN": "Aviation",
 }
 
-VN30_SYMBOLS = list(VN30_STOCKS.keys())
+# ============================================================
+# HOSE SYMBOL LIST
+# ============================================================
+def _load_symbols_cache():
+    try:
+        with open(SYMBOLS_CACHE_FILE) as f:
+            data = json.load(f)
+        age = datetime.now() - datetime.fromisoformat(data["updated"])
+        if age.days < 7 and len(data.get("symbols", [])) > 50:
+            return data["symbols"]
+    except Exception:
+        pass
+    return None
 
 
-# =============================
-# VNINDEX DATA FETCH (multiple sources)
-# =============================
-def get_vnindex_data():
+def _fetch_hose_symbols_vnstock():
+    """Try multiple vnstock3 API paths to get all HOSE symbols."""
+    try:
+        stock = Vnstock().stock(symbol="ACB", source="VCI")
+        df = stock.listing.symbols_by_exchange()
+        col_ex = next((c for c in df.columns if "exchange" in c.lower()), None)
+        col_sym = next((c for c in df.columns if "symbol" in c.lower() or "ticker" in c.lower()), None)
+        if col_ex and col_sym:
+            hose_df = df[df[col_ex].str.upper() == "HOSE"]
+            syms = [f"{s}.VN" for s in hose_df[col_sym].tolist()]
+            if len(syms) > 50:
+                return syms
+    except Exception:
+        pass
+    try:
+        from vnstock3.common.data.data_explorer import StockComponents
+        df = StockComponents("VCI").listing()
+        col_ex = next((c for c in df.columns if "exchange" in c.lower()), None)
+        col_sym = next((c for c in df.columns if "symbol" in c.lower()), None)
+        if col_ex and col_sym:
+            hose_df = df[df[col_ex].str.upper() == "HOSE"]
+            syms = [f"{s}.VN" for s in hose_df[col_sym].tolist()]
+            if len(syms) > 50:
+                return syms
+    except Exception:
+        pass
+    return None
+
+
+@st.cache_data(ttl=86_400, show_spinner=False)
+def get_hose_symbols():
+    """Return list of all HOSE symbols with .VN suffix."""
+    cached = _load_symbols_cache()
+    if cached:
+        return cached
+
+    if HAS_VNSTOCK:
+        syms = _fetch_hose_symbols_vnstock()
+        if syms:
+            try:
+                with open(SYMBOLS_CACHE_FILE, "w") as f:
+                    json.dump({"updated": datetime.now().isoformat(), "symbols": syms}, f)
+            except Exception:
+                pass
+            return syms
+
+    return list(VN30_STOCKS.keys())
+
+
+# ============================================================
+# PRICE CACHE (parquet, incremental)
+# ============================================================
+def _cache_path(symbol: str) -> str:
+    return os.path.join(CACHE_DIR, symbol.replace(".", "_") + ".parquet")
+
+
+def _save_df(df: pd.DataFrame, path: str) -> None:
+    """Save to parquet; fall back to CSV if pyarrow not installed."""
+    try:
+        df.to_parquet(path)
+    except Exception:
+        df.to_csv(path.replace(".parquet", ".csv"))
+
+
+def _load_df(path: str) -> pd.DataFrame | None:
+    """Load parquet or CSV cache file."""
+    if os.path.exists(path):
+        try:
+            return pd.read_parquet(path)
+        except Exception:
+            pass
+    csv_path = path.replace(".parquet", ".csv")
+    if os.path.exists(csv_path):
+        try:
+            return pd.read_csv(csv_path, index_col=0, parse_dates=True)
+        except Exception:
+            pass
+    return None
+
+
+def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
+    """Load from parquet cache; append only new bars from yfinance."""
+    path = _cache_path(symbol)
+    cached = None
+
+    if use_cache:
+        cached = _load_df(path)
+
+    # Normalise index to UTC-naive for comparison
+    def strip_tz(df):
+        if df is not None and not df.empty and df.index.tz is not None:
+            df = df.copy()
+            df.index = df.index.tz_convert("UTC").tz_localize(None)
+        return df
+
+    cached = strip_tz(cached)
+    today = pd.Timestamp.today().normalize()
+
+    if cached is not None and not cached.empty:
+        last_date = cached.index.max()
+        if last_date >= today - pd.Timedelta(days=1):
+            return cached  # already up-to-date
+
+        # Fetch only missing range
+        start_str = (last_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        try:
+            new_df = strip_tz(yf.Ticker(symbol).history(start=start_str))
+            if new_df is not None and not new_df.empty:
+                combined = pd.concat([cached, new_df])
+                combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+                combined = combined.iloc[-500:]   # keep last ~2 years
+                _save_df(combined, path)
+                return combined
+        except Exception:
+            pass
+        return cached
+
+    # Full fetch (no cache or cache empty)
+    try:
+        df = strip_tz(yf.Ticker(symbol).history(period="2y"))
+        if df is not None and not df.empty:
+            _save_df(df, path)
+            return df
+    except Exception:
+        pass
+    return None
+
+
+# ============================================================
+# VNINDEX DATA (multiple sources, no cache — small dataset)
+# ============================================================
+def _fetch_vnstock_index(source: str) -> pd.DataFrame | None:
+    try:
+        stock = Vnstock().stock(symbol="VN30", source=source)
+        end = datetime.now().strftime("%Y-%m-%d")
+        start = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
+        df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
+        if df is None or df.empty:
+            return None
+        df = df.rename(columns={"close": "Close", "open": "Open",
+                                  "high": "High", "low": "Low", "volume": "Volume"})
+        date_col = next((c for c in ["time", "date"] if c in df.columns), None)
+        if date_col:
+            df.index = pd.to_datetime(df[date_col])
+        return df if len(df) >= 50 else None
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=3_600, show_spinner=False)
+def get_vnindex_data() -> pd.DataFrame | None:
     sources = []
     if HAS_VNSTOCK:
-        sources.append(lambda: _fetch_vnstock("VCI"))
-        sources.append(lambda: _fetch_vnstock("TCBS"))
-    sources.extend([
-        lambda: _fetch_yfinance("^VNINDEX.VN"),
-        lambda: _fetch_yfinance("E1VFVN30.VN"),
-        lambda: _fetch_yfinance("VNM"),
-    ])
+        sources += [lambda: _fetch_vnstock_index("VCI"),
+                    lambda: _fetch_vnstock_index("TCBS")]
+    sources += [
+        lambda: yf.Ticker("^VNINDEX.VN").history(period="1y"),
+        lambda: yf.Ticker("E1VFVN30.VN").history(period="1y"),
+        lambda: yf.Ticker("VNM").history(period="1y"),
+    ]
     for fetch in sources:
         try:
             df = fetch()
@@ -68,362 +230,487 @@ def get_vnindex_data():
     return None
 
 
-def _fetch_vnstock(source):
-    stock = Vnstock().stock(symbol="VN30", source=source)
-    end = datetime.now().strftime("%Y-%m-%d")
-    start = (datetime.now() - timedelta(days=180)).strftime("%Y-%m-%d")
-    df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
-    if df is None or df.empty:
+# ============================================================
+# TREND TEMPLATE — 10 criteria (he-thong-trading-vn.html, ch4)
+# ============================================================
+def check_trend_template(df: pd.DataFrame) -> tuple[bool, int, dict]:
+    """
+    Returns (all_pass, score_out_of_9, details_dict).
+    Criterion 9 (RS percentile) is excluded here — ranked separately.
+    """
+    if df is None or df.empty or len(df) < 160:
+        return False, 0, {}
+
+    close = df["Close"]
+    volume = df["Volume"]
+
+    ma50  = close.rolling(50).mean()
+    ma150 = close.rolling(150).mean()
+    vol20 = volume.rolling(20).mean()
+
+    price    = close.iloc[-1]
+    ma50_v   = ma50.iloc[-1]
+    ma150_v  = ma150.iloc[-1]
+    vol20_v  = vol20.iloc[-1]
+
+    if any(pd.isna(v) for v in [price, ma50_v, ma150_v, vol20_v]):
+        return False, 0, {}
+
+    n = len(close)
+    high52 = close.iloc[-min(252, n):].max()
+    low52  = close.iloc[-min(252, n):].min()
+
+    # ── 1. Price > MA50
+    c1 = bool(price > ma50_v)
+
+    # ── 2. Price > MA150
+    c2 = bool(price > ma150_v)
+
+    # ── 3. MA50 > MA150
+    c3 = bool(ma50_v > ma150_v)
+
+    # ── 4. MA150 trending up for 4 consecutive weeks (~5 trading-day steps)
+    c4 = False
+    ma150_clean = ma150.dropna()
+    if len(ma150_clean) >= 22:
+        pts = [ma150_clean.iloc[i] for i in [-1, -6, -11, -16, -21]]
+        c4 = all(pts[i] > pts[i + 1] for i in range(4))
+
+    # ── 5. Price ≥ 25% above 52-week low
+    c5 = bool(low52 > 0 and price >= low52 * 1.25)
+
+    # ── 6. Price within 30% of 52-week high (≥ 70% of high)
+    c6 = bool(high52 > 0 and price >= high52 * 0.70)
+
+    # ── 7. Avg 20-session volume ≥ 200,000 shares
+    c7 = bool(vol20_v >= MIN_VOL_20)
+
+    # ── 8. Price ≥ 15 (= 15,000 VND in yfinance thousands)
+    c8 = bool(price >= MIN_PRICE)
+
+    # ── 10. No distribution: no 3 consecutive sessions of (price↓ + vol↑)
+    c10 = True
+    if len(df) >= 10:
+        recent = df[["Close", "Volume"]].iloc[-10:].copy()
+        price_down = recent["Close"].diff() < 0
+        vol_up     = recent["Volume"].diff() > 0
+        consec = 0
+        for is_dist in (price_down & vol_up):
+            consec = consec + 1 if is_dist else 0
+            if consec >= 3:
+                c10 = False
+                break
+
+    criteria_without_rs = [c1, c2, c3, c4, c5, c6, c7, c8, c10]
+    score = sum(criteria_without_rs)
+    all_pass = all(criteria_without_rs)
+
+    details = {
+        "price":   round(float(price), 1),
+        "ma50":    round(float(ma50_v), 1),
+        "ma150":   round(float(ma150_v), 1),
+        "vol20":   int(vol20_v),
+        "high52":  round(float(high52), 1),
+        "low52":   round(float(low52), 1),
+        "score9":  score,
+        "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
+        "c6": c6, "c7": c7, "c8": c8, "c10": c10,
+    }
+    return all_pass, score, details
+
+
+# ============================================================
+# RELATIVE STRENGTH (RS) — percentile vs all HOSE stocks
+# ============================================================
+def compute_rs_raw(df: pd.DataFrame) -> float | None:
+    """
+    RS_raw = Perf_1M*0.25 + Perf_3M*0.35 + Perf_6M*0.25 + Perf_12M*0.15
+    Uses available periods with re-normalised weights if some periods missing.
+    """
+    if df is None or df.empty or len(df) < 63:
         return None
-    df = df.rename(columns={"close": "Close", "open": "Open", "high": "High", "low": "Low", "volume": "Volume"})
-    if "time" in df.columns:
-        df.index = pd.to_datetime(df["time"])
-    elif "date" in df.columns:
-        df.index = pd.to_datetime(df["date"])
-    return df
+    close = df["Close"]
+    price = float(close.iloc[-1])
 
-
-def _fetch_yfinance(ticker):
-    df = yf.Ticker(ticker).history(period="6mo")
-    if df is None or df.empty:
-        return None
-    return df
-
-
-# =============================
-# SYMBOL MANAGEMENT
-# =============================
-def load_symbols():
-    try:
-        with open("symbols.json", "r") as f:
-            return json.load(f)
-    except:
-        return ["HPG.VN", "MBB.VN", "KBC.VN"]
-
-
-def save_symbols(symbols):
-    with open("symbols.json", "w") as f:
-        json.dump(symbols, f)
-
-
-# =============================
-# DATA FETCH (SAFE)
-# =============================
-def get_data(symbol):
-    try:
-        df = yf.Ticker(symbol).history(period="1y")
-        if df is None or df.empty:
+    def perf(days):
+        idx = -(days + 1)
+        if len(close) <= days:
             return None
-        return df
-    except:
+        old = float(close.iloc[idx])
+        return (price / old - 1) * 100 if old > 0 else None
+
+    candidates = [(perf(21), 0.25), (perf(63), 0.35), (perf(126), 0.25), (perf(252), 0.15)]
+    valid = [(v, w) for v, w in candidates if v is not None]
+    if not valid:
         return None
+    total_w = sum(w for _, w in valid)
+    return sum(v * w for v, w in valid) / total_w
 
 
-# =============================
-# RSI
-# =============================
-def compute_rsi(series, period=14):
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
+def rank_rs(rs_map: dict) -> dict:
+    """Convert {symbol: rs_raw} → {symbol: percentile 0-100}."""
+    valid = {k: v for k, v in rs_map.items() if v is not None}
+    if not valid:
+        return {}
+    sorted_vals = sorted(valid.values())
+    n = len(sorted_vals)
+    return {sym: round(sum(1 for v in sorted_vals if v <= val) / n * 100, 1)
+            for sym, val in valid.items()}
 
 
-# =============================
-# MARKET TREND (VNINDEX or proxy)
-# =============================
-def _compute_trend(df):
-    """Compute UP/DOWN trend from a dataframe with a Close column."""
-    if df is None or df.empty or len(df) < 50:
-        return None
-    ma50 = df["Close"].rolling(50).mean()
-    if pd.isna(ma50.iloc[-1]):
-        return None
-    return "UP" if df["Close"].iloc[-1] > ma50.iloc[-1] else "DOWN"
+# ============================================================
+# MARKET FILTER (Traffic Light)
+# ============================================================
+def compute_market_filter(vnindex_df: pd.DataFrame, breadth_pct: float) -> tuple[str, dict]:
+    """
+    Green:  VN-Index > MA50  AND  MA20 > MA50  AND  Breadth ≥ 55%
+    Yellow: intermediate
+    Red:    VN-Index < MA50  OR   MA20 < MA50  OR   Breadth < 40%
+    """
+    if vnindex_df is None or vnindex_df.empty or len(vnindex_df) < 50:
+        return "unknown", {}
+
+    close  = vnindex_df["Close"]
+    ma20_v = float(close.rolling(20).mean().iloc[-1])
+    ma50_v = float(close.rolling(50).mean().iloc[-1])
+    price  = float(close.iloc[-1])
+
+    if pd.isna(ma20_v) or pd.isna(ma50_v):
+        return "unknown", {}
+
+    details = {
+        "price": round(price, 1),
+        "ma20":  round(ma20_v, 1),
+        "ma50":  round(ma50_v, 1),
+        "breadth": round(breadth_pct, 1),
+    }
+
+    above_ma50   = price  > ma50_v
+    ma20_gt_ma50 = ma20_v > ma50_v
+
+    # Red — any single condition triggers
+    if (not above_ma50) or (not ma20_gt_ma50) or (breadth_pct < 40):
+        return "red", details
+
+    # Green — all conditions met
+    if above_ma50 and ma20_gt_ma50 and breadth_pct >= 55:
+        return "green", details
+
+    return "yellow", details
 
 
-def market_trend():
-    # Primary: use VNINDEX directly
-    df = get_vnindex_data()
-    result = _compute_trend(df)
-    if result is not None:
-        return result, "VNINDEX"
+# ============================================================
+# UI HELPERS
+# ============================================================
+LIGHT_CFG = {
+    "green":   ("🟢", "ĐÈN XANH — Uptrend",    "Tích cực giao dịch. Mở vị thế đầy đủ."),
+    "yellow":  ("🟡", "ĐÈN VÀNG — Trung tính", "Giảm exposure 50%. Chỉ mua CP có RS ≥ 85."),
+    "red":     ("🔴", "ĐÈN ĐỎ — Downtrend",    "KHÔNG mở vị thế mới. Bảo vệ vốn."),
+    "unknown": ("⚪", "KHÔNG RÕ",               "Không đủ dữ liệu thị trường."),
+}
 
-    # Fallback: derive market trend from VN30 blue-chips via yfinance
-    # These are the most liquid VN stocks that yfinance reliably serves
-    proxy_symbols = ["VCB.VN", "VNM.VN", "FPT.VN", "HPG.VN", "MBB.VN"]
-    up_count = 0
-    total = 0
-    for sym in proxy_symbols:
-        try:
-            proxy_df = yf.Ticker(sym).history(period="6mo")
-            trend = _compute_trend(proxy_df)
-            if trend is not None:
-                total += 1
-                if trend == "UP":
-                    up_count += 1
-        except Exception:
+
+def rs_stars(pct: float | None) -> str:
+    if pct is None:
+        return ""
+    if pct >= 90:
+        return "★★★"
+    if pct >= 80:
+        return "★★"
+    if pct >= 70:
+        return "★"
+    return ""
+
+
+# ============================================================
+# MAIN APP
+# ============================================================
+st.set_page_config(layout="wide", page_title="VN HOSE Scanner")
+st.title("📊 VN HOSE Stock Scanner")
+st.caption("Trend Following System — lọc toàn sàn HOSE theo Trend Template 10 tiêu chí + RS")
+
+# ── Sidebar options ──────────────────────────────────────────
+with st.sidebar:
+    st.header("⚙️ Tuỳ chọn")
+    scan_mode = st.radio(
+        "Danh sách mã",
+        ["HOSE (toàn sàn)", "VN30"],
+        help="HOSE: toàn bộ ~400 mã (chậm hơn lần đầu). VN30: 30 mã blue-chip."
+    )
+    use_cache = st.checkbox("Dùng cache giá", value=True,
+                            help="Lần sau chỉ tải dữ liệu mới, nhanh hơn nhiều.")
+    st.markdown("---")
+    st.markdown("**Ngưỡng lọc**")
+    st.caption(f"Vol trung bình 20 phiên ≥ {MIN_VOL_20:,}")
+    st.caption(f"Giá ≥ {MIN_PRICE},000 VNĐ")
+    st.caption(f"RS percentile ≥ {RS_MIN}")
+
+# ── Scan button ───────────────────────────────────────────────
+if st.button("🔍 Scan Now", type="primary", use_container_width=True):
+
+    with st.spinner("Lấy danh sách mã HOSE..."):
+        symbols = list(VN30_STOCKS.keys()) if scan_mode == "VN30" else get_hose_symbols()
+
+    if not symbols:
+        st.error("Không lấy được danh sách mã. Thử lại sau.")
+        st.stop()
+
+    st.info(f"Đang scan **{len(symbols)}** mã...")
+
+    # ── Fetch VNINDEX ─────────────────────────────────────────
+    with st.spinner("Lấy dữ liệu VN-Index..."):
+        vnindex_df = get_vnindex_data()
+
+    # ── Scan loop with progress bar ───────────────────────────
+    progress = st.progress(0, text="Đang tải dữ liệu...")
+    scan_rows = []      # lightweight results (no raw DFs)
+    rs_raw_map = {}     # symbol → rs_raw (for percentile ranking)
+    above_ma50_count = 0
+    total_valid = 0
+    n_symbols = len(symbols)
+
+    for i, sym in enumerate(symbols):
+        progress.progress((i + 1) / n_symbols,
+                          text=f"[{i + 1}/{n_symbols}] {sym}")
+
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or df.empty or len(df) < 160:
             continue
 
-    if total == 0:
-        return "UNKNOWN", None
+        total_valid += 1
+        tt_pass, tt_score, tt_d = check_trend_template(df)
+        rs_raw = compute_rs_raw(df)
+        rs_raw_map[sym] = rs_raw
 
-    # Majority vote: if most blue-chips are in uptrend, market is UP
-    return ("UP" if up_count > total / 2 else "DOWN"), f"{up_count}/{total} proxies"
+        # Count for breadth calculation (criterion 1: price > MA50)
+        if tt_d.get("c1", False):
+            above_ma50_count += 1
 
-
-# =============================
-# AI CALCULATION
-# =============================
-def calculate(df):
-    df["MA20"] = df["Close"].rolling(20).mean()
-    df["MA50"] = df["Close"].rolling(50).mean()
-    df["MA100"] = df["Close"].rolling(100).mean()
-    df["RSI"] = compute_rsi(df["Close"])
-    df["Vol_MA20"] = df["Volume"].rolling(20).mean()
-
-    price = df["Close"].iloc[-1]
-    ma20 = df["MA20"].iloc[-1]
-    ma50 = df["MA50"].iloc[-1]
-    ma100 = df["MA100"].iloc[-1]
-    rsi = df["RSI"].iloc[-1]
-    vol = df["Volume"].iloc[-1]
-    vol_avg = df["Vol_MA20"].iloc[-1]
-
-    if pd.isna(ma50):
-        return None
-
-    has_ma100 = not pd.isna(ma100)
-
-    # Long position: confirm uptrend then define pullback buy zone
-    # Uptrend = price above MA100 AND MA50 > MA100 (or price > MA50 if no MA100)
-    if has_ma100:
-        uptrend = (ma50 > ma100) and (price > ma100)
-    else:
-        uptrend = price > ma50
-
-    # Pullback buy zone: price dips to MA20-MA50 area while uptrend intact
-    zone_low = round(ma50 * 0.98, 2)
-    zone_high = round(ma20, 2) if not pd.isna(ma20) else round(ma50 * 1.02, 2)
-
-    # Wider targets for position holding (20-50%)
-    target = (round(price * 1.20, 2), round(price * 1.50, 2))
-    # Stoploss below MA100 (or MA50) with 7% buffer — position needs room
-    stoploss = round((ma100 if has_ma100 else ma50) * 0.93, 2)
-
-    vol_signal = "HIGH" if (not pd.isna(vol_avg) and vol > vol_avg * 1.2) else "NORMAL"
-
-    return price, zone_low, zone_high, target, stoploss, rsi, vol_signal, uptrend
-
-
-# =============================
-# DECISION ENGINE
-# =============================
-def decision(price, zone_low, zone_high, target, stoploss, rsi, trend, vol_signal, uptrend):
-    if trend == "UNKNOWN":
-        return "NO DATA"
-
-    if trend == "DOWN":
-        return "NO TRADE"
-
-    # Must be in confirmed uptrend for long position
-    if not uptrend:
-        return "NO TRADE"
-
-    if price <= stoploss:
-        return "CUT LOSS"
-
-    # Pullback buy: price dipped into MA20-MA50 support zone
-    in_pullback = zone_low <= price <= zone_high
-
-    # Strong buy: pullback + RSI cooling off + volume spike (institutional accumulation)
-    if in_pullback and rsi < 45 and vol_signal == "HIGH":
-        return "BUY"
-
-    # Watch: pullback happening but no volume confirmation yet
-    if in_pullback and rsi < 50:
-        return "WATCH"
-
-    # Take partial profit at first target
-    if price >= target[0]:
-        return "TAKE PROFIT"
-
-    return "HOLD"
-
-
-# =============================
-# SAVE TRADE
-# =============================
-def save_trade(symbol, price, action):
-    try:
-        df = pd.DataFrame(
-            [[symbol, price, action]],
-            columns=["symbol", "price", "action"]
-        )
-        df.to_sql("trades", engine, if_exists="append", index=False)
-    except:
-        pass
-
-
-# =============================
-# UI
-# =============================
-st.set_page_config(layout="wide")
-st.title("AI Trading Dashboard")
-
-trend, trend_source = market_trend()
-
-if trend == "UNKNOWN":
-    st.warning("Could not fetch market data from any source")
-elif trend_source == "VNINDEX":
-    st.info(f"Market Trend: **{trend}** (source: VNINDEX)")
-else:
-    st.info(f"Market Trend: **{trend}** (source: {trend_source})")
-
-# =============================
-# SYMBOL SOURCE SELECTION
-# =============================
-st.subheader("Watchlist")
-
-source = st.radio(
-    "Stock list",
-    ["Custom", "VN30"],
-    horizontal=True,
-)
-
-if source == "VN30":
-    active_symbols = VN30_SYMBOLS
-else:
-    active_symbols = load_symbols()
-    col_add, col_rm = st.columns([3, 1])
-    with col_add:
-        new_symbol = st.text_input("Add symbol (e.g. FPT.VN)")
-    with col_rm:
-        st.write("")
-        st.write("")
-        if st.button("Add") and new_symbol and new_symbol not in active_symbols:
-            active_symbols.append(new_symbol)
-            save_symbols(active_symbols)
-            st.rerun()
-
-# =============================
-# BUILD SUMMARY DATA
-# =============================
-rows = []
-stock_dfs = {}
-
-with st.spinner("Loading data..."):
-    for s in active_symbols:
-        df = get_data(s)
-        if df is None:
-            rows.append({"Symbol": s, "Sector": VN30_STOCKS.get(s, "-"),
-                         "Price": None, "MA50": None, "MA100": "-",
-                         "RSI": None, "Volume": "-", "Trend": "-",
-                         "Pullback Zone": "-", "Target": "-",
-                         "Stoploss": None, "Action": "NO DATA"})
-            continue
-
-        result = calculate(df)
-        if result is None:
-            rows.append({"Symbol": s, "Sector": VN30_STOCKS.get(s, "-"),
-                         "Price": None, "MA50": None, "MA100": "-",
-                         "RSI": None, "Volume": "-", "Trend": "-",
-                         "Pullback Zone": "-", "Target": "-",
-                         "Stoploss": None, "Action": "INSUFFICIENT DATA"})
-            continue
-
-        price, zone_low, zone_high, target, stoploss, rsi, vol_signal, uptrend = result
-        action = decision(price, zone_low, zone_high, target, stoploss, rsi, trend, vol_signal, uptrend)
-
-        if action in ["BUY", "TAKE PROFIT", "CUT LOSS"]:
-            save_trade(s, price, action)
-
-        stock_dfs[s] = df
-        rows.append({
-            "Symbol": s,
-            "Sector": VN30_STOCKS.get(s, "-"),
-            "Price": round(price, 2),
-            "MA50": round(df["MA50"].iloc[-1], 2),
-            "MA100": round(df["MA100"].iloc[-1], 2) if not pd.isna(df["MA100"].iloc[-1]) else "-",
-            "RSI": round(rsi, 2),
-            "Volume": vol_signal,
-            "Trend": "UP" if uptrend else "DOWN",
-            "Pullback Zone": f"{zone_low} - {zone_high}",
-            "Target": f"{target[0]} (+20%) - {target[1]} (+50%)",
-            "Stoploss": f"{stoploss} (-7%)",
-            "Action": action,
+        scan_rows.append({
+            "sym": sym,
+            "tt_pass": tt_pass,
+            "tt_score": tt_score,
+            "tt_d": tt_d,
+            "rs_raw": rs_raw,
         })
 
-# =============================
-# FILTERS
-# =============================
-if rows:
-    summary_df = pd.DataFrame(rows)
+    progress.empty()
 
-    col_sector, col_action = st.columns(2)
+    # ── Market breadth & traffic light ───────────────────────
+    breadth_pct = (above_ma50_count / total_valid * 100) if total_valid > 0 else 50
+    market_signal, market_details = compute_market_filter(vnindex_df, breadth_pct)
 
-    sectors = sorted(summary_df["Sector"].dropna().unique())
-    with col_sector:
-        selected_sectors = st.multiselect("Filter by sector", sectors)
+    # ── RS percentile ranking ─────────────────────────────────
+    rs_pct_map = rank_rs(rs_raw_map)
+    for row in scan_rows:
+        row["rs_pct"] = rs_pct_map.get(row["sym"])
 
-    actions = sorted(summary_df["Action"].dropna().unique())
-    with col_action:
-        selected_actions = st.multiselect("Filter by action", actions)
+    # ── Save to session_state for chart selector ──────────────
+    st.session_state["scan_rows"] = scan_rows
+    st.session_state["market_signal"] = market_signal
+    st.session_state["market_details"] = market_details
+    st.session_state["use_cache"] = use_cache
+    st.rerun()  # clean rerender — clears "Đang scan..." info
 
-    filtered = summary_df
-    if selected_sectors:
-        filtered = filtered[filtered["Sector"].isin(selected_sectors)]
-    if selected_actions:
-        filtered = filtered[filtered["Action"].isin(selected_actions)]
+# ── Display results (persists across interactions via session_state) ──
+if "scan_rows" in st.session_state:
+    scan_rows     = st.session_state["scan_rows"]
+    market_signal = st.session_state["market_signal"]
+    market_details = st.session_state["market_details"]
+    use_cache      = st.session_state.get("use_cache", True)
 
-    # Sort by action priority: BUY/WATCH first, then HOLD, then rest
-    ACTION_ORDER = {"BUY": 0, "WATCH": 1, "CUT LOSS": 2, "TAKE PROFIT": 3,
-                    "HOLD": 4, "NO TRADE": 5, "NO DATA": 6, "INSUFFICIENT DATA": 7}
-    filtered = filtered.copy()
-    filtered["_sort"] = filtered["Action"].map(ACTION_ORDER).fillna(9)
-    filtered = filtered.sort_values("_sort").drop(columns=["_sort"])
+    # ============================================================
+    # TRAFFIC LIGHT
+    # ============================================================
+    emoji, label, action = LIGHT_CFG[market_signal]
+    st.markdown("---")
+    st.subheader(f"{emoji} Tín hiệu thị trường: {label}")
 
-    # =============================
-    # SUMMARY TABLE (grouped by sector)
-    # =============================
-    if filtered.empty:
-        st.info("No stocks match the selected filters.")
+    if market_details:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("VN-Index", market_details.get("price", "?"))
+        c2.metric("MA50", market_details.get("ma50", "?"),
+                  delta=f"{'▲ trên' if market_details.get('price', 0) > market_details.get('ma50', 0) else '▼ dưới'} MA50")
+        c3.metric("MA20 vs MA50",
+                  f"{market_details.get('ma20','?')} / {market_details.get('ma50','?')}")
+        c4.metric("Market Breadth (% > MA50)", f"{market_details.get('breadth','?')}%")
+
+    st.info(f"**Hành động:** {action}")
+
+    # ============================================================
+    # TOP 5
+    # ============================================================
+    rs_threshold = 85 if market_signal == "yellow" else RS_MIN
+    qualifying = [
+        r for r in scan_rows
+        if r["tt_pass"] and (r["rs_pct"] or 0) >= rs_threshold
+    ]
+    qualifying.sort(key=lambda r: r["rs_pct"] or 0, reverse=True)
+    top5 = qualifying[:TOP_N]
+
+    st.markdown("---")
+    st.subheader(f"🏆 Top {TOP_N} cổ phiếu thoả mãn đủ điều kiện")
+
+    if top5:
+        cols = st.columns(len(top5))
+        for idx, row in enumerate(top5):
+            sym   = row["sym"]
+            d     = row["tt_d"]
+            rs_p  = row["rs_pct"]
+            stars = rs_stars(rs_p)
+            ticker = sym.replace(".VN", "")
+            with cols[idx]:
+                st.metric(
+                    label=ticker,
+                    value=f"{d.get('price','?')}",
+                    delta=f"RS {rs_p:.0f} {stars}" if rs_p else "RS ?",
+                )
+                st.caption(f"MA50: {d.get('ma50','?')} | MA150: {d.get('ma150','?')}")
+                st.caption(f"Vol(20): {d.get('vol20',0):,}")
+                st.caption(f"Score: {d.get('score9',0)}/9 criteria")
     else:
-        for sector, group in filtered.groupby("Sector", sort=True):
-            st.caption(sector)
-            st.dataframe(
-                group.drop(columns=["Sector"]),
-                use_container_width=True,
-                hide_index=True,
-            )
+        if market_signal == "red":
+            st.error("🔴 Đèn đỏ — không trade mới.")
+        else:
+            st.warning("Chưa có cổ phiếu nào thoả mãn đủ 10 tiêu chí.")
 
-        # Export to Excel
+    # ============================================================
+    # FULL RESULTS TABLE
+    # ============================================================
+    st.markdown("---")
+    st.subheader("📋 Bảng kết quả đầy đủ")
+
+    table_rows = []
+    for row in scan_rows:
+        sym  = row["sym"]
+        d    = row["tt_d"]
+        rs_p = row["rs_pct"]
+        if not d:
+            continue
+
+        score = d.get("score9", 0)
+        rs_ok = rs_p is not None and rs_p >= RS_MIN
+        if row["tt_pass"] and rs_ok:
+            status = "✅ Pass"
+        elif score >= 7:
+            status = "🔶 Gần"
+        else:
+            status = "❌"
+
+        table_rows.append({
+            "Mã": sym.replace(".VN", ""),
+            "Giá": d.get("price", "-"),
+            "MA50": d.get("ma50", "-"),
+            "MA150": d.get("ma150", "-"),
+            "Đỉnh52T": d.get("high52", "-"),
+            "Đáy52T":  d.get("low52", "-"),
+            "Vol(20)k": f"{d.get('vol20', 0) // 1000}k",
+            "Score(/9)": score,
+            "RS%": f"{rs_p:.0f} {rs_stars(rs_p)}".strip() if rs_p else "-",
+            "Trạng thái": status,
+            # booleans for criteria detail
+            ">MA50": "✓" if d.get("c1") else "✗",
+            ">MA150": "✓" if d.get("c2") else "✗",
+            "MA50>150": "✓" if d.get("c3") else "✗",
+            "MA150↑4W": "✓" if d.get("c4") else "✗",
+            "+25%Low": "✓" if d.get("c5") else "✗",
+            "<30%High": "✓" if d.get("c6") else "✗",
+            "Vol✓": "✓" if d.get("c7") else "✗",
+            "Price✓": "✓" if d.get("c8") else "✗",
+            "NoDistrib": "✓" if d.get("c10") else "✗",
+        })
+
+    if table_rows:
+        result_df = pd.DataFrame(table_rows)
+
+        # Filter controls
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            show_filter = st.selectbox(
+                "Hiển thị",
+                ["✅ Chỉ Pass", "✅+🔶 Gần pass (score ≥ 7)", "Tất cả"],
+                index=0,
+            )
+        with fc2:
+            min_score = st.slider("Score tối thiểu", 0, 9, 0)
+
+        filtered = result_df.copy()
+        if show_filter == "✅ Chỉ Pass":
+            filtered = filtered[filtered["Trạng thái"] == "✅ Pass"]
+        elif show_filter == "✅+🔶 Gần pass (score ≥ 7)":
+            filtered = filtered[filtered["Trạng thái"].isin(["✅ Pass", "🔶 Gần"])]
+        filtered = filtered[filtered["Score(/9)"] >= min_score]
+
+        st.dataframe(filtered.reset_index(drop=True), use_container_width=True, hide_index=True)
+        st.caption(f"{len(filtered)} mã hiển thị / {len(result_df)} mã scan được")
+
+        # Export
         buf = BytesIO()
         filtered.to_excel(buf, index=False, engine="openpyxl")
         st.download_button(
-            label="Export to Excel",
+            "📥 Export Excel",
             data=buf.getvalue(),
-            file_name=f"screening_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            file_name=f"scan_hose_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-# =============================
-# CHART VIEWER
-# =============================
-available = [s for s in filtered["Symbol"].tolist() if s in stock_dfs] if rows and not filtered.empty else []
+    # ============================================================
+    # CHART VIEWER
+    # ============================================================
+    st.markdown("---")
+    st.subheader("📈 Xem chart")
 
-if available:
-    st.subheader("Chart")
-    cols = st.columns([3, 1])
-    with cols[0]:
-        selected = st.selectbox("Select symbol", available, label_visibility="collapsed")
-    with cols[1]:
-        show_chart = st.button("View Chart")
+    # Prioritise top-5, then other qualifying, then all scanned
+    chart_pool = (
+        [r["sym"] for r in top5]
+        + [r["sym"] for r in qualifying if r["sym"] not in [x["sym"] for x in top5]]
+        + [r["sym"] for r in scan_rows if r["sym"] not in [x["sym"] for x in qualifying]]
+    )
+    chart_pool = chart_pool[:60]   # cap at 60 for the dropdown
 
-    if show_chart and selected:
-        df = stock_dfs[selected]
-        chart_cols = ["Close", "MA50"]
-        if "MA100" in df.columns and not df["MA100"].isna().all():
-            chart_cols.append("MA100")
-        st.line_chart(df[chart_cols])
+    if chart_pool:
+        sel = st.selectbox(
+            "Chọn mã để xem chart",
+            chart_pool,
+            format_func=lambda s: s.replace(".VN", ""),
+        )
+        if sel:
+            df_c = load_price_data(sel, use_cache=True)
+            if df_c is not None and not df_c.empty:
+                df_c = df_c.copy()
+                df_c["MA20"]  = df_c["Close"].rolling(20).mean()
+                df_c["MA50"]  = df_c["Close"].rolling(50).mean()
+                df_c["MA150"] = df_c["Close"].rolling(150).mean()
+                chart_cols = ["Close", "MA20", "MA50"]
+                if not df_c["MA150"].isna().all():
+                    chart_cols.append("MA150")
+                display_df = df_c[chart_cols].iloc[-252:]   # last 1 year
+                st.line_chart(display_df)
+
+                # Show criteria pass/fail for selected stock
+                sel_row = next((r for r in scan_rows if r["sym"] == sel), None)
+                if sel_row and sel_row["tt_d"]:
+                    d = sel_row["tt_d"]
+                    rs_p = sel_row.get("rs_pct")
+                    with st.expander("Chi tiết 10 tiêu chí"):
+                        crit = [
+                            ("1. Giá > MA50",                     d.get("c1")),
+                            ("2. Giá > MA150",                    d.get("c2")),
+                            ("3. MA50 > MA150",                   d.get("c3")),
+                            ("4. MA150 tăng 4 tuần liên tiếp",    d.get("c4")),
+                            ("5. Giá ≥ 25% trên đáy 52 tuần",     d.get("c5")),
+                            ("6. Giá trong 30% so đỉnh 52 tuần",  d.get("c6")),
+                            ("7. Vol(20) ≥ 200,000 cổ",           d.get("c7")),
+                            ("8. Giá ≥ 15,000 VNĐ",               d.get("c8")),
+                            ("9. RS ≥ 80 percentile",
+                             rs_p is not None and rs_p >= RS_MIN),
+                            ("10. Không có phân phối (Distribution)", d.get("c10")),
+                        ]
+                        for label_c, passed in crit:
+                            icon = "✅" if passed else "❌"
+                            st.markdown(f"{icon} {label_c}")
+            else:
+                st.warning(f"Không có dữ liệu cho {sel}")
+
+else:
+    st.info("Nhấn **Scan Now** để bắt đầu quét.")
