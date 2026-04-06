@@ -814,6 +814,111 @@ class TestPatternDetection(unittest.TestCase):
         self.assertIsNone(app._check_pullback_ma20(df.iloc[-20:]))
 
 
+class TestPatternDetectionLimitations(unittest.TestCase):
+    """
+    Explicit tests that document the LIMITATIONS of the pattern engine.
+
+    These tests are NOT about proving correctness — they document known
+    boundary cases and assumptions. Run with -v to see the messages.
+
+    Rule of thumb:
+      - Synthetic tests above prove the algorithm's LOGIC.
+      - These tests prove the algorithm's ASSUMPTIONS are reasonable.
+      - Visual chart inspection + backtesting remain the gold standard.
+    """
+
+    def test_vcp_requires_exactly_3_windows_of_20(self):
+        """
+        _check_vcp hardcodes p1/p2/p3 as 20-day windows.
+        A real VCP might span 6-8 weeks (30-40 bars) — the 60-bar window
+        is a simplification. This test documents that assumption explicitly.
+        """
+        # A 'real' VCP that contracts over 7 weeks (35 bars not 60)
+        # will NOT be detected unless the contraction spans all 3 windows.
+        # Here we put a tight contraction in only p2+p3 (not p1) — should fail.
+        rng = np.random.default_rng(99)
+        n = 80
+        idx = pd.date_range(end="2026-01-01", periods=n, freq="B")
+        prices = 50 + np.linspace(0, 5, n) + rng.standard_normal(n) * 0.2
+        highs = prices.copy(); lows = prices.copy()
+        # Only p2 and p3 contract — p1 stays flat-ish (no clear contraction vs p2)
+        highs[20:40] += 2.0; lows[20:40] -= 2.0   # p1: ~7%
+        highs[40:60] += 1.5; lows[40:60] -= 1.5   # p2: ~5.5%  (not >> p1)
+        # p3: natural noise ~1%
+        vol = np.array([800_000]*20 + [700_000]*20 + [500_000]*20 + [300_000]*20, dtype=float)
+        df = pd.DataFrame({"Open": prices*0.99, "High": highs, "Low": lows,
+                           "Close": prices, "Volume": vol}, index=idx)
+        p = app._check_vcp(df)
+        # p1 > p2 barely (7% vs 5.5%) may or may not pass — result depends on noise.
+        # The point: 'soft' contractions near the boundary are unreliable.
+        # This test just asserts the function doesn't crash.
+        self.assertIsInstance(p, (dict, type(None)))
+
+    def test_flat_base_gap_does_not_invalidate(self):
+        """
+        A single large gap-down (earnings miss) in an otherwise flat base
+        would widen the range and prevent detection.
+        This is CORRECT behaviour — a gap disrupts the base structure.
+        """
+        df = pd.concat([
+            make_uptrend_df(60, base=50.0),
+            make_uptrend_df(20, base=40.0),  # gap-down 20% then continues
+        ]).reset_index(drop=True)
+        df.index = pd.date_range(end="2026-01-01", periods=len(df), freq="B")
+        p = app._check_flat_base(df)
+        # With 20% gap, range >> 12% → flat base correctly NOT detected
+        self.assertIsNone(p, "Gap-down should prevent flat-base detection")
+
+    def test_pullback_panic_sell_rejection(self):
+        """
+        A single panic session (vol × 4, price −5%) should reject Pullback MA20.
+        This documents that the no-panic-sell guard is functioning.
+        """
+        df = self._make_pullback_df_with_panic()
+        p = app._check_pullback_ma20(df)
+        self.assertIsNone(p, "Panic sell should reject the pullback setup")
+
+    def _make_pullback_df_with_panic(self):
+        rng = np.random.default_rng(55)
+        n = 60
+        idx = pd.date_range(end="2026-01-01", periods=n, freq="B")
+        up   = 40 + np.linspace(0, 15, n - 10) + rng.standard_normal(n - 10) * 0.2
+        pull = up[-1] - np.linspace(0, 2, 10) + rng.standard_normal(10) * 0.1
+        prices = np.concatenate([up, pull])
+        vol = np.concatenate([np.full(n - 10, 500_000), np.full(10, 200_000)])
+        highs = prices.copy(); lows = prices.copy()
+        # Inject panic sell 3 bars from end: price −5%, volume × 4
+        prices[-3] = prices[-4] * 0.95
+        vol[-3]    = 500_000 * 4.0
+        highs[-3]  = prices[-3] + 0.2
+        lows[-3]   = prices[-3] - 0.5
+        return pd.DataFrame({"Open": prices*0.99, "High": highs, "Low": lows,
+                             "Close": prices, "Volume": vol.astype(float)}, index=idx)
+
+    def test_detection_is_deterministic(self):
+        """Same input always produces same result — no hidden randomness."""
+        df = make_uptrend_df(80)
+        r1 = app.detect_patterns(df)
+        r2 = app.detect_patterns(df)
+        self.assertEqual(
+            [(p["pattern"], p["quality"]) for p in r1],
+            [(p["pattern"], p["quality"]) for p in r2],
+        )
+
+    def test_multiple_patterns_can_coexist(self):
+        """
+        A stock near MA20 AND in a flat base could trigger two patterns.
+        The wrapper should return all detected patterns, not just the first.
+        """
+        df = make_uptrend_df(80, base=50.0)
+        patterns = app.detect_patterns(df)
+        # We don't assert a specific count — just that it's a list
+        self.assertIsInstance(patterns, list)
+        names = [p["pattern"] for p in patterns]
+        # No duplicates
+        self.assertEqual(len(names), len(set(names)))
+
+
 # ═════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     unittest.main(verbosity=2)

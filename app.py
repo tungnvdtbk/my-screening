@@ -1035,6 +1035,21 @@ if "scan_rows" in st.session_state:
                         for label_c, passed in crit:
                             icon = "✅" if passed else "❌"
                             st.markdown(f"{icon} {label_c}")
+
+                    # Pattern debug — run live on the loaded df so you can
+                    # visually confirm against the chart above
+                    with st.expander("🔍 Pattern detection (live on this chart)"):
+                        live_patterns = detect_patterns(df_c)
+                        if live_patterns:
+                            for lp in live_patterns:
+                                st.markdown(
+                                    f"**{lp['pattern']}** {lp['quality']}  "
+                                    f"— Pivot: `{lp['pivot']}`  "
+                                    f"SL: `{lp['stoploss']}`"
+                                )
+                                st.caption(lp["notes"])
+                        else:
+                            st.info("Không phát hiện pattern trên mã này.")
             else:
                 st.warning(f"Không có dữ liệu cho {sel}")
 
