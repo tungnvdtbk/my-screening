@@ -335,6 +335,69 @@ class TestCheckTrendTemplate(unittest.TestCase):
         _, score, _ = app.check_trend_template(make_downtrend_df(300, vol=600_000))
         self.assertLessEqual(score, 4, "Downtrend should fail most criteria")
 
+    # ── stop loss & target ───────────────────────────────────────────
+    def test_stoploss_keys_present(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertIn("stoploss_price", details)
+        self.assertIn("stoploss_pct",   details)
+
+    def test_target_keys_present(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertIn("target_price", details)
+        self.assertIn("target_pct",   details)
+
+    def test_stoploss_below_current_price(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertLess(details["stoploss_price"], details["price"])
+
+    def test_target_above_current_price(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertGreater(details["target_price"], details["price"])
+
+    def test_stoploss_default_5_percent(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertEqual(details["stoploss_pct"], 5.0)
+        expected = round(details["price"] * 0.95, 1)
+        self.assertAlmostEqual(details["stoploss_price"], expected, places=1)
+
+    def test_target_default_10_percent(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300))
+        self.assertEqual(details["target_pct"], 10.0)
+        expected = round(details["price"] * 1.10, 1)
+        self.assertAlmostEqual(details["target_price"], expected, places=1)
+
+    def test_custom_stoploss_pct(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300), sl_pct=8.0)
+        self.assertEqual(details["stoploss_pct"], 8.0)
+        expected = round(details["price"] * 0.92, 1)
+        self.assertAlmostEqual(details["stoploss_price"], expected, places=1)
+
+    def test_custom_target_pct(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300), tgt_pct=20.0)
+        self.assertEqual(details["target_pct"], 20.0)
+        expected = round(details["price"] * 1.20, 1)
+        self.assertAlmostEqual(details["target_price"], expected, places=1)
+
+    def test_stoploss_scales_with_price(self):
+        """Higher price → higher absolute stoploss (same % distance)."""
+        _, _, d_low  = app.check_trend_template(make_uptrend_df(300, base=20.0))
+        _, _, d_high = app.check_trend_template(make_uptrend_df(300, base=80.0))
+        self.assertGreater(d_high["stoploss_price"], d_low["stoploss_price"])
+
+    def test_target_scales_with_price(self):
+        """Higher price → higher absolute target."""
+        _, _, d_low  = app.check_trend_template(make_uptrend_df(300, base=20.0))
+        _, _, d_high = app.check_trend_template(make_uptrend_df(300, base=80.0))
+        self.assertGreater(d_high["target_price"], d_low["target_price"])
+
+    def test_stoploss_zero_pct_equals_price(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(300), sl_pct=0.0)
+        self.assertAlmostEqual(details["stoploss_price"], details["price"], places=1)
+
+    def test_stoploss_not_returned_for_insufficient_data(self):
+        _, _, details = app.check_trend_template(make_uptrend_df(50))
+        self.assertEqual(details, {})
+
 
 class TestCacheHelpers(unittest.TestCase):
     """_save_df / _load_df — parquet-or-CSV file cache."""

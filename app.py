@@ -233,10 +233,16 @@ def get_vnindex_data() -> pd.DataFrame | None:
 # ============================================================
 # TREND TEMPLATE — 10 criteria (he-thong-trading-vn.html, ch4)
 # ============================================================
-def check_trend_template(df: pd.DataFrame) -> tuple[bool, int, dict]:
+def check_trend_template(
+    df: pd.DataFrame,
+    sl_pct: float = 5.0,
+    tgt_pct: float = 10.0,
+) -> tuple[bool, int, dict]:
     """
     Returns (all_pass, score_out_of_9, details_dict).
     Criterion 9 (RS percentile) is excluded here — ranked separately.
+    details includes stoploss_price/pct and target_price/pct derived from
+    sl_pct and tgt_pct (percentage distances from current price).
     """
     if df is None or df.empty or len(df) < 160:
         return False, 0, {}
@@ -305,14 +311,21 @@ def check_trend_template(df: pd.DataFrame) -> tuple[bool, int, dict]:
     score = sum(criteria_without_rs)
     all_pass = all(criteria_without_rs)
 
+    _price = round(float(price), 1)
     details = {
-        "price":   round(float(price), 1),
-        "ma50":    round(float(ma50_v), 1),
-        "ma150":   round(float(ma150_v), 1),
-        "vol20":   int(vol20_v),
-        "high52":  round(float(high52), 1),
-        "low52":   round(float(low52), 1),
-        "score9":  score,
+        "price":          _price,
+        "ma50":           round(float(ma50_v), 1),
+        "ma150":          round(float(ma150_v), 1),
+        "vol20":          int(vol20_v),
+        "high52":         round(float(high52), 1),
+        "low52":          round(float(low52), 1),
+        "score9":         score,
+        # ── Stop loss & target (from current price) ──────────────
+        "stoploss_price": round(_price * (1 - sl_pct  / 100), 1),
+        "stoploss_pct":   sl_pct,
+        "target_price":   round(_price * (1 + tgt_pct / 100), 1),
+        "target_pct":     tgt_pct,
+        # ── Criteria ─────────────────────────────────────────────
         "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
         "c6": c6, "c7": c7, "c8": c8, "c10": c10,
     }
@@ -444,6 +457,10 @@ with st.sidebar:
     st.caption(f"Vol trung bình 20 phiên ≥ {MIN_VOL_20:,}")
     st.caption(f"Giá ≥ {MIN_PRICE},000 VNĐ")
     st.caption(f"RS percentile ≥ {RS_MIN}")
+    st.markdown("---")
+    st.markdown("**Quản trị rủi ro**")
+    sl_pct  = st.slider("Stop Loss %",  min_value=3,  max_value=15, value=5,  step=1)
+    tgt_pct = st.slider("Target %",     min_value=5,  max_value=50, value=10, step=5)
 
 # ── Scan button ───────────────────────────────────────────────
 if st.button("🔍 Scan Now", type="primary", use_container_width=True):
@@ -478,7 +495,7 @@ if st.button("🔍 Scan Now", type="primary", use_container_width=True):
             continue
 
         total_valid += 1
-        tt_pass, tt_score, tt_d = check_trend_template(df)
+        tt_pass, tt_score, tt_d = check_trend_template(df, sl_pct=sl_pct, tgt_pct=tgt_pct)
         rs_raw = compute_rs_raw(df)
         rs_raw_map[sym] = rs_raw
 
@@ -568,6 +585,12 @@ if "scan_rows" in st.session_state:
                 st.caption(f"MA50: {d.get('ma50','?')} | MA150: {d.get('ma150','?')}")
                 st.caption(f"Vol(20): {d.get('vol20',0):,}")
                 st.caption(f"Score: {d.get('score9',0)}/9 criteria")
+                st.caption(
+                    f"🛑 SL: {d.get('stoploss_price','?')}"
+                    f" (-{d.get('stoploss_pct',5):.0f}%)"
+                    f"  🎯 TGT: {d.get('target_price','?')}"
+                    f" (+{d.get('target_pct',10):.0f}%)"
+                )
     else:
         if market_signal == "red":
             st.error("🔴 Đèn đỏ — không trade mới.")
@@ -597,9 +620,16 @@ if "scan_rows" in st.session_state:
         else:
             status = "❌"
 
+        sl_price = d.get("stoploss_price", "-")
+        sl_p     = d.get("stoploss_pct", 5)
+        tgt_price = d.get("target_price", "-")
+        tgt_p     = d.get("target_pct", 10)
+
         table_rows.append({
             "Mã": sym.replace(".VN", ""),
             "Giá": d.get("price", "-"),
+            "Stoploss": f"{sl_price} (-{sl_p:.0f}%)",
+            "Target":   f"{tgt_price} (+{tgt_p:.0f}%)",
             "MA50": d.get("ma50", "-"),
             "MA150": d.get("ma150", "-"),
             "Đỉnh52T": d.get("high52", "-"),
