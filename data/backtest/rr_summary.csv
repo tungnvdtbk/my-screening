@@ -1,0 +1,13 @@
+pattern,config,signals,decided,win_rate,avg_days,avg_ret,avg_mae
+Flag Pullback,baseline,364,275,16.4,12.5,-1.73,5.55
+Flag Pullback,trend_filter,111,105,19.0,11.0,-1.19,5.32
+Flag Pullback,vol_filter,122,88,9.1,11.0,-3.18,5.71
+Flag Pullback,combined,35,34,17.6,10.9,-1.47,5.05
+Pennant Pullback,baseline,183,145,21.4,14.2,-0.72,5.47
+Pennant Pullback,trend_filter,94,86,17.4,10.8,-1.51,5.89
+Pennant Pullback,vol_filter,17,14,28.6,21.5,0.71,4.57
+Pennant Pullback,combined,6,4,0.0,12.5,-5.0,7.08
+Triangle Pullback,baseline,257,197,16.8,15.5,-1.65,5.53
+Triangle Pullback,trend_filter,121,106,17.0,14.7,-1.6,5.61
+Triangle Pullback,vol_filter,28,21,52.4,22.9,5.48,3.47
+Triangle Pullback,combined,3,3,66.7,18.3,8.33,3.11

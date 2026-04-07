@@ -1,0 +1,1342 @@
+entry,target,stop,outcome,days,ret_pct,mae,symbol,sector,pattern,config,date,pole_gain
+20137.84,23158.51,19130.95,OPEN,40,1.03,4.54,ACB,Banking,Flag Pullback,baseline,2024-07-03,5.85
+20054.79,23063.01,19052.06,OPEN,40,2.07,4.14,ACB,Banking,Flag Pullback,baseline,2024-07-04,3.79
+20179.36,23206.26,19170.39,OPEN,40,2.06,4.73,ACB,Banking,Flag Pullback,baseline,2024-07-05,4.86
+20137.84,23158.51,19130.95,OPEN,40,1.65,4.54,ACB,Banking,Flag Pullback,baseline,2024-07-08,4.01
+20179.36,23206.26,19170.39,OPEN,40,0.82,4.73,ACB,Banking,Flag Pullback,baseline,2024-07-09,3.12
+20137.84,23158.51,19130.95,OPEN,40,1.44,4.54,ACB,Banking,Flag Pullback,baseline,2024-07-10,5.77
+19515.02,22442.27,18539.27,OPEN,40,10.43,0.0,ACB,Banking,Flag Pullback,baseline,2024-08-15,3.55
+19930.23,22919.77,18933.72,OPEN,40,7.71,0.21,ACB,Banking,Flag Pullback,baseline,2024-08-16,5.46
+20553.05,23636.01,19525.4,OPEN,40,2.63,2.63,ACB,Banking,Flag Pullback,baseline,2024-11-04,5.38
+20553.05,23636.01,19525.4,OPEN,40,4.24,2.63,ACB,Banking,Flag Pullback,baseline,2024-11-05,4.08
+20843.7,23970.26,19801.52,OPEN,40,1.99,3.98,ACB,Banking,Flag Pullback,baseline,2024-11-06,6.49
+20843.7,23970.26,19801.52,OPEN,40,0.0,3.98,ACB,Banking,Flag Pullback,baseline,2024-11-07,5.65
+23000.0,26450.0,21850.0,LOSS,14,-5.0,5.65,ACB,Banking,Flag Pullback,baseline,2026-02-10,4.18
+20137.84,23158.51,19130.95,OPEN,40,1.03,4.54,ACB,Banking,Flag Pullback,vol_filter,2024-07-03,5.85
+20054.79,23063.01,19052.06,OPEN,40,2.07,4.14,ACB,Banking,Flag Pullback,vol_filter,2024-07-04,3.79
+20179.36,23206.26,19170.39,OPEN,40,2.06,4.73,ACB,Banking,Flag Pullback,vol_filter,2024-07-05,4.86
+20137.84,23158.51,19130.95,OPEN,40,1.65,4.54,ACB,Banking,Flag Pullback,vol_filter,2024-07-08,4.01
+20179.36,23206.26,19170.39,OPEN,40,0.82,4.73,ACB,Banking,Flag Pullback,vol_filter,2024-07-09,3.12
+20137.84,23158.51,19130.95,OPEN,40,1.44,4.54,ACB,Banking,Flag Pullback,vol_filter,2024-07-10,5.77
+20553.05,23636.01,19525.4,OPEN,40,2.63,2.63,ACB,Banking,Flag Pullback,vol_filter,2024-11-04,5.38
+20553.05,23636.01,19525.4,OPEN,40,4.24,2.63,ACB,Banking,Flag Pullback,vol_filter,2024-11-05,4.08
+20843.7,23970.26,19801.52,OPEN,40,1.99,3.98,ACB,Banking,Flag Pullback,vol_filter,2024-11-06,6.49
+20843.7,23970.26,19801.52,OPEN,40,0.0,3.98,ACB,Banking,Flag Pullback,vol_filter,2024-11-07,5.65
+21881.73,25163.99,20787.65,LOSS,8,-5.0,8.35,ACB,Banking,Pennant Pullback,baseline,2025-03-24,4.18
+21881.73,25163.99,20787.65,LOSS,8,-5.0,8.35,ACB,Banking,Pennant Pullback,trend_filter,2025-03-24,4.18
+20594.57,23683.76,19564.84,LOSS,12,-5.0,6.65,ACB,Banking,Triangle Pullback,baseline,2024-07-18,4.97
+21175.87,24352.25,20117.08,LOSS,29,-5.0,5.49,ACB,Banking,Triangle Pullback,baseline,2024-10-08,5.08
+21798.69,25068.49,20708.75,LOSS,12,-5.0,5.33,ACB,Banking,Triangle Pullback,baseline,2024-10-09,3.57
+21591.08,24829.74,20511.53,LOSS,3,-5.0,7.12,ACB,Banking,Triangle Pullback,baseline,2025-03-31,4.18
+25100.0,28865.0,23845.0,LOSS,21,-5.0,6.37,ACB,Banking,Triangle Pullback,baseline,2025-11-13,5.48
+24950.0,28692.5,23702.5,LOSS,20,-5.0,5.81,ACB,Banking,Triangle Pullback,baseline,2025-11-14,6.31
+25100.0,28865.0,23845.0,LOSS,18,-5.0,6.37,ACB,Banking,Triangle Pullback,baseline,2025-11-18,3.75
+21591.08,24829.74,20511.53,LOSS,3,-5.0,7.12,ACB,Banking,Triangle Pullback,trend_filter,2025-03-31,4.18
+39114.86,44982.08,37159.11,LOSS,6,-5.0,8.98,BID,Banking,Flag Pullback,baseline,2025-03-26,4.04
+48500.0,55775.0,46075.0,LOSS,3,-5.0,6.8,BID,Banking,Flag Pullback,baseline,2026-02-25,36.6
+48450.0,55717.5,46027.5,LOSS,2,-5.0,6.71,BID,Banking,Flag Pullback,baseline,2026-02-26,31.98
+47900.0,55085.0,45505.0,LOSS,1,-5.0,5.64,BID,Banking,Flag Pullback,baseline,2026-02-27,30.59
+45200.0,51980.0,42940.0,LOSS,5,-5.0,10.29,BID,Banking,Flag Pullback,baseline,2026-03-02,36.54
+43550.0,50082.5,41372.5,LOSS,4,-5.0,6.89,BID,Banking,Flag Pullback,baseline,2026-03-03,35.22
+41800.0,48070.0,39710.0,LOSS,8,-5.0,5.26,BID,Banking,Flag Pullback,baseline,2026-03-10,6.08
+48500.0,55775.0,46075.0,LOSS,3,-5.0,6.8,BID,Banking,Flag Pullback,trend_filter,2026-02-25,36.6
+48450.0,55717.5,46027.5,LOSS,2,-5.0,6.71,BID,Banking,Flag Pullback,trend_filter,2026-02-26,31.98
+47900.0,55085.0,45505.0,LOSS,1,-5.0,5.64,BID,Banking,Flag Pullback,trend_filter,2026-02-27,30.59
+47900.0,55085.0,45505.0,LOSS,1,-5.0,5.64,BID,Banking,Flag Pullback,vol_filter,2026-02-27,30.59
+45200.0,51980.0,42940.0,LOSS,5,-5.0,10.29,BID,Banking,Flag Pullback,vol_filter,2026-03-02,36.54
+43550.0,50082.5,41372.5,LOSS,4,-5.0,6.89,BID,Banking,Flag Pullback,vol_filter,2026-03-03,35.22
+41800.0,48070.0,39710.0,LOSS,8,-5.0,5.26,BID,Banking,Flag Pullback,vol_filter,2026-03-10,6.08
+47900.0,55085.0,45505.0,LOSS,1,-5.0,5.64,BID,Banking,Flag Pullback,combined,2026-02-27,30.59
+38252.14,43989.96,36339.53,OPEN,40,5.66,0.64,BID,Banking,Pennant Pullback,baseline,2024-08-12,3.44
+38129.54,43848.97,36223.06,OPEN,40,6.65,0.0,BID,Banking,Pennant Pullback,baseline,2024-08-13,6.67
+38456.48,44224.95,36533.65,OPEN,40,4.99,0.85,BID,Banking,Pennant Pullback,baseline,2024-08-14,7.87
+35603.91,40944.5,33823.72,OPEN,40,7.92,2.78,BID,Banking,Pennant Pullback,baseline,2025-05-30,3.13
+35307.21,40603.3,33541.85,OPEN,40,10.36,1.96,BID,Banking,Pennant Pullback,baseline,2025-06-02,7.4
+39151.23,45023.91,37193.67,OPEN,40,4.07,0.84,BID,Banking,Triangle Pullback,baseline,2024-08-19,3.44
+40172.92,46198.86,38164.27,OPEN,40,2.34,3.36,BID,Banking,Triangle Pullback,baseline,2024-08-20,6.67
+41358.08,47561.79,39290.18,LOSS,13,-5.0,5.14,BID,Banking,Triangle Pullback,baseline,2024-08-21,7.87
+34862.16,40091.49,33119.06,OPEN,40,5.53,0.71,BID,Banking,Triangle Pullback,baseline,2025-06-06,3.13
+34862.16,40091.49,33119.06,OPEN,40,7.94,0.71,BID,Banking,Triangle Pullback,baseline,2025-06-09,7.4
+38350.0,44102.5,36432.5,WIN,38,15.0,4.43,BID,Banking,Triangle Pullback,baseline,2025-11-14,3.52
+21730.08,24989.6,20643.58,WIN,25,15.0,1.1,CTG,Banking,Flag Pullback,baseline,2024-08-14,5.43
+21764.25,25028.89,20676.04,WIN,24,15.0,0.16,CTG,Banking,Flag Pullback,baseline,2024-08-15,6.87
+22208.42,25539.68,21098.0,WIN,28,15.0,0.46,CTG,Banking,Flag Pullback,baseline,2024-08-16,7.74
+22310.92,25657.56,21195.37,WIN,27,15.0,0.15,CTG,Banking,Flag Pullback,baseline,2024-08-19,5.16
+23814.26,27386.4,22623.54,LOSS,16,-5.0,5.88,CTG,Banking,Flag Pullback,baseline,2024-10-24,4.0
+24395.09,28054.36,23175.34,LOSS,5,-5.0,5.18,CTG,Banking,Flag Pullback,baseline,2024-11-04,3.32
+26035.1,29940.37,24733.35,OPEN,40,9.19,0.92,CTG,Banking,Flag Pullback,baseline,2025-01-23,8.22
+25966.77,29861.78,24668.43,OPEN,40,8.82,0.53,CTG,Banking,Flag Pullback,baseline,2025-01-24,4.95
+26000.94,29901.08,24700.89,OPEN,40,8.94,0.0,CTG,Banking,Flag Pullback,baseline,2025-02-03,7.03
+26923.44,30961.95,25577.27,OPEN,40,6.22,0.76,CTG,Banking,Flag Pullback,baseline,2025-02-04,6.72
+37100.0,42665.0,35245.0,LOSS,14,-5.0,10.51,CTG,Banking,Flag Pullback,baseline,2026-02-10,19.88
+37900.0,43585.0,36005.0,LOSS,9,-5.0,5.28,CTG,Banking,Flag Pullback,baseline,2026-02-11,17.92
+38000.0,43700.0,36100.0,LOSS,8,-5.0,5.53,CTG,Banking,Flag Pullback,baseline,2026-02-12,14.29
+38600.0,44390.0,36670.0,LOSS,7,-5.0,6.99,CTG,Banking,Flag Pullback,baseline,2026-02-13,12.18
+38700.0,44505.0,36765.0,LOSS,6,-5.0,7.24,CTG,Banking,Flag Pullback,baseline,2026-02-23,14.29
+38200.0,43930.0,36290.0,LOSS,5,-5.0,6.02,CTG,Banking,Flag Pullback,baseline,2026-02-24,12.64
+38500.0,44275.0,36575.0,LOSS,4,-5.0,6.75,CTG,Banking,Flag Pullback,baseline,2026-02-25,13.88
+38500.0,44275.0,36575.0,LOSS,3,-5.0,6.75,CTG,Banking,Flag Pullback,baseline,2026-02-26,11.92
+38250.0,43987.5,36337.5,LOSS,2,-5.0,6.14,CTG,Banking,Flag Pullback,baseline,2026-02-27,9.09
+36850.0,42377.5,35007.5,LOSS,5,-5.0,9.91,CTG,Banking,Flag Pullback,baseline,2026-03-02,7.61
+35900.0,41285.0,34105.0,LOSS,4,-5.0,7.52,CTG,Banking,Flag Pullback,baseline,2026-03-03,5.66
+26035.1,29940.37,24733.35,OPEN,40,9.19,0.92,CTG,Banking,Flag Pullback,trend_filter,2025-01-23,8.22
+25966.77,29861.78,24668.43,OPEN,40,8.82,0.53,CTG,Banking,Flag Pullback,trend_filter,2025-01-24,4.95
+26000.94,29901.08,24700.89,OPEN,40,8.94,0.0,CTG,Banking,Flag Pullback,trend_filter,2025-02-03,7.03
+26923.44,30961.95,25577.27,OPEN,40,6.22,0.76,CTG,Banking,Flag Pullback,trend_filter,2025-02-04,6.72
+37100.0,42665.0,35245.0,LOSS,14,-5.0,10.51,CTG,Banking,Flag Pullback,trend_filter,2026-02-10,19.88
+37900.0,43585.0,36005.0,LOSS,9,-5.0,5.28,CTG,Banking,Flag Pullback,trend_filter,2026-02-11,17.92
+38000.0,43700.0,36100.0,LOSS,8,-5.0,5.53,CTG,Banking,Flag Pullback,trend_filter,2026-02-12,14.29
+38600.0,44390.0,36670.0,LOSS,7,-5.0,6.99,CTG,Banking,Flag Pullback,trend_filter,2026-02-13,12.18
+38700.0,44505.0,36765.0,LOSS,6,-5.0,7.24,CTG,Banking,Flag Pullback,trend_filter,2026-02-23,14.29
+38200.0,43930.0,36290.0,LOSS,5,-5.0,6.02,CTG,Banking,Flag Pullback,trend_filter,2026-02-24,12.64
+38500.0,44275.0,36575.0,LOSS,4,-5.0,6.75,CTG,Banking,Flag Pullback,trend_filter,2026-02-25,13.88
+38500.0,44275.0,36575.0,LOSS,3,-5.0,6.75,CTG,Banking,Flag Pullback,trend_filter,2026-02-26,11.92
+38250.0,43987.5,36337.5,LOSS,2,-5.0,6.14,CTG,Banking,Flag Pullback,trend_filter,2026-02-27,9.09
+24395.09,28054.36,23175.34,LOSS,5,-5.0,5.18,CTG,Banking,Flag Pullback,vol_filter,2024-11-04,3.32
+38500.0,44275.0,36575.0,LOSS,3,-5.0,6.75,CTG,Banking,Flag Pullback,vol_filter,2026-02-26,11.92
+38250.0,43987.5,36337.5,LOSS,2,-5.0,6.14,CTG,Banking,Flag Pullback,vol_filter,2026-02-27,9.09
+36850.0,42377.5,35007.5,LOSS,5,-5.0,9.91,CTG,Banking,Flag Pullback,vol_filter,2026-03-02,7.61
+35900.0,41285.0,34105.0,LOSS,4,-5.0,7.52,CTG,Banking,Flag Pullback,vol_filter,2026-03-03,5.66
+38500.0,44275.0,36575.0,LOSS,3,-5.0,6.75,CTG,Banking,Flag Pullback,combined,2026-02-26,11.92
+38250.0,43987.5,36337.5,LOSS,2,-5.0,6.14,CTG,Banking,Flag Pullback,combined,2026-02-27,9.09
+35875.14,41256.41,34081.38,LOSS,4,-5.0,6.57,CTG,Banking,Pennant Pullback,baseline,2025-09-16,7.46
+35123.47,40391.99,33367.3,LOSS,27,-5.0,5.52,CTG,Banking,Pennant Pullback,baseline,2025-09-17,6.36
+34986.8,40234.82,33237.46,LOSS,26,-5.0,5.15,CTG,Banking,Pennant Pullback,baseline,2025-09-18,13.24
+34986.8,40234.82,33237.46,LOSS,25,-5.0,5.15,CTG,Banking,Pennant Pullback,baseline,2025-09-19,9.52
+33688.46,38741.73,32004.04,OPEN,40,0.25,3.54,CTG,Banking,Pennant Pullback,baseline,2025-09-22,12.85
+34166.8,39291.82,32458.46,OPEN,40,-0.04,4.89,CTG,Banking,Pennant Pullback,baseline,2025-09-23,14.9
+35875.14,41256.41,34081.38,LOSS,4,-5.0,6.57,CTG,Banking,Pennant Pullback,trend_filter,2025-09-16,7.46
+35123.47,40391.99,33367.3,LOSS,27,-5.0,5.52,CTG,Banking,Pennant Pullback,trend_filter,2025-09-17,6.36
+34986.8,40234.82,33237.46,LOSS,26,-5.0,5.15,CTG,Banking,Pennant Pullback,trend_filter,2025-09-18,13.24
+34986.8,40234.82,33237.46,LOSS,25,-5.0,5.15,CTG,Banking,Pennant Pullback,trend_filter,2025-09-19,9.52
+33688.46,38741.73,32004.04,OPEN,40,0.25,3.54,CTG,Banking,Pennant Pullback,trend_filter,2025-09-22,12.85
+34166.8,39291.82,32458.46,OPEN,40,-0.04,4.89,CTG,Banking,Pennant Pullback,trend_filter,2025-09-23,14.9
+28665.95,32965.84,27232.65,LOSS,1,-5.0,6.91,CTG,Banking,Triangle Pullback,baseline,2025-04-02,5.08
+26684.27,30686.91,25350.06,LOSS,1,-5.0,6.91,CTG,Banking,Triangle Pullback,baseline,2025-04-03,5.06
+34166.8,39291.82,32458.46,OPEN,40,-0.04,4.89,CTG,Banking,Triangle Pullback,baseline,2025-09-23,7.46
+34508.46,39684.73,32783.04,LOSS,34,-5.0,5.84,CTG,Banking,Triangle Pullback,baseline,2025-09-24,6.36
+34371.8,39527.57,32653.21,LOSS,33,-5.0,5.46,CTG,Banking,Triangle Pullback,baseline,2025-09-25,13.24
+34645.13,39841.9,32912.88,LOSS,32,-5.0,6.21,CTG,Banking,Triangle Pullback,baseline,2025-09-26,9.52
+34850.14,40077.66,33107.63,LOSS,21,-5.0,5.27,CTG,Banking,Triangle Pullback,baseline,2025-09-29,12.85
+34713.46,39920.48,32977.79,LOSS,29,-5.0,5.1,CTG,Banking,Triangle Pullback,baseline,2025-09-30,14.9
+28665.95,32965.84,27232.65,LOSS,1,-5.0,6.91,CTG,Banking,Triangle Pullback,trend_filter,2025-04-02,5.08
+34166.8,39291.82,32458.46,OPEN,40,-0.04,4.89,CTG,Banking,Triangle Pullback,trend_filter,2025-09-23,7.46
+34508.46,39684.73,32783.04,LOSS,34,-5.0,5.84,CTG,Banking,Triangle Pullback,trend_filter,2025-09-24,6.36
+34371.8,39527.57,32653.21,LOSS,33,-5.0,5.46,CTG,Banking,Triangle Pullback,trend_filter,2025-09-25,13.24
+34645.13,39841.9,32912.88,LOSS,32,-5.0,6.21,CTG,Banking,Triangle Pullback,trend_filter,2025-09-26,9.52
+34850.14,40077.66,33107.63,LOSS,21,-5.0,5.27,CTG,Banking,Triangle Pullback,trend_filter,2025-09-29,12.85
+34713.46,39920.48,32977.79,LOSS,29,-5.0,5.1,CTG,Banking,Triangle Pullback,trend_filter,2025-09-30,14.9
+17464.72,20084.43,16591.49,OPEN,40,0.44,3.31,HDB,Banking,Flag Pullback,baseline,2025-01-21,10.55
+16963.53,19508.06,16115.35,OPEN,40,3.41,0.45,HDB,Banking,Flag Pullback,baseline,2025-01-22,7.79
+17079.19,19641.07,16225.23,WIN,23,15.0,2.48,HDB,Banking,Flag Pullback,baseline,2025-06-20,3.03
+23903.15,27488.63,22708.0,LOSS,28,-5.0,5.65,HDB,Banking,Flag Pullback,baseline,2025-09-25,15.77
+23247.74,26734.91,22085.36,OPEN,40,3.48,3.65,HDB,Banking,Flag Pullback,baseline,2025-09-26,14.87
+23826.05,27399.95,22634.74,LOSS,26,-5.0,5.34,HDB,Banking,Flag Pullback,baseline,2025-09-29,14.04
+23903.15,27488.63,22708.0,LOSS,25,-5.0,5.65,HDB,Banking,Flag Pullback,baseline,2025-09-30,19.25
+17464.72,20084.43,16591.49,OPEN,40,0.44,3.31,HDB,Banking,Flag Pullback,trend_filter,2025-01-21,10.55
+23903.15,27488.63,22708.0,LOSS,28,-5.0,5.65,HDB,Banking,Flag Pullback,trend_filter,2025-09-25,15.77
+23247.74,26734.91,22085.36,OPEN,40,3.48,3.65,HDB,Banking,Flag Pullback,trend_filter,2025-09-26,14.87
+23826.05,27399.95,22634.74,LOSS,26,-5.0,5.34,HDB,Banking,Flag Pullback,trend_filter,2025-09-29,14.04
+23903.15,27488.63,22708.0,LOSS,25,-5.0,5.65,HDB,Banking,Flag Pullback,trend_filter,2025-09-30,19.25
+23903.15,27488.63,22708.0,LOSS,28,-5.0,5.65,HDB,Banking,Flag Pullback,vol_filter,2025-09-25,15.77
+23247.74,26734.91,22085.36,OPEN,40,3.48,3.65,HDB,Banking,Flag Pullback,vol_filter,2025-09-26,14.87
+23826.05,27399.95,22634.74,LOSS,26,-5.0,5.34,HDB,Banking,Flag Pullback,vol_filter,2025-09-29,14.04
+23903.15,27488.63,22708.0,LOSS,25,-5.0,5.65,HDB,Banking,Flag Pullback,vol_filter,2025-09-30,19.25
+23903.15,27488.63,22708.0,LOSS,28,-5.0,5.65,HDB,Banking,Flag Pullback,combined,2025-09-25,15.77
+23247.74,26734.91,22085.36,OPEN,40,3.48,3.65,HDB,Banking,Flag Pullback,combined,2025-09-26,14.87
+23826.05,27399.95,22634.74,LOSS,26,-5.0,5.34,HDB,Banking,Flag Pullback,combined,2025-09-29,14.04
+23903.15,27488.63,22708.0,LOSS,25,-5.0,5.65,HDB,Banking,Flag Pullback,combined,2025-09-30,19.25
+17271.96,19862.75,16408.36,OPEN,40,1.12,1.34,HDB,Banking,Pennant Pullback,baseline,2025-01-23,10.73
+17464.72,20084.43,16591.49,OPEN,40,-1.77,2.43,HDB,Banking,Pennant Pullback,baseline,2025-01-24,8.54
+17271.96,19862.75,16408.36,OPEN,40,-1.34,1.79,HDB,Banking,Pennant Pullback,baseline,2025-02-03,11.51
+17426.17,20040.1,16554.86,OPEN,40,-0.66,2.65,HDB,Banking,Pennant Pullback,baseline,2025-02-04,18.44
+17426.17,20040.1,16554.86,LOSS,38,-5.0,7.52,HDB,Banking,Pennant Pullback,baseline,2025-02-10,3.38
+17464.72,20084.43,16591.49,OPEN,40,-1.77,2.43,HDB,Banking,Pennant Pullback,trend_filter,2025-01-24,8.54
+17638.21,20283.95,16756.3,LOSS,17,-5.0,5.1,HDB,Banking,Triangle Pullback,baseline,2024-10-10,3.85
+17573.96,20210.05,16695.26,LOSS,17,-5.0,5.3,HDB,Banking,Triangle Pullback,baseline,2024-10-11,3.28
+17696.04,20350.45,16811.24,LOSS,40,-5.0,8.93,HDB,Banking,Triangle Pullback,baseline,2025-02-06,10.73
+17657.49,20306.11,16774.62,LOSS,39,-5.0,8.73,HDB,Banking,Triangle Pullback,baseline,2025-02-07,8.54
+17426.17,20040.1,16554.86,LOSS,38,-5.0,7.52,HDB,Banking,Triangle Pullback,baseline,2025-02-10,11.51
+17387.62,19995.76,16518.24,LOSS,37,-5.0,7.32,HDB,Banking,Triangle Pullback,baseline,2025-02-11,18.44
+17387.62,19995.76,16518.24,LOSS,36,-5.0,7.32,HDB,Banking,Triangle Pullback,baseline,2025-02-12,9.29
+17503.28,20128.77,16628.11,LOSS,35,-5.0,7.93,HDB,Banking,Triangle Pullback,baseline,2025-02-13,6.36
+17464.72,20084.43,16591.49,LOSS,33,-5.0,7.73,HDB,Banking,Triangle Pullback,baseline,2025-02-17,3.38
+24558.56,28242.35,23330.63,LOSS,19,-5.0,5.18,HDB,Banking,Triangle Pullback,baseline,2025-08-20,11.24
+24288.69,27931.99,23074.25,LOSS,6,-5.0,7.94,HDB,Banking,Triangle Pullback,baseline,2025-09-12,16.49
+24095.92,27710.31,22891.13,LOSS,5,-5.0,7.2,HDB,Banking,Triangle Pullback,baseline,2025-09-15,17.04
+24134.47,27754.65,22927.75,LOSS,4,-5.0,7.35,HDB,Banking,Triangle Pullback,baseline,2025-09-16,14.96
+23826.05,27399.95,22634.74,LOSS,3,-5.0,6.15,HDB,Banking,Triangle Pullback,baseline,2025-09-17,13.88
+24866.99,28597.04,23623.64,LOSS,7,-5.0,6.36,HDB,Banking,Triangle Pullback,baseline,2025-12-03,6.2
+25406.74,29217.75,24136.4,LOSS,6,-5.0,8.35,HDB,Banking,Triangle Pullback,baseline,2025-12-04,5.53
+17696.04,20350.45,16811.24,LOSS,40,-5.0,8.93,HDB,Banking,Triangle Pullback,trend_filter,2025-02-06,10.73
+17657.49,20306.11,16774.62,LOSS,39,-5.0,8.73,HDB,Banking,Triangle Pullback,trend_filter,2025-02-07,8.54
+24558.56,28242.35,23330.63,LOSS,19,-5.0,5.18,HDB,Banking,Triangle Pullback,trend_filter,2025-08-20,11.24
+24288.69,27931.99,23074.25,LOSS,6,-5.0,7.94,HDB,Banking,Triangle Pullback,trend_filter,2025-09-12,16.49
+24095.92,27710.31,22891.13,LOSS,5,-5.0,7.2,HDB,Banking,Triangle Pullback,trend_filter,2025-09-15,17.04
+24134.47,27754.65,22927.75,LOSS,4,-5.0,7.35,HDB,Banking,Triangle Pullback,trend_filter,2025-09-16,14.96
+23826.05,27399.95,22634.74,LOSS,3,-5.0,6.15,HDB,Banking,Triangle Pullback,trend_filter,2025-09-17,13.88
+24866.99,28597.04,23623.64,LOSS,7,-5.0,6.36,HDB,Banking,Triangle Pullback,trend_filter,2025-12-03,6.2
+25406.74,29217.75,24136.4,LOSS,6,-5.0,8.35,HDB,Banking,Triangle Pullback,trend_filter,2025-12-04,5.53
+24483.96,28156.55,23259.76,OPEN,40,2.28,0.0,LPB,Banking,Flag Pullback,baseline,2024-09-19,5.76
+24882.72,28615.12,23638.58,OPEN,40,0.8,0.8,LPB,Banking,Flag Pullback,baseline,2024-09-20,8.23
+25042.22,28798.56,23790.11,OPEN,40,0.16,1.43,LPB,Banking,Flag Pullback,baseline,2024-09-23,9.31
+25281.48,29073.7,24017.4,OPEN,40,-1.26,2.37,LPB,Banking,Flag Pullback,baseline,2024-09-24,10.53
+33068.49,38028.77,31415.07,LOSS,14,-5.0,5.07,LPB,Banking,Flag Pullback,baseline,2025-03-04,14.33
+33347.95,38350.14,31680.55,LOSS,13,-5.0,5.87,LPB,Banking,Flag Pullback,baseline,2025-03-05,16.18
+33115.07,38082.33,31459.32,LOSS,12,-5.0,5.2,LPB,Banking,Flag Pullback,baseline,2025-03-06,19.28
+32975.34,37921.65,31326.58,LOSS,13,-5.0,5.51,LPB,Banking,Flag Pullback,baseline,2025-03-07,20.86
+32416.44,37278.91,30795.62,LOSS,13,-5.0,5.17,LPB,Banking,Flag Pullback,baseline,2025-03-10,19.06
+32276.71,37118.22,30662.88,LOSS,14,-5.0,5.34,LPB,Banking,Flag Pullback,baseline,2025-03-11,19.94
+32882.19,37814.52,31238.08,LOSS,10,-5.0,5.24,LPB,Banking,Flag Pullback,baseline,2025-03-12,20.48
+32882.19,37814.52,31238.08,LOSS,9,-5.0,5.24,LPB,Banking,Flag Pullback,baseline,2025-03-13,19.87
+32556.17,37439.59,30928.36,LOSS,9,-5.0,5.58,LPB,Banking,Flag Pullback,baseline,2025-03-14,17.55
+44000.0,50600.0,41800.0,WIN,14,15.0,1.82,LPB,Banking,Flag Pullback,baseline,2025-09-11,5.99
+44100.0,50715.0,41895.0,WIN,13,15.0,1.25,LPB,Banking,Flag Pullback,baseline,2025-09-12,11.21
+44550.0,51232.5,42322.5,WIN,12,15.0,1.23,LPB,Banking,Flag Pullback,baseline,2025-09-15,13.24
+44900.0,51635.0,42655.0,WIN,12,15.0,0.89,LPB,Banking,Flag Pullback,baseline,2025-09-16,10.64
+45300.0,52095.0,43035.0,WIN,11,15.0,0.55,LPB,Banking,Flag Pullback,baseline,2025-09-17,9.71
+45400.0,52210.0,43130.0,WIN,10,15.0,0.66,LPB,Banking,Flag Pullback,baseline,2025-09-18,24.78
+46500.0,53475.0,44175.0,WIN,11,15.0,2.04,LPB,Banking,Flag Pullback,baseline,2025-09-19,33.77
+46500.0,53475.0,44175.0,WIN,10,15.0,2.04,LPB,Banking,Flag Pullback,baseline,2025-09-22,41.52
+47500.0,54625.0,45125.0,LOSS,36,-5.0,8.21,LPB,Banking,Flag Pullback,baseline,2025-10-20,3.68
+49000.0,56350.0,46550.0,LOSS,34,-5.0,6.02,LPB,Banking,Flag Pullback,baseline,2025-10-21,3.44
+49900.0,57385.0,47405.0,LOSS,14,-5.0,5.01,LPB,Banking,Flag Pullback,baseline,2025-10-22,6.15
+51300.0,58995.0,48735.0,LOSS,12,-5.0,5.85,LPB,Banking,Flag Pullback,baseline,2025-10-23,5.04
+52200.0,60030.0,49590.0,LOSS,10,-5.0,5.56,LPB,Banking,Flag Pullback,baseline,2025-10-24,8.1
+51900.0,59685.0,49305.0,LOSS,9,-5.0,5.01,LPB,Banking,Flag Pullback,baseline,2025-10-27,11.68
+52800.0,60720.0,50160.0,LOSS,8,-5.0,6.63,LPB,Banking,Flag Pullback,baseline,2025-10-28,17.02
+33068.49,38028.77,31415.07,LOSS,14,-5.0,5.07,LPB,Banking,Flag Pullback,trend_filter,2025-03-04,14.33
+33347.95,38350.14,31680.55,LOSS,13,-5.0,5.87,LPB,Banking,Flag Pullback,trend_filter,2025-03-05,16.18
+33115.07,38082.33,31459.32,LOSS,12,-5.0,5.2,LPB,Banking,Flag Pullback,trend_filter,2025-03-06,19.28
+32975.34,37921.65,31326.58,LOSS,13,-5.0,5.51,LPB,Banking,Flag Pullback,trend_filter,2025-03-07,20.86
+32416.44,37278.91,30795.62,LOSS,13,-5.0,5.17,LPB,Banking,Flag Pullback,trend_filter,2025-03-10,19.06
+32276.71,37118.22,30662.88,LOSS,14,-5.0,5.34,LPB,Banking,Flag Pullback,trend_filter,2025-03-11,19.94
+32882.19,37814.52,31238.08,LOSS,10,-5.0,5.24,LPB,Banking,Flag Pullback,trend_filter,2025-03-12,20.48
+32882.19,37814.52,31238.08,LOSS,9,-5.0,5.24,LPB,Banking,Flag Pullback,trend_filter,2025-03-13,19.87
+32556.17,37439.59,30928.36,LOSS,9,-5.0,5.58,LPB,Banking,Flag Pullback,trend_filter,2025-03-14,17.55
+44000.0,50600.0,41800.0,WIN,14,15.0,1.82,LPB,Banking,Flag Pullback,trend_filter,2025-09-11,5.99
+44100.0,50715.0,41895.0,WIN,13,15.0,1.25,LPB,Banking,Flag Pullback,trend_filter,2025-09-12,11.21
+44550.0,51232.5,42322.5,WIN,12,15.0,1.23,LPB,Banking,Flag Pullback,trend_filter,2025-09-15,13.24
+44900.0,51635.0,42655.0,WIN,12,15.0,0.89,LPB,Banking,Flag Pullback,trend_filter,2025-09-16,10.64
+45300.0,52095.0,43035.0,WIN,11,15.0,0.55,LPB,Banking,Flag Pullback,trend_filter,2025-09-17,9.71
+45400.0,52210.0,43130.0,WIN,10,15.0,0.66,LPB,Banking,Flag Pullback,trend_filter,2025-09-18,24.78
+46500.0,53475.0,44175.0,WIN,11,15.0,2.04,LPB,Banking,Flag Pullback,trend_filter,2025-09-19,33.77
+46500.0,53475.0,44175.0,WIN,10,15.0,2.04,LPB,Banking,Flag Pullback,trend_filter,2025-09-22,41.52
+47500.0,54625.0,45125.0,LOSS,36,-5.0,8.21,LPB,Banking,Flag Pullback,trend_filter,2025-10-20,3.68
+49000.0,56350.0,46550.0,LOSS,34,-5.0,6.02,LPB,Banking,Flag Pullback,trend_filter,2025-10-21,3.44
+49900.0,57385.0,47405.0,LOSS,14,-5.0,5.01,LPB,Banking,Flag Pullback,trend_filter,2025-10-22,6.15
+51300.0,58995.0,48735.0,LOSS,12,-5.0,5.85,LPB,Banking,Flag Pullback,trend_filter,2025-10-23,5.04
+52200.0,60030.0,49590.0,LOSS,10,-5.0,5.56,LPB,Banking,Flag Pullback,trend_filter,2025-10-24,8.1
+51900.0,59685.0,49305.0,LOSS,9,-5.0,5.01,LPB,Banking,Flag Pullback,trend_filter,2025-10-27,11.68
+52800.0,60720.0,50160.0,LOSS,8,-5.0,6.63,LPB,Banking,Flag Pullback,trend_filter,2025-10-28,17.02
+24483.96,28156.55,23259.76,OPEN,40,2.28,0.0,LPB,Banking,Flag Pullback,vol_filter,2024-09-19,5.76
+24882.72,28615.12,23638.58,OPEN,40,0.8,0.8,LPB,Banking,Flag Pullback,vol_filter,2024-09-20,8.23
+25042.22,28798.56,23790.11,OPEN,40,0.16,1.43,LPB,Banking,Flag Pullback,vol_filter,2024-09-23,9.31
+25281.48,29073.7,24017.4,OPEN,40,-1.26,2.37,LPB,Banking,Flag Pullback,vol_filter,2024-09-24,10.53
+33115.07,38082.33,31459.32,LOSS,12,-5.0,5.2,LPB,Banking,Flag Pullback,vol_filter,2025-03-06,19.28
+32975.34,37921.65,31326.58,LOSS,13,-5.0,5.51,LPB,Banking,Flag Pullback,vol_filter,2025-03-07,20.86
+32416.44,37278.91,30795.62,LOSS,13,-5.0,5.17,LPB,Banking,Flag Pullback,vol_filter,2025-03-10,19.06
+32276.71,37118.22,30662.88,LOSS,14,-5.0,5.34,LPB,Banking,Flag Pullback,vol_filter,2025-03-11,19.94
+32882.19,37814.52,31238.08,LOSS,10,-5.0,5.24,LPB,Banking,Flag Pullback,vol_filter,2025-03-12,20.48
+32882.19,37814.52,31238.08,LOSS,9,-5.0,5.24,LPB,Banking,Flag Pullback,vol_filter,2025-03-13,19.87
+32556.17,37439.59,30928.36,LOSS,9,-5.0,5.58,LPB,Banking,Flag Pullback,vol_filter,2025-03-14,17.55
+45300.0,52095.0,43035.0,WIN,11,15.0,0.55,LPB,Banking,Flag Pullback,vol_filter,2025-09-17,9.71
+45400.0,52210.0,43130.0,WIN,10,15.0,0.66,LPB,Banking,Flag Pullback,vol_filter,2025-09-18,24.78
+46500.0,53475.0,44175.0,WIN,11,15.0,2.04,LPB,Banking,Flag Pullback,vol_filter,2025-09-19,33.77
+46500.0,53475.0,44175.0,WIN,10,15.0,2.04,LPB,Banking,Flag Pullback,vol_filter,2025-09-22,41.52
+33115.07,38082.33,31459.32,LOSS,12,-5.0,5.2,LPB,Banking,Flag Pullback,combined,2025-03-06,19.28
+32975.34,37921.65,31326.58,LOSS,13,-5.0,5.51,LPB,Banking,Flag Pullback,combined,2025-03-07,20.86
+32416.44,37278.91,30795.62,LOSS,13,-5.0,5.17,LPB,Banking,Flag Pullback,combined,2025-03-10,19.06
+32276.71,37118.22,30662.88,LOSS,14,-5.0,5.34,LPB,Banking,Flag Pullback,combined,2025-03-11,19.94
+32882.19,37814.52,31238.08,LOSS,10,-5.0,5.24,LPB,Banking,Flag Pullback,combined,2025-03-12,20.48
+32882.19,37814.52,31238.08,LOSS,9,-5.0,5.24,LPB,Banking,Flag Pullback,combined,2025-03-13,19.87
+32556.17,37439.59,30928.36,LOSS,9,-5.0,5.58,LPB,Banking,Flag Pullback,combined,2025-03-14,17.55
+45300.0,52095.0,43035.0,WIN,11,15.0,0.55,LPB,Banking,Flag Pullback,combined,2025-09-17,9.71
+45400.0,52210.0,43130.0,WIN,10,15.0,0.66,LPB,Banking,Flag Pullback,combined,2025-09-18,24.78
+46500.0,53475.0,44175.0,WIN,11,15.0,2.04,LPB,Banking,Flag Pullback,combined,2025-09-19,33.77
+46500.0,53475.0,44175.0,WIN,10,15.0,2.04,LPB,Banking,Flag Pullback,combined,2025-09-22,41.52
+31750.0,36512.5,30162.5,WIN,38,15.0,3.31,LPB,Banking,Triangle Pullback,baseline,2025-06-04,4.87
+31200.0,35880.0,29640.0,WIN,31,15.0,1.6,LPB,Banking,Triangle Pullback,baseline,2025-06-06,4.33
+51500.0,59225.0,48925.0,LOSS,4,-5.0,7.77,LPB,Banking,Triangle Pullback,baseline,2025-10-14,8.46
+51600.0,59340.0,49020.0,LOSS,3,-5.0,7.95,LPB,Banking,Triangle Pullback,baseline,2025-10-15,4.61
+31750.0,36512.5,30162.5,WIN,38,15.0,3.31,LPB,Banking,Triangle Pullback,trend_filter,2025-06-04,4.87
+51500.0,59225.0,48925.0,LOSS,4,-5.0,7.77,LPB,Banking,Triangle Pullback,trend_filter,2025-10-14,8.46
+51600.0,59340.0,49020.0,LOSS,3,-5.0,7.95,LPB,Banking,Triangle Pullback,trend_filter,2025-10-15,4.61
+51500.0,59225.0,48925.0,LOSS,4,-5.0,7.77,LPB,Banking,Triangle Pullback,vol_filter,2025-10-14,8.46
+51600.0,59340.0,49020.0,LOSS,3,-5.0,7.95,LPB,Banking,Triangle Pullback,vol_filter,2025-10-15,4.61
+51500.0,59225.0,48925.0,LOSS,4,-5.0,7.77,LPB,Banking,Triangle Pullback,combined,2025-10-14,8.46
+15356.76,17660.27,14588.92,OPEN,40,8.05,1.48,MBB,Banking,Flag Pullback,baseline,2024-08-13,4.2
+15226.61,17510.61,14465.28,OPEN,40,9.19,0.64,MBB,Banking,Flag Pullback,baseline,2024-08-14,8.89
+25000.0,28750.0,23750.0,OPEN,40,2.2,0.0,MBB,Banking,Flag Pullback,baseline,2026-03-23,8.62
+25600.0,29440.0,24320.0,OPEN,40,-0.2,0.39,MBB,Banking,Flag Pullback,baseline,2026-03-24,6.6
+17959.6,20653.54,17061.62,LOSS,6,-5.0,5.62,MBB,Banking,Pennant Pullback,baseline,2025-03-26,3.11
+18483.42,21255.93,17559.25,WIN,37,15.0,2.43,MBB,Banking,Pennant Pullback,baseline,2025-06-03,6.8
+18146.68,20868.68,17239.34,WIN,33,15.0,0.62,MBB,Banking,Pennant Pullback,baseline,2025-06-09,3.93
+26700.0,30705.0,25365.0,LOSS,27,-5.0,5.43,MBB,Banking,Pennant Pullback,baseline,2025-09-11,19.34
+26600.0,30590.0,25270.0,LOSS,26,-5.0,5.08,MBB,Banking,Pennant Pullback,baseline,2025-09-12,25.83
+26850.0,30877.5,25507.5,LOSS,25,-5.0,5.96,MBB,Banking,Pennant Pullback,baseline,2025-09-15,29.87
+25300.0,29095.0,24035.0,LOSS,1,-5.0,5.14,MBB,Banking,Pennant Pullback,baseline,2025-12-31,3.59
+17959.6,20653.54,17061.62,LOSS,6,-5.0,5.62,MBB,Banking,Pennant Pullback,trend_filter,2025-03-26,3.11
+18483.42,21255.93,17559.25,WIN,37,15.0,2.43,MBB,Banking,Pennant Pullback,trend_filter,2025-06-03,6.8
+18146.68,20868.68,17239.34,WIN,33,15.0,0.62,MBB,Banking,Pennant Pullback,trend_filter,2025-06-09,3.93
+26700.0,30705.0,25365.0,LOSS,27,-5.0,5.43,MBB,Banking,Pennant Pullback,trend_filter,2025-09-11,19.34
+26600.0,30590.0,25270.0,LOSS,26,-5.0,5.08,MBB,Banking,Pennant Pullback,trend_filter,2025-09-12,25.83
+26850.0,30877.5,25507.5,LOSS,25,-5.0,5.96,MBB,Banking,Pennant Pullback,trend_filter,2025-09-15,29.87
+25300.0,29095.0,24035.0,LOSS,1,-5.0,5.14,MBB,Banking,Pennant Pullback,trend_filter,2025-12-31,3.59
+18071.84,20782.62,17168.25,WIN,34,15.0,0.21,MBB,Banking,Triangle Pullback,baseline,2025-06-06,12.68
+18146.68,20868.68,17239.34,WIN,33,15.0,0.62,MBB,Banking,Triangle Pullback,baseline,2025-06-09,14.04
+18109.26,20825.65,17203.8,WIN,32,15.0,0.21,MBB,Banking,Triangle Pullback,baseline,2025-06-10,6.8
+28450.0,32717.5,27027.5,LOSS,3,-5.0,6.15,MBB,Banking,Triangle Pullback,baseline,2025-09-03,8.9
+26700.0,30705.0,25365.0,LOSS,27,-5.0,5.43,MBB,Banking,Triangle Pullback,baseline,2025-09-11,11.65
+26600.0,30590.0,25270.0,LOSS,26,-5.0,5.08,MBB,Banking,Triangle Pullback,baseline,2025-09-12,14.61
+26850.0,30877.5,25507.5,LOSS,25,-5.0,5.96,MBB,Banking,Triangle Pullback,baseline,2025-09-15,14.95
+27500.0,31625.0,26125.0,LOSS,4,-5.0,5.09,MBB,Banking,Triangle Pullback,baseline,2025-09-16,12.32
+27000.0,31050.0,25650.0,LOSS,23,-5.0,6.48,MBB,Banking,Triangle Pullback,baseline,2025-09-17,18.0
+26800.0,30820.0,25460.0,LOSS,22,-5.0,5.78,MBB,Banking,Triangle Pullback,baseline,2025-09-18,19.34
+26650.0,30647.5,25317.5,LOSS,21,-5.0,5.25,MBB,Banking,Triangle Pullback,baseline,2025-09-19,25.83
+26150.0,30072.5,24842.5,LOSS,21,-5.0,5.16,MBB,Banking,Triangle Pullback,baseline,2025-09-22,29.87
+26350.0,30302.5,25032.5,LOSS,20,-5.0,5.88,MBB,Banking,Triangle Pullback,baseline,2025-09-23,32.69
+18071.84,20782.62,17168.25,WIN,34,15.0,0.21,MBB,Banking,Triangle Pullback,trend_filter,2025-06-06,12.68
+18146.68,20868.68,17239.34,WIN,33,15.0,0.62,MBB,Banking,Triangle Pullback,trend_filter,2025-06-09,14.04
+18109.26,20825.65,17203.8,WIN,32,15.0,0.21,MBB,Banking,Triangle Pullback,trend_filter,2025-06-10,6.8
+28450.0,32717.5,27027.5,LOSS,3,-5.0,6.15,MBB,Banking,Triangle Pullback,trend_filter,2025-09-03,8.9
+26700.0,30705.0,25365.0,LOSS,27,-5.0,5.43,MBB,Banking,Triangle Pullback,trend_filter,2025-09-11,11.65
+26600.0,30590.0,25270.0,LOSS,26,-5.0,5.08,MBB,Banking,Triangle Pullback,trend_filter,2025-09-12,14.61
+26850.0,30877.5,25507.5,LOSS,25,-5.0,5.96,MBB,Banking,Triangle Pullback,trend_filter,2025-09-15,14.95
+27500.0,31625.0,26125.0,LOSS,4,-5.0,5.09,MBB,Banking,Triangle Pullback,trend_filter,2025-09-16,12.32
+27000.0,31050.0,25650.0,LOSS,23,-5.0,6.48,MBB,Banking,Triangle Pullback,trend_filter,2025-09-17,18.0
+26800.0,30820.0,25460.0,LOSS,22,-5.0,5.78,MBB,Banking,Triangle Pullback,trend_filter,2025-09-18,19.34
+26650.0,30647.5,25317.5,LOSS,21,-5.0,5.25,MBB,Banking,Triangle Pullback,trend_filter,2025-09-19,25.83
+26150.0,30072.5,24842.5,LOSS,21,-5.0,5.16,MBB,Banking,Triangle Pullback,trend_filter,2025-09-22,29.87
+26350.0,30302.5,25032.5,LOSS,20,-5.0,5.88,MBB,Banking,Triangle Pullback,trend_filter,2025-09-23,32.69
+18071.84,20782.62,17168.25,WIN,34,15.0,0.21,MBB,Banking,Triangle Pullback,vol_filter,2025-06-06,12.68
+18071.84,20782.62,17168.25,WIN,34,15.0,0.21,MBB,Banking,Triangle Pullback,combined,2025-06-06,12.68
+8578.5,9865.27,8149.57,OPEN,40,-2.88,4.64,SHB,Banking,Flag Pullback,baseline,2024-06-06,3.98
+8433.71,9698.77,8012.03,LOSS,39,-5.0,7.1,SHB,Banking,Flag Pullback,baseline,2024-06-11,4.5
+8542.3,9823.65,8115.19,LOSS,38,-5.0,8.28,SHB,Banking,Flag Pullback,baseline,2024-06-12,4.04
+7987.75,9185.91,7588.36,OPEN,40,-1.91,3.35,SHB,Banking,Flag Pullback,baseline,2024-10-28,6.28
+8025.97,9229.86,7624.67,OPEN,40,-2.38,3.81,SHB,Banking,Flag Pullback,baseline,2024-10-29,7.28
+8025.97,9229.86,7624.67,OPEN,40,-1.9,3.81,SHB,Banking,Flag Pullback,baseline,2024-10-30,5.83
+8102.41,9317.77,7697.29,OPEN,40,-2.83,4.72,SHB,Banking,Flag Pullback,baseline,2024-10-31,5.8
+8064.19,9273.81,7660.98,OPEN,40,-2.37,4.27,SHB,Banking,Flag Pullback,baseline,2024-11-01,5.34
+7987.75,9185.91,7588.36,OPEN,40,-1.91,3.35,SHB,Banking,Flag Pullback,baseline,2024-11-04,5.85
+8064.19,9273.81,7660.98,OPEN,40,-2.84,4.27,SHB,Banking,Flag Pullback,baseline,2024-11-05,3.37
+8140.62,9361.72,7733.59,LOSS,8,-5.0,5.16,SHB,Banking,Flag Pullback,baseline,2024-11-06,4.35
+8102.41,9317.77,7697.29,OPEN,40,-3.3,4.72,SHB,Banking,Flag Pullback,baseline,2024-11-07,3.86
+8064.19,9273.81,7660.98,OPEN,40,-2.37,4.27,SHB,Banking,Flag Pullback,baseline,2024-11-08,3.35
+8025.97,9229.86,7624.67,OPEN,40,-2.38,3.81,SHB,Banking,Flag Pullback,baseline,2024-11-11,4.35
+7987.75,9185.91,7588.36,OPEN,40,-1.44,3.35,SHB,Banking,Flag Pullback,baseline,2024-11-12,3.35
+17200.0,19780.0,16340.0,LOSS,17,-5.0,6.4,SHB,Banking,Flag Pullback,baseline,2025-09-26,6.37
+16800.0,19320.0,15960.0,LOSS,21,-5.0,5.36,SHB,Banking,Flag Pullback,baseline,2025-09-29,10.3
+16900.0,19435.0,16055.0,LOSS,19,-5.0,5.33,SHB,Banking,Flag Pullback,baseline,2025-09-30,13.91
+16950.0,19492.5,16102.5,LOSS,14,-5.0,5.01,SHB,Banking,Flag Pullback,baseline,2025-10-01,12.7
+17000.0,19550.0,16150.0,LOSS,13,-5.0,5.29,SHB,Banking,Flag Pullback,baseline,2025-10-02,12.7
+16700.0,19205.0,15865.0,LOSS,22,-5.0,8.08,SHB,Banking,Flag Pullback,baseline,2025-10-03,5.12
+15300.0,17595.0,14535.0,OPEN,40,7.84,0.98,SHB,Banking,Flag Pullback,baseline,2025-11-10,4.02
+15800.0,18170.0,15010.0,OPEN,40,5.06,1.58,SHB,Banking,Flag Pullback,baseline,2025-11-11,5.88
+16300.0,18745.0,15485.0,OPEN,40,1.23,3.99,SHB,Banking,Flag Pullback,baseline,2025-11-12,4.9
+15800.0,18170.0,15010.0,LOSS,4,-5.0,5.38,SHB,Banking,Flag Pullback,baseline,2026-02-04,3.77
+15650.0,17997.5,14867.5,LOSS,17,-5.0,8.31,SHB,Banking,Flag Pullback,baseline,2026-02-05,4.4
+15350.0,17652.5,14582.5,LOSS,16,-5.0,6.51,SHB,Banking,Flag Pullback,baseline,2026-02-06,5.1
+15250.0,17537.5,14487.5,LOSS,15,-5.0,5.9,SHB,Banking,Flag Pullback,baseline,2026-02-09,5.59
+15250.0,17537.5,14487.5,LOSS,14,-5.0,5.9,SHB,Banking,Flag Pullback,baseline,2026-02-10,3.41
+17200.0,19780.0,16340.0,LOSS,17,-5.0,6.4,SHB,Banking,Flag Pullback,trend_filter,2025-09-26,6.37
+16800.0,19320.0,15960.0,LOSS,21,-5.0,5.36,SHB,Banking,Flag Pullback,trend_filter,2025-09-29,10.3
+16900.0,19435.0,16055.0,LOSS,19,-5.0,5.33,SHB,Banking,Flag Pullback,trend_filter,2025-09-30,13.91
+16950.0,19492.5,16102.5,LOSS,14,-5.0,5.01,SHB,Banking,Flag Pullback,trend_filter,2025-10-01,12.7
+17000.0,19550.0,16150.0,LOSS,13,-5.0,5.29,SHB,Banking,Flag Pullback,trend_filter,2025-10-02,12.7
+8064.19,9273.81,7660.98,OPEN,40,-2.37,4.27,SHB,Banking,Flag Pullback,vol_filter,2024-11-01,5.34
+7987.75,9185.91,7588.36,OPEN,40,-1.91,3.35,SHB,Banking,Flag Pullback,vol_filter,2024-11-04,5.85
+8064.19,9273.81,7660.98,OPEN,40,-2.84,4.27,SHB,Banking,Flag Pullback,vol_filter,2024-11-05,3.37
+8140.62,9361.72,7733.59,LOSS,8,-5.0,5.16,SHB,Banking,Flag Pullback,vol_filter,2024-11-06,4.35
+8102.41,9317.77,7697.29,OPEN,40,-3.3,4.72,SHB,Banking,Flag Pullback,vol_filter,2024-11-07,3.86
+8064.19,9273.81,7660.98,OPEN,40,-2.37,4.27,SHB,Banking,Flag Pullback,vol_filter,2024-11-08,3.35
+8025.97,9229.86,7624.67,OPEN,40,-2.38,3.81,SHB,Banking,Flag Pullback,vol_filter,2024-11-11,4.35
+7987.75,9185.91,7588.36,OPEN,40,-1.44,3.35,SHB,Banking,Flag Pullback,vol_filter,2024-11-12,3.35
+7834.87,9010.1,7443.13,OPEN,40,8.29,1.95,SHB,Banking,Pennant Pullback,baseline,2025-01-09,3.92
+8476.11,9747.53,8052.3,WIN,5,15.0,0.5,SHB,Banking,Pennant Pullback,baseline,2025-03-11,6.44
+8467.62,9737.77,8044.24,WIN,4,15.0,0.4,SHB,Banking,Pennant Pullback,baseline,2025-03-12,4.93
+8484.59,9757.28,8060.36,WIN,3,15.0,0.0,SHB,Banking,Pennant Pullback,baseline,2025-03-13,5.91
+9078.52,10440.29,8624.59,WIN,6,15.0,0.0,SHB,Banking,Pennant Pullback,baseline,2025-03-14,5.88
+9545.17,10976.94,9067.91,LOSS,16,-5.0,5.78,SHB,Banking,Pennant Pullback,baseline,2025-03-17,7.84
+9842.13,11318.45,9350.02,LOSS,13,-5.0,6.03,SHB,Banking,Pennant Pullback,baseline,2025-03-18,7.35
+9884.55,11367.23,9390.32,LOSS,12,-5.0,6.44,SHB,Banking,Pennant Pullback,baseline,2025-03-19,8.37
+9969.4,11464.81,9470.93,LOSS,11,-5.0,7.23,SHB,Banking,Pennant Pullback,baseline,2025-03-20,6.83
+9969.4,11464.81,9470.93,LOSS,10,-5.0,7.23,SHB,Banking,Pennant Pullback,baseline,2025-03-21,6.8
+10520.9,12099.03,9994.85,LOSS,8,-5.0,5.65,SHB,Banking,Pennant Pullback,baseline,2025-03-24,6.7
+10520.9,12099.03,9994.85,LOSS,7,-5.0,5.65,SHB,Banking,Pennant Pullback,baseline,2025-03-25,5.69
+10393.63,11952.67,9873.95,LOSS,7,-5.0,11.02,SHB,Banking,Pennant Pullback,baseline,2025-03-26,7.28
+18200.0,20930.0,17290.0,LOSS,4,-5.0,5.77,SHB,Banking,Pennant Pullback,baseline,2025-09-16,38.54
+18050.0,20757.5,17147.5,LOSS,4,-5.0,6.09,SHB,Banking,Pennant Pullback,baseline,2025-09-17,32.3
+17850.0,20527.5,16957.5,LOSS,3,-5.0,5.04,SHB,Banking,Pennant Pullback,baseline,2025-09-18,38.9
+17750.0,20412.5,16862.5,LOSS,3,-5.0,7.89,SHB,Banking,Pennant Pullback,baseline,2025-09-19,28.44
+17400.0,20010.0,16530.0,LOSS,2,-5.0,6.03,SHB,Banking,Pennant Pullback,baseline,2025-09-22,21.54
+17000.0,19550.0,16150.0,LOSS,20,-5.0,5.29,SHB,Banking,Pennant Pullback,baseline,2025-09-23,12.03
+16350.0,18802.5,15532.5,LOSS,28,-5.0,6.12,SHB,Banking,Pennant Pullback,baseline,2025-12-26,9.8
+16200.0,18630.0,15390.0,LOSS,27,-5.0,5.25,SHB,Banking,Pennant Pullback,baseline,2025-12-29,11.11
+16350.0,18802.5,15532.5,LOSS,26,-5.0,6.12,SHB,Banking,Pennant Pullback,baseline,2025-12-30,7.59
+16350.0,18802.5,15532.5,LOSS,25,-5.0,6.12,SHB,Banking,Pennant Pullback,baseline,2025-12-31,6.44
+16100.0,18515.0,15295.0,LOSS,25,-5.0,6.52,SHB,Banking,Pennant Pullback,baseline,2026-01-05,5.81
+8476.11,9747.53,8052.3,WIN,5,15.0,0.5,SHB,Banking,Pennant Pullback,trend_filter,2025-03-11,6.44
+8467.62,9737.77,8044.24,WIN,4,15.0,0.4,SHB,Banking,Pennant Pullback,trend_filter,2025-03-12,4.93
+8484.59,9757.28,8060.36,WIN,3,15.0,0.0,SHB,Banking,Pennant Pullback,trend_filter,2025-03-13,5.91
+9078.52,10440.29,8624.59,WIN,6,15.0,0.0,SHB,Banking,Pennant Pullback,trend_filter,2025-03-14,5.88
+9545.17,10976.94,9067.91,LOSS,16,-5.0,5.78,SHB,Banking,Pennant Pullback,trend_filter,2025-03-17,7.84
+9842.13,11318.45,9350.02,LOSS,13,-5.0,6.03,SHB,Banking,Pennant Pullback,trend_filter,2025-03-18,7.35
+9884.55,11367.23,9390.32,LOSS,12,-5.0,6.44,SHB,Banking,Pennant Pullback,trend_filter,2025-03-19,8.37
+9969.4,11464.81,9470.93,LOSS,11,-5.0,7.23,SHB,Banking,Pennant Pullback,trend_filter,2025-03-20,6.83
+9969.4,11464.81,9470.93,LOSS,10,-5.0,7.23,SHB,Banking,Pennant Pullback,trend_filter,2025-03-21,6.8
+10520.9,12099.03,9994.85,LOSS,8,-5.0,5.65,SHB,Banking,Pennant Pullback,trend_filter,2025-03-24,6.7
+10520.9,12099.03,9994.85,LOSS,7,-5.0,5.65,SHB,Banking,Pennant Pullback,trend_filter,2025-03-25,5.69
+10393.63,11952.67,9873.95,LOSS,7,-5.0,11.02,SHB,Banking,Pennant Pullback,trend_filter,2025-03-26,7.28
+18200.0,20930.0,17290.0,LOSS,4,-5.0,5.77,SHB,Banking,Pennant Pullback,trend_filter,2025-09-16,38.54
+18050.0,20757.5,17147.5,LOSS,4,-5.0,6.09,SHB,Banking,Pennant Pullback,trend_filter,2025-09-17,32.3
+17850.0,20527.5,16957.5,LOSS,3,-5.0,5.04,SHB,Banking,Pennant Pullback,trend_filter,2025-09-18,38.9
+17750.0,20412.5,16862.5,LOSS,3,-5.0,7.89,SHB,Banking,Pennant Pullback,trend_filter,2025-09-19,28.44
+17400.0,20010.0,16530.0,LOSS,2,-5.0,6.03,SHB,Banking,Pennant Pullback,trend_filter,2025-09-22,21.54
+17000.0,19550.0,16150.0,LOSS,20,-5.0,5.29,SHB,Banking,Pennant Pullback,trend_filter,2025-09-23,12.03
+9078.52,10440.29,8624.59,WIN,6,15.0,0.0,SHB,Banking,Triangle Pullback,baseline,2025-03-14,3.94
+9545.17,10976.94,9067.91,LOSS,16,-5.0,5.78,SHB,Banking,Triangle Pullback,baseline,2025-03-17,3.94
+9842.13,11318.45,9350.02,LOSS,13,-5.0,6.03,SHB,Banking,Triangle Pullback,baseline,2025-03-18,6.44
+9884.55,11367.23,9390.32,LOSS,12,-5.0,6.44,SHB,Banking,Triangle Pullback,baseline,2025-03-19,4.93
+9969.4,11464.81,9470.93,LOSS,11,-5.0,7.23,SHB,Banking,Triangle Pullback,baseline,2025-03-20,5.91
+9969.4,11464.81,9470.93,LOSS,10,-5.0,7.23,SHB,Banking,Triangle Pullback,baseline,2025-03-21,5.88
+10520.9,12099.03,9994.85,LOSS,8,-5.0,5.65,SHB,Banking,Triangle Pullback,baseline,2025-03-24,7.84
+10520.9,12099.03,9994.85,LOSS,7,-5.0,5.65,SHB,Banking,Triangle Pullback,baseline,2025-03-25,7.35
+10393.63,11952.67,9873.95,LOSS,7,-5.0,11.02,SHB,Banking,Triangle Pullback,baseline,2025-03-26,8.37
+10775.43,12391.75,10236.66,LOSS,5,-5.0,7.87,SHB,Banking,Triangle Pullback,baseline,2025-03-27,6.83
+17550.0,20182.5,16672.5,LOSS,8,-5.0,6.84,SHB,Banking,Triangle Pullback,baseline,2025-09-12,31.58
+17800.0,20470.0,16910.0,LOSS,7,-5.0,8.15,SHB,Banking,Triangle Pullback,baseline,2025-09-15,31.82
+18200.0,20930.0,17290.0,LOSS,4,-5.0,5.77,SHB,Banking,Triangle Pullback,baseline,2025-09-16,31.34
+18050.0,20757.5,17147.5,LOSS,4,-5.0,6.09,SHB,Banking,Triangle Pullback,baseline,2025-09-17,30.82
+17850.0,20527.5,16957.5,LOSS,3,-5.0,5.04,SHB,Banking,Triangle Pullback,baseline,2025-09-18,29.45
+17750.0,20412.5,16862.5,LOSS,3,-5.0,7.89,SHB,Banking,Triangle Pullback,baseline,2025-09-19,32.08
+17400.0,20010.0,16530.0,LOSS,2,-5.0,6.03,SHB,Banking,Triangle Pullback,baseline,2025-09-22,35.55
+17000.0,19550.0,16150.0,LOSS,20,-5.0,5.29,SHB,Banking,Triangle Pullback,baseline,2025-09-23,38.54
+16100.0,18515.0,15295.0,LOSS,25,-5.0,6.52,SHB,Banking,Triangle Pullback,baseline,2026-01-05,5.68
+9078.52,10440.29,8624.59,WIN,6,15.0,0.0,SHB,Banking,Triangle Pullback,trend_filter,2025-03-14,3.94
+9545.17,10976.94,9067.91,LOSS,16,-5.0,5.78,SHB,Banking,Triangle Pullback,trend_filter,2025-03-17,3.94
+9842.13,11318.45,9350.02,LOSS,13,-5.0,6.03,SHB,Banking,Triangle Pullback,trend_filter,2025-03-18,6.44
+9884.55,11367.23,9390.32,LOSS,12,-5.0,6.44,SHB,Banking,Triangle Pullback,trend_filter,2025-03-19,4.93
+9969.4,11464.81,9470.93,LOSS,11,-5.0,7.23,SHB,Banking,Triangle Pullback,trend_filter,2025-03-20,5.91
+9969.4,11464.81,9470.93,LOSS,10,-5.0,7.23,SHB,Banking,Triangle Pullback,trend_filter,2025-03-21,5.88
+10520.9,12099.03,9994.85,LOSS,8,-5.0,5.65,SHB,Banking,Triangle Pullback,trend_filter,2025-03-24,7.84
+10520.9,12099.03,9994.85,LOSS,7,-5.0,5.65,SHB,Banking,Triangle Pullback,trend_filter,2025-03-25,7.35
+10393.63,11952.67,9873.95,LOSS,7,-5.0,11.02,SHB,Banking,Triangle Pullback,trend_filter,2025-03-26,8.37
+10775.43,12391.75,10236.66,LOSS,5,-5.0,7.87,SHB,Banking,Triangle Pullback,trend_filter,2025-03-27,6.83
+17550.0,20182.5,16672.5,LOSS,8,-5.0,6.84,SHB,Banking,Triangle Pullback,trend_filter,2025-09-12,31.58
+17800.0,20470.0,16910.0,LOSS,7,-5.0,8.15,SHB,Banking,Triangle Pullback,trend_filter,2025-09-15,31.82
+18200.0,20930.0,17290.0,LOSS,4,-5.0,5.77,SHB,Banking,Triangle Pullback,trend_filter,2025-09-16,31.34
+18050.0,20757.5,17147.5,LOSS,4,-5.0,6.09,SHB,Banking,Triangle Pullback,trend_filter,2025-09-17,30.82
+17850.0,20527.5,16957.5,LOSS,3,-5.0,5.04,SHB,Banking,Triangle Pullback,trend_filter,2025-09-18,29.45
+17750.0,20412.5,16862.5,LOSS,3,-5.0,7.89,SHB,Banking,Triangle Pullback,trend_filter,2025-09-19,32.08
+17400.0,20010.0,16530.0,LOSS,2,-5.0,6.03,SHB,Banking,Triangle Pullback,trend_filter,2025-09-22,35.55
+17000.0,19550.0,16150.0,LOSS,20,-5.0,5.29,SHB,Banking,Triangle Pullback,trend_filter,2025-09-23,38.54
+15450.0,17767.5,14677.5,WIN,12,15.0,0.0,SSB,Banking,Flag Pullback,baseline,2024-09-17,11.78
+17100.0,19665.0,16245.0,LOSS,10,-5.0,6.73,SSB,Banking,Flag Pullback,baseline,2026-02-23,3.75
+19500.0,22425.0,18525.0,LOSS,36,-5.0,6.92,SSB,Banking,Pennant Pullback,baseline,2025-02-14,5.45
+19450.0,22367.5,18477.5,LOSS,22,-5.0,6.68,SSB,Banking,Pennant Pullback,baseline,2025-03-06,9.38
+19650.0,22597.5,18667.5,LOSS,19,-5.0,5.6,SSB,Banking,Pennant Pullback,baseline,2025-03-07,7.47
+19800.0,22770.0,18810.0,LOSS,18,-5.0,6.31,SSB,Banking,Pennant Pullback,baseline,2025-03-10,6.86
+19450.0,22367.5,18477.5,LOSS,22,-5.0,6.68,SSB,Banking,Pennant Pullback,trend_filter,2025-03-06,9.38
+19650.0,22597.5,18667.5,LOSS,19,-5.0,5.6,SSB,Banking,Pennant Pullback,trend_filter,2025-03-07,7.47
+19800.0,22770.0,18810.0,LOSS,18,-5.0,6.31,SSB,Banking,Pennant Pullback,trend_filter,2025-03-10,6.86
+18618.73,21411.54,17687.79,WIN,19,15.0,0.47,SSB,Banking,Triangle Pullback,baseline,2024-07-22,3.46
+18882.82,21715.25,17938.68,LOSS,32,-5.0,6.0,SSB,Banking,Triangle Pullback,baseline,2024-07-23,4.85
+16000.0,18400.0,15200.0,LOSS,1,-5.0,5.94,SSB,Banking,Triangle Pullback,baseline,2024-09-11,5.29
+18850.0,21677.5,17907.5,LOSS,18,-5.0,6.1,SSB,Banking,Triangle Pullback,baseline,2025-05-20,4.29
+18850.0,21677.5,17907.5,LOSS,18,-5.0,6.1,SSB,Banking,Triangle Pullback,vol_filter,2025-05-20,4.29
+67000.0,77050.0,63650.0,LOSS,6,-5.0,6.57,STB,Banking,Flag Pullback,baseline,2026-02-26,5.83
+67000.0,77050.0,63650.0,LOSS,6,-5.0,6.57,STB,Banking,Flag Pullback,trend_filter,2026-02-26,5.83
+67000.0,77050.0,63650.0,LOSS,6,-5.0,6.57,STB,Banking,Flag Pullback,vol_filter,2026-02-26,5.83
+67000.0,77050.0,63650.0,LOSS,6,-5.0,6.57,STB,Banking,Flag Pullback,combined,2026-02-26,5.83
+29750.0,34212.5,28262.5,LOSS,13,-5.0,5.71,STB,Banking,Pennant Pullback,baseline,2024-07-15,6.27
+29900.0,34385.0,28405.0,LOSS,12,-5.0,6.19,STB,Banking,Pennant Pullback,baseline,2024-07-16,5.89
+32400.0,37260.0,30780.0,WIN,16,15.0,0.46,STB,Banking,Pennant Pullback,baseline,2024-12-04,4.72
+33950.0,39042.5,32252.5,OPEN,40,10.31,1.33,STB,Banking,Pennant Pullback,baseline,2024-12-05,5.64
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Pennant Pullback,baseline,2024-12-06,5.65
+60000.0,69000.0,57000.0,LOSS,7,-5.0,8.5,STB,Banking,Pennant Pullback,baseline,2025-10-09,4.14
+57200.0,65780.0,54340.0,LOSS,3,-5.0,8.57,STB,Banking,Pennant Pullback,baseline,2025-10-29,10.95
+56900.0,65435.0,54055.0,LOSS,2,-5.0,8.08,STB,Banking,Pennant Pullback,baseline,2025-10-30,5.96
+52300.0,60145.0,49685.0,LOSS,4,-5.0,7.55,STB,Banking,Pennant Pullback,baseline,2025-11-03,6.79
+53900.0,61985.0,51205.0,LOSS,3,-5.0,10.3,STB,Banking,Pennant Pullback,baseline,2025-11-04,4.28
+53500.0,61525.0,50825.0,LOSS,2,-5.0,9.63,STB,Banking,Pennant Pullback,baseline,2025-11-05,6.58
+51900.0,59685.0,49305.0,LOSS,1,-5.0,6.84,STB,Banking,Pennant Pullback,baseline,2025-11-06,5.26
+48350.0,55602.5,45932.5,WIN,32,15.0,4.96,STB,Banking,Pennant Pullback,baseline,2025-11-07,9.42
+48500.0,55775.0,46075.0,LOSS,24,-5.0,5.15,STB,Banking,Pennant Pullback,baseline,2025-11-10,11.31
+49650.0,57097.5,47167.5,LOSS,23,-5.0,7.35,STB,Banking,Pennant Pullback,baseline,2025-11-11,9.39
+62200.0,71530.0,59090.0,LOSS,3,-5.0,6.59,STB,Banking,Pennant Pullback,baseline,2026-03-25,5.54
+60600.0,69690.0,57570.0,OPEN,40,1.16,4.13,STB,Banking,Pennant Pullback,baseline,2026-03-26,6.69
+59900.0,68885.0,56905.0,OPEN,40,2.34,3.01,STB,Banking,Pennant Pullback,baseline,2026-03-27,3.97
+33950.0,39042.5,32252.5,OPEN,40,10.31,1.33,STB,Banking,Pennant Pullback,trend_filter,2024-12-05,5.64
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Pennant Pullback,trend_filter,2024-12-06,5.65
+60000.0,69000.0,57000.0,LOSS,7,-5.0,8.5,STB,Banking,Pennant Pullback,trend_filter,2025-10-09,4.14
+57200.0,65780.0,54340.0,LOSS,3,-5.0,8.57,STB,Banking,Pennant Pullback,trend_filter,2025-10-29,10.95
+56900.0,65435.0,54055.0,LOSS,2,-5.0,8.08,STB,Banking,Pennant Pullback,trend_filter,2025-10-30,5.96
+62200.0,71530.0,59090.0,LOSS,3,-5.0,6.59,STB,Banking,Pennant Pullback,trend_filter,2026-03-25,5.54
+32400.0,37260.0,30780.0,WIN,16,15.0,0.46,STB,Banking,Pennant Pullback,vol_filter,2024-12-04,4.72
+33950.0,39042.5,32252.5,OPEN,40,10.31,1.33,STB,Banking,Pennant Pullback,vol_filter,2024-12-05,5.64
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Pennant Pullback,vol_filter,2024-12-06,5.65
+33950.0,39042.5,32252.5,OPEN,40,10.31,1.33,STB,Banking,Pennant Pullback,combined,2024-12-05,5.64
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Pennant Pullback,combined,2024-12-06,5.65
+29750.0,34212.5,28262.5,LOSS,13,-5.0,5.71,STB,Banking,Triangle Pullback,baseline,2024-07-15,9.89
+29900.0,34385.0,28405.0,LOSS,12,-5.0,6.19,STB,Banking,Triangle Pullback,baseline,2024-07-16,10.25
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Triangle Pullback,baseline,2024-12-06,3.07
+34000.0,39100.0,32300.0,OPEN,40,13.24,1.47,STB,Banking,Triangle Pullback,baseline,2024-12-09,4.17
+52300.0,60145.0,49685.0,LOSS,4,-5.0,7.55,STB,Banking,Triangle Pullback,baseline,2025-11-03,4.81
+53900.0,61985.0,51205.0,LOSS,3,-5.0,10.3,STB,Banking,Triangle Pullback,baseline,2025-11-04,4.98
+53500.0,61525.0,50825.0,LOSS,2,-5.0,9.63,STB,Banking,Triangle Pullback,baseline,2025-11-05,10.95
+51900.0,59685.0,49305.0,LOSS,1,-5.0,6.84,STB,Banking,Triangle Pullback,baseline,2025-11-06,5.96
+48500.0,55775.0,46075.0,LOSS,24,-5.0,5.15,STB,Banking,Triangle Pullback,baseline,2025-11-10,6.79
+49650.0,57097.5,47167.5,LOSS,23,-5.0,7.35,STB,Banking,Triangle Pullback,baseline,2025-11-11,4.28
+50600.0,58190.0,48070.0,LOSS,2,-5.0,6.32,STB,Banking,Triangle Pullback,baseline,2025-11-12,6.58
+48700.0,56005.0,46265.0,LOSS,21,-5.0,5.54,STB,Banking,Triangle Pullback,baseline,2025-11-13,5.26
+61500.0,70725.0,58425.0,LOSS,31,-5.0,5.53,STB,Banking,Triangle Pullback,baseline,2026-02-06,19.34
+60300.0,69345.0,57285.0,WIN,10,15.0,2.16,STB,Banking,Triangle Pullback,baseline,2026-02-09,21.38
+63400.0,72910.0,60230.0,LOSS,1,-5.0,5.36,STB,Banking,Triangle Pullback,baseline,2026-03-20,5.31
+60000.0,69000.0,57000.0,OPEN,40,2.17,3.17,STB,Banking,Triangle Pullback,baseline,2026-03-23,3.43
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Triangle Pullback,trend_filter,2024-12-06,3.07
+34000.0,39100.0,32300.0,OPEN,40,13.24,1.47,STB,Banking,Triangle Pullback,trend_filter,2024-12-09,4.17
+61500.0,70725.0,58425.0,LOSS,31,-5.0,5.53,STB,Banking,Triangle Pullback,trend_filter,2026-02-06,19.34
+60300.0,69345.0,57285.0,WIN,10,15.0,2.16,STB,Banking,Triangle Pullback,trend_filter,2026-02-09,21.38
+63400.0,72910.0,60230.0,LOSS,1,-5.0,5.36,STB,Banking,Triangle Pullback,trend_filter,2026-03-20,5.31
+33800.0,38870.0,32110.0,OPEN,40,13.76,0.89,STB,Banking,Triangle Pullback,vol_filter,2024-12-06,3.07
+34000.0,39100.0,32300.0,OPEN,40,13.24,1.47,STB,Banking,Triangle Pullback,vol_filter,2024-12-09,4.17
+22893.55,26327.58,21748.87,LOSS,14,-5.0,5.53,TCB,Banking,Flag Pullback,baseline,2024-10-25,6.14
+23039.68,26495.63,21887.69,LOSS,12,-5.0,5.29,TCB,Banking,Flag Pullback,baseline,2024-10-28,6.84
+23137.1,26607.66,21980.24,LOSS,11,-5.0,5.68,TCB,Banking,Flag Pullback,baseline,2024-10-29,10.79
+23283.23,26775.71,22119.07,LOSS,8,-5.0,5.02,TCB,Banking,Flag Pullback,baseline,2024-10-31,12.67
+23088.39,26551.64,21933.97,LOSS,9,-5.0,5.49,TCB,Banking,Flag Pullback,baseline,2024-11-01,9.19
+22844.84,26271.57,21702.6,LOSS,9,-5.0,5.33,TCB,Banking,Flag Pullback,baseline,2024-11-04,8.33
+23283.23,26775.71,22119.07,LOSS,5,-5.0,5.02,TCB,Banking,Flag Pullback,baseline,2024-11-06,8.78
+25864.84,29744.57,24571.6,LOSS,6,-5.0,9.79,TCB,Banking,Flag Pullback,baseline,2025-04-14,3.02
+37750.0,43412.5,35862.5,LOSS,20,-5.0,7.15,TCB,Banking,Flag Pullback,baseline,2025-09-29,3.13
+37850.0,43527.5,35957.5,LOSS,19,-5.0,7.4,TCB,Banking,Flag Pullback,baseline,2025-09-30,4.62
+38550.0,44332.5,36622.5,LOSS,14,-5.0,5.32,TCB,Banking,Flag Pullback,baseline,2025-10-01,4.9
+38850.0,44677.5,36907.5,LOSS,13,-5.0,6.05,TCB,Banking,Flag Pullback,baseline,2025-10-02,5.04
+38350.0,44102.5,36432.5,LOSS,13,-5.0,5.08,TCB,Banking,Flag Pullback,baseline,2025-10-03,5.33
+35900.0,41285.0,34105.0,LOSS,5,-5.0,5.01,TCB,Banking,Flag Pullback,baseline,2026-01-30,3.56
+35000.0,40250.0,33250.0,LOSS,17,-5.0,9.14,TCB,Banking,Flag Pullback,baseline,2026-02-02,4.64
+34700.0,39905.0,32965.0,LOSS,16,-5.0,8.36,TCB,Banking,Flag Pullback,baseline,2026-02-03,12.5
+34550.0,39732.5,32822.5,LOSS,15,-5.0,7.96,TCB,Banking,Flag Pullback,baseline,2026-02-04,13.75
+34850.0,40077.5,33107.5,LOSS,14,-5.0,8.75,TCB,Banking,Flag Pullback,baseline,2026-02-05,9.09
+25864.84,29744.57,24571.6,LOSS,6,-5.0,9.79,TCB,Banking,Flag Pullback,trend_filter,2025-04-14,3.02
+37750.0,43412.5,35862.5,LOSS,20,-5.0,7.15,TCB,Banking,Flag Pullback,trend_filter,2025-09-29,3.13
+37850.0,43527.5,35957.5,LOSS,19,-5.0,7.4,TCB,Banking,Flag Pullback,trend_filter,2025-09-30,4.62
+38550.0,44332.5,36622.5,LOSS,14,-5.0,5.32,TCB,Banking,Flag Pullback,trend_filter,2025-10-01,4.9
+38850.0,44677.5,36907.5,LOSS,13,-5.0,6.05,TCB,Banking,Flag Pullback,trend_filter,2025-10-02,5.04
+38350.0,44102.5,36432.5,LOSS,13,-5.0,5.08,TCB,Banking,Flag Pullback,trend_filter,2025-10-03,5.33
+23088.39,26551.64,21933.97,LOSS,9,-5.0,5.49,TCB,Banking,Flag Pullback,vol_filter,2024-11-01,9.19
+22844.84,26271.57,21702.6,LOSS,9,-5.0,5.33,TCB,Banking,Flag Pullback,vol_filter,2024-11-04,8.33
+23283.23,26775.71,22119.07,LOSS,5,-5.0,5.02,TCB,Banking,Flag Pullback,vol_filter,2024-11-06,8.78
+37750.0,43412.5,35862.5,LOSS,20,-5.0,7.15,TCB,Banking,Flag Pullback,vol_filter,2025-09-29,3.13
+37850.0,43527.5,35957.5,LOSS,19,-5.0,7.4,TCB,Banking,Flag Pullback,vol_filter,2025-09-30,4.62
+38550.0,44332.5,36622.5,LOSS,14,-5.0,5.32,TCB,Banking,Flag Pullback,vol_filter,2025-10-01,4.9
+38850.0,44677.5,36907.5,LOSS,13,-5.0,6.05,TCB,Banking,Flag Pullback,vol_filter,2025-10-02,5.04
+38350.0,44102.5,36432.5,LOSS,13,-5.0,5.08,TCB,Banking,Flag Pullback,vol_filter,2025-10-03,5.33
+38850.0,44677.5,36907.5,LOSS,13,-5.0,6.05,TCB,Banking,Flag Pullback,combined,2025-10-02,5.04
+38350.0,44102.5,36432.5,LOSS,13,-5.0,5.08,TCB,Banking,Flag Pullback,combined,2025-10-03,5.33
+24500.97,28176.11,23275.92,WIN,11,15.0,0.0,TCB,Banking,Pennant Pullback,baseline,2025-04-22,7.28
+37993.55,43692.58,36093.87,LOSS,29,-5.0,5.12,TCB,Banking,Pennant Pullback,baseline,2025-09-15,9.56
+38334.52,44084.69,36417.79,LOSS,4,-5.0,5.21,TCB,Banking,Pennant Pullback,baseline,2025-09-16,6.82
+37701.29,43356.49,35816.23,LOSS,28,-5.0,7.03,TCB,Banking,Pennant Pullback,baseline,2025-09-17,6.6
+37798.71,43468.52,35908.78,LOSS,27,-5.0,7.27,TCB,Banking,Pennant Pullback,baseline,2025-09-18,15.63
+37409.03,43020.39,35538.58,LOSS,26,-5.0,6.31,TCB,Banking,Pennant Pullback,baseline,2025-09-19,17.39
+36532.26,42012.1,34705.64,LOSS,26,-5.0,6.93,TCB,Banking,Pennant Pullback,baseline,2025-09-22,22.21
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Pennant Pullback,baseline,2025-09-23,14.37
+37993.55,43692.58,36093.87,LOSS,29,-5.0,5.12,TCB,Banking,Pennant Pullback,trend_filter,2025-09-15,9.56
+38334.52,44084.69,36417.79,LOSS,4,-5.0,5.21,TCB,Banking,Pennant Pullback,trend_filter,2025-09-16,6.82
+37701.29,43356.49,35816.23,LOSS,28,-5.0,7.03,TCB,Banking,Pennant Pullback,trend_filter,2025-09-17,6.6
+37798.71,43468.52,35908.78,LOSS,27,-5.0,7.27,TCB,Banking,Pennant Pullback,trend_filter,2025-09-18,15.63
+37409.03,43020.39,35538.58,LOSS,26,-5.0,6.31,TCB,Banking,Pennant Pullback,trend_filter,2025-09-19,17.39
+36532.26,42012.1,34705.64,LOSS,26,-5.0,6.93,TCB,Banking,Pennant Pullback,trend_filter,2025-09-22,22.21
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Pennant Pullback,trend_filter,2025-09-23,14.37
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Pennant Pullback,vol_filter,2025-09-23,14.37
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Pennant Pullback,combined,2025-09-23,14.37
+22114.19,25431.32,21008.48,LOSS,17,-5.0,8.59,TCB,Banking,Triangle Pullback,baseline,2024-07-16,4.56
+21529.68,24759.13,20453.19,OPEN,40,6.79,0.0,TCB,Banking,Triangle Pullback,baseline,2024-09-11,3.07
+23916.45,27503.92,22720.63,LOSS,20,-5.0,6.11,TCB,Banking,Triangle Pullback,baseline,2024-10-10,7.29
+23819.03,27391.89,22628.08,LOSS,19,-5.0,5.73,TCB,Banking,Triangle Pullback,baseline,2024-10-11,8.57
+23721.61,27279.86,22535.53,LOSS,18,-5.0,5.34,TCB,Banking,Triangle Pullback,baseline,2024-10-14,6.84
+23624.19,27167.82,22442.98,LOSS,18,-5.0,5.57,TCB,Banking,Triangle Pullback,baseline,2024-10-15,5.2
+23575.48,27111.81,22396.71,LOSS,17,-5.0,5.37,TCB,Banking,Triangle Pullback,baseline,2024-10-16,3.03
+22211.61,25543.36,21101.03,OPEN,40,2.63,2.63,TCB,Banking,Triangle Pullback,baseline,2024-11-14,7.25
+21870.65,25151.24,20777.11,OPEN,40,6.01,1.11,TCB,Banking,Triangle Pullback,baseline,2024-11-15,7.17
+21870.65,25151.24,20777.11,OPEN,40,5.12,1.11,TCB,Banking,Triangle Pullback,baseline,2024-11-18,5.82
+25329.03,29128.39,24062.58,WIN,9,15.0,0.0,TCB,Banking,Triangle Pullback,baseline,2025-04-28,4.79
+25621.29,29464.48,24340.23,WIN,8,15.0,0.57,TCB,Banking,Triangle Pullback,baseline,2025-04-29,7.28
+37993.55,43692.58,36093.87,LOSS,29,-5.0,5.12,TCB,Banking,Triangle Pullback,baseline,2025-09-15,9.25
+38334.52,44084.69,36417.79,LOSS,4,-5.0,5.21,TCB,Banking,Triangle Pullback,baseline,2025-09-16,4.41
+37701.29,43356.49,35816.23,LOSS,28,-5.0,7.03,TCB,Banking,Triangle Pullback,baseline,2025-09-17,6.49
+37798.71,43468.52,35908.78,LOSS,27,-5.0,7.27,TCB,Banking,Triangle Pullback,baseline,2025-09-18,6.65
+37409.03,43020.39,35538.58,LOSS,26,-5.0,6.31,TCB,Banking,Triangle Pullback,baseline,2025-09-19,7.14
+36532.26,42012.1,34705.64,LOSS,26,-5.0,6.93,TCB,Banking,Triangle Pullback,baseline,2025-09-22,9.56
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Triangle Pullback,baseline,2025-09-23,6.82
+37993.55,43692.58,36093.87,LOSS,29,-5.0,5.12,TCB,Banking,Triangle Pullback,trend_filter,2025-09-15,9.25
+38334.52,44084.69,36417.79,LOSS,4,-5.0,5.21,TCB,Banking,Triangle Pullback,trend_filter,2025-09-16,4.41
+37701.29,43356.49,35816.23,LOSS,28,-5.0,7.03,TCB,Banking,Triangle Pullback,trend_filter,2025-09-17,6.49
+37798.71,43468.52,35908.78,LOSS,27,-5.0,7.27,TCB,Banking,Triangle Pullback,trend_filter,2025-09-18,6.65
+37409.03,43020.39,35538.58,LOSS,26,-5.0,6.31,TCB,Banking,Triangle Pullback,trend_filter,2025-09-19,7.14
+36532.26,42012.1,34705.64,LOSS,26,-5.0,6.93,TCB,Banking,Triangle Pullback,trend_filter,2025-09-22,9.56
+36532.26,42012.1,34705.64,LOSS,25,-5.0,6.93,TCB,Banking,Triangle Pullback,trend_filter,2025-09-23,6.82
+22211.61,25543.36,21101.03,OPEN,40,2.63,2.63,TCB,Banking,Triangle Pullback,vol_filter,2024-11-14,7.25
+21870.65,25151.24,20777.11,OPEN,40,6.01,1.11,TCB,Banking,Triangle Pullback,vol_filter,2024-11-15,7.17
+21870.65,25151.24,20777.11,OPEN,40,5.12,1.11,TCB,Banking,Triangle Pullback,vol_filter,2024-11-18,5.82
+12889.34,14822.74,12244.87,OPEN,40,1.51,2.2,TPB,Banking,Flag Pullback,baseline,2024-06-07,3.43
+12960.55,14904.63,12312.52,OPEN,40,-1.32,4.45,TPB,Banking,Flag Pullback,baseline,2024-06-11,5.88
+13138.58,15109.37,12481.65,LOSS,38,-5.0,5.74,TPB,Banking,Flag Pullback,baseline,2024-06-12,8.13
+12605.33,14496.13,11975.06,WIN,28,15.0,0.0,TPB,Banking,Flag Pullback,baseline,2024-08-15,3.15
+12900.19,14835.22,12255.18,WIN,28,15.0,0.86,TPB,Banking,Flag Pullback,baseline,2024-08-16,6.98
+12900.19,14835.22,12255.18,WIN,27,15.0,0.0,TPB,Banking,Flag Pullback,baseline,2024-08-19,7.2
+14639.87,16835.85,13907.88,LOSS,7,-5.0,5.14,TPB,Banking,Flag Pullback,baseline,2024-11-04,16.67
+14639.87,16835.85,13907.88,LOSS,6,-5.0,5.14,TPB,Banking,Flag Pullback,baseline,2024-11-05,16.03
+14993.71,17242.76,14244.02,LOSS,3,-5.0,5.6,TPB,Banking,Flag Pullback,baseline,2024-11-06,15.73
+14861.02,17090.17,14117.97,LOSS,4,-5.0,6.55,TPB,Banking,Flag Pullback,baseline,2024-11-07,14.74
+14728.33,16937.58,13991.91,LOSS,3,-5.0,5.71,TPB,Banking,Flag Pullback,baseline,2024-11-08,16.02
+13799.52,15869.44,13109.54,OPEN,40,1.92,0.32,TPB,Banking,Flag Pullback,baseline,2024-11-15,5.33
+12476.19,14347.62,11852.38,WIN,29,15.0,0.76,TPB,Banking,Flag Pullback,baseline,2025-06-02,16.24
+12619.05,14511.91,11988.1,WIN,33,15.0,1.89,TPB,Banking,Flag Pullback,baseline,2025-06-03,10.4
+12476.19,14347.62,11852.38,WIN,27,15.0,0.76,TPB,Banking,Flag Pullback,baseline,2025-06-04,5.3
+12523.81,14402.38,11897.62,WIN,26,15.0,1.14,TPB,Banking,Flag Pullback,baseline,2025-06-05,7.66
+12476.19,14347.62,11852.38,WIN,25,15.0,0.76,TPB,Banking,Flag Pullback,baseline,2025-06-06,9.77
+18857.14,21685.71,17914.29,LOSS,3,-5.0,5.56,TPB,Banking,Flag Pullback,baseline,2025-09-15,26.92
+17100.0,19665.0,16245.0,LOSS,17,-5.0,8.19,TPB,Banking,Flag Pullback,baseline,2026-02-05,5.06
+16800.0,19320.0,15960.0,LOSS,16,-5.0,6.55,TPB,Banking,Flag Pullback,baseline,2026-02-06,6.67
+16800.0,19320.0,15960.0,LOSS,15,-5.0,6.55,TPB,Banking,Flag Pullback,baseline,2026-02-09,8.98
+16800.0,19320.0,15960.0,LOSS,14,-5.0,6.55,TPB,Banking,Flag Pullback,baseline,2026-02-10,6.23
+18857.14,21685.71,17914.29,LOSS,3,-5.0,5.56,TPB,Banking,Flag Pullback,trend_filter,2025-09-15,26.92
+14639.87,16835.85,13907.88,LOSS,7,-5.0,5.14,TPB,Banking,Flag Pullback,vol_filter,2024-11-04,16.67
+14639.87,16835.85,13907.88,LOSS,6,-5.0,5.14,TPB,Banking,Flag Pullback,vol_filter,2024-11-05,16.03
+14993.71,17242.76,14244.02,LOSS,3,-5.0,5.6,TPB,Banking,Flag Pullback,vol_filter,2024-11-06,15.73
+14861.02,17090.17,14117.97,LOSS,4,-5.0,6.55,TPB,Banking,Flag Pullback,vol_filter,2024-11-07,14.74
+14728.33,16937.58,13991.91,LOSS,3,-5.0,5.71,TPB,Banking,Flag Pullback,vol_filter,2024-11-08,16.02
+13799.52,15869.44,13109.54,OPEN,40,1.92,0.32,TPB,Banking,Flag Pullback,vol_filter,2024-11-15,5.33
+18285.71,21028.57,17371.43,LOSS,8,-5.0,5.21,TPB,Banking,Pennant Pullback,baseline,2025-09-10,29.47
+18285.71,21028.57,17371.43,LOSS,8,-5.0,5.21,TPB,Banking,Pennant Pullback,trend_filter,2025-09-10,29.47
+18200.0,20930.0,17290.0,LOSS,7,-5.0,6.04,TPB,Banking,Triangle Pullback,baseline,2026-01-12,3.83
+18200.0,20930.0,17290.0,LOSS,7,-5.0,6.04,TPB,Banking,Triangle Pullback,trend_filter,2026-01-12,3.83
+61291.74,70485.5,58227.16,OPEN,40,4.88,1.3,VCB,Banking,Flag Pullback,baseline,2025-01-07,4.73
+61358.15,70561.87,58290.24,OPEN,40,7.92,1.41,VCB,Banking,Flag Pullback,baseline,2025-01-08,5.0
+62543.48,71925.0,59416.3,LOSS,16,-5.0,6.31,VCB,Banking,Flag Pullback,baseline,2025-09-26,10.91
+62146.38,71468.33,59039.06,LOSS,15,-5.0,5.71,VCB,Banking,Flag Pullback,baseline,2025-09-29,11.83
+63100.0,72565.0,59945.0,LOSS,14,-5.0,9.19,VCB,Banking,Flag Pullback,baseline,2026-02-10,28.7
+64700.0,74405.0,61465.0,LOSS,9,-5.0,5.1,VCB,Banking,Flag Pullback,baseline,2026-02-11,31.49
+66400.0,76360.0,63080.0,LOSS,5,-5.0,5.27,VCB,Banking,Flag Pullback,baseline,2026-02-23,27.32
+65000.0,74750.0,61750.0,LOSS,5,-5.0,5.54,VCB,Banking,Flag Pullback,baseline,2026-02-24,28.72
+65100.0,74865.0,61845.0,LOSS,4,-5.0,5.68,VCB,Banking,Flag Pullback,baseline,2026-02-25,27.5
+65400.0,75210.0,62130.0,LOSS,3,-5.0,6.12,VCB,Banking,Flag Pullback,baseline,2026-02-26,23.91
+64900.0,74635.0,61655.0,LOSS,2,-5.0,5.39,VCB,Banking,Flag Pullback,baseline,2026-02-27,19.3
+62900.0,72335.0,59755.0,LOSS,5,-5.0,8.9,VCB,Banking,Flag Pullback,baseline,2026-03-02,21.89
+61600.0,70840.0,58520.0,LOSS,4,-5.0,6.98,VCB,Banking,Flag Pullback,baseline,2026-03-03,23.21
+64700.0,74405.0,61465.0,LOSS,9,-5.0,5.1,VCB,Banking,Flag Pullback,trend_filter,2026-02-11,31.49
+66400.0,76360.0,63080.0,LOSS,5,-5.0,5.27,VCB,Banking,Flag Pullback,trend_filter,2026-02-23,27.32
+65000.0,74750.0,61750.0,LOSS,5,-5.0,5.54,VCB,Banking,Flag Pullback,trend_filter,2026-02-24,28.72
+65100.0,74865.0,61845.0,LOSS,4,-5.0,5.68,VCB,Banking,Flag Pullback,trend_filter,2026-02-25,27.5
+65400.0,75210.0,62130.0,LOSS,3,-5.0,6.12,VCB,Banking,Flag Pullback,trend_filter,2026-02-26,23.91
+64900.0,74635.0,61655.0,LOSS,2,-5.0,5.39,VCB,Banking,Flag Pullback,trend_filter,2026-02-27,19.3
+62146.38,71468.33,59039.06,LOSS,15,-5.0,5.71,VCB,Banking,Flag Pullback,vol_filter,2025-09-29,11.83
+64900.0,74635.0,61655.0,LOSS,2,-5.0,5.39,VCB,Banking,Flag Pullback,vol_filter,2026-02-27,19.3
+62900.0,72335.0,59755.0,LOSS,5,-5.0,8.9,VCB,Banking,Flag Pullback,vol_filter,2026-03-02,21.89
+61600.0,70840.0,58520.0,LOSS,4,-5.0,6.98,VCB,Banking,Flag Pullback,vol_filter,2026-03-03,23.21
+64900.0,74635.0,61655.0,LOSS,2,-5.0,5.39,VCB,Banking,Flag Pullback,combined,2026-02-27,19.3
+58076.09,66787.5,55172.28,OPEN,40,-2.39,4.96,VCB,Banking,Pennant Pullback,baseline,2025-04-22,6.56
+57579.71,66216.67,54700.73,OPEN,40,-2.41,4.14,VCB,Banking,Pennant Pullback,baseline,2025-04-23,6.42
+57778.26,66445.0,54889.35,OPEN,40,-2.75,4.47,VCB,Banking,Pennant Pullback,baseline,2025-04-24,5.78
+57083.33,65645.83,54229.17,OPEN,40,-1.57,3.3,VCB,Banking,Pennant Pullback,baseline,2025-04-25,4.73
+63436.96,72952.5,60265.11,LOSS,22,-5.0,7.62,VCB,Banking,Pennant Pullback,baseline,2025-09-18,5.25
+62543.48,71925.0,59416.3,LOSS,21,-5.0,6.31,VCB,Banking,Pennant Pullback,baseline,2025-09-19,3.45
+61550.73,70783.34,58473.19,OPEN,40,-2.19,4.96,VCB,Banking,Pennant Pullback,baseline,2025-09-22,6.64
+61749.28,71011.67,58661.81,LOSS,19,-5.0,5.1,VCB,Banking,Pennant Pullback,baseline,2025-09-23,7.31
+63436.96,72952.5,60265.11,LOSS,22,-5.0,7.62,VCB,Banking,Pennant Pullback,trend_filter,2025-09-18,5.25
+58076.09,66787.5,55172.28,OPEN,40,-2.39,4.96,VCB,Banking,Triangle Pullback,baseline,2025-04-22,7.61
+57579.71,66216.67,54700.73,OPEN,40,-2.41,4.14,VCB,Banking,Triangle Pullback,baseline,2025-04-23,7.85
+57778.26,66445.0,54889.35,OPEN,40,-2.75,4.47,VCB,Banking,Triangle Pullback,baseline,2025-04-24,7.71
+57083.33,65645.83,54229.17,OPEN,40,-1.57,3.3,VCB,Banking,Triangle Pullback,baseline,2025-04-25,6.24
+57083.33,65645.83,54229.17,OPEN,40,-1.91,3.3,VCB,Banking,Triangle Pullback,baseline,2025-04-28,5.76
+56884.78,65417.5,54040.54,OPEN,40,-1.05,2.97,VCB,Banking,Triangle Pullback,baseline,2025-04-29,6.56
+56686.23,65189.17,53851.92,OPEN,40,-0.18,2.63,VCB,Banking,Triangle Pullback,baseline,2025-05-05,6.42
+56586.96,65075.0,53757.61,OPEN,40,2.11,2.46,VCB,Banking,Triangle Pullback,baseline,2025-05-06,5.78
+56586.96,65075.0,53757.61,OPEN,40,1.75,2.46,VCB,Banking,Triangle Pullback,baseline,2025-05-07,4.73
+21450.0,24667.5,20377.5,LOSS,3,-5.0,5.59,VIB,Banking,Flag Pullback,baseline,2025-09-15,11.44
+21050.0,24207.5,19997.5,LOSS,4,-5.0,7.36,VIB,Banking,Flag Pullback,baseline,2025-09-16,10.6
+20650.0,23747.5,19617.5,LOSS,3,-5.0,5.57,VIB,Banking,Flag Pullback,baseline,2025-09-17,6.63
+20550.0,23632.5,19522.5,LOSS,2,-5.0,5.11,VIB,Banking,Flag Pullback,baseline,2025-09-18,10.51
+20300.0,23345.0,19285.0,LOSS,21,-5.0,9.61,VIB,Banking,Flag Pullback,baseline,2025-09-19,13.18
+19750.0,22712.5,18762.5,LOSS,20,-5.0,7.09,VIB,Banking,Flag Pullback,baseline,2025-09-22,20.62
+19850.0,22827.5,18857.5,LOSS,19,-5.0,7.56,VIB,Banking,Flag Pullback,baseline,2025-09-23,24.21
+20500.0,23575.0,19475.0,LOSS,18,-5.0,10.49,VIB,Banking,Flag Pullback,baseline,2025-09-24,13.44
+20100.0,23115.0,19095.0,LOSS,17,-5.0,8.71,VIB,Banking,Flag Pullback,baseline,2025-09-25,17.88
+16500.0,18975.0,15675.0,LOSS,14,-5.0,5.76,VIB,Banking,Flag Pullback,baseline,2026-02-10,5.4
+21450.0,24667.5,20377.5,LOSS,3,-5.0,5.59,VIB,Banking,Flag Pullback,trend_filter,2025-09-15,11.44
+21050.0,24207.5,19997.5,LOSS,4,-5.0,7.36,VIB,Banking,Flag Pullback,trend_filter,2025-09-16,10.6
+20650.0,23747.5,19617.5,LOSS,3,-5.0,5.57,VIB,Banking,Flag Pullback,trend_filter,2025-09-17,6.63
+20550.0,23632.5,19522.5,LOSS,2,-5.0,5.11,VIB,Banking,Flag Pullback,trend_filter,2025-09-18,10.51
+20300.0,23345.0,19285.0,LOSS,21,-5.0,9.61,VIB,Banking,Flag Pullback,trend_filter,2025-09-19,13.18
+20500.0,23575.0,19475.0,LOSS,18,-5.0,10.49,VIB,Banking,Flag Pullback,trend_filter,2025-09-24,13.44
+20100.0,23115.0,19095.0,LOSS,17,-5.0,8.71,VIB,Banking,Flag Pullback,vol_filter,2025-09-25,17.88
+15522.35,17850.7,14746.23,OPEN,40,6.76,2.97,VIB,Banking,Pennant Pullback,baseline,2024-11-04,6.67
+15522.35,17850.7,14746.23,OPEN,40,6.49,2.97,VIB,Banking,Pennant Pullback,baseline,2024-11-05,5.79
+15606.25,17947.19,14825.94,OPEN,40,5.91,3.49,VIB,Banking,Pennant Pullback,baseline,2024-11-06,5.21
+15522.35,17850.7,14746.23,OPEN,40,3.51,2.97,VIB,Banking,Pennant Pullback,baseline,2024-11-07,4.37
+15354.54,17657.72,14586.81,OPEN,40,4.64,1.91,VIB,Banking,Pennant Pullback,baseline,2024-11-08,3.52
+15522.35,17850.7,14746.23,OPEN,40,6.76,2.97,VIB,Banking,Triangle Pullback,baseline,2024-11-04,7.82
+15522.35,17850.7,14746.23,OPEN,40,6.49,2.97,VIB,Banking,Triangle Pullback,baseline,2024-11-05,10.61
+15606.25,17947.19,14825.94,OPEN,40,5.91,3.49,VIB,Banking,Triangle Pullback,baseline,2024-11-06,9.52
+15522.35,17850.7,14746.23,OPEN,40,3.51,2.97,VIB,Banking,Triangle Pullback,baseline,2024-11-07,6.06
+15354.54,17657.72,14586.81,OPEN,40,4.64,1.91,VIB,Banking,Triangle Pullback,baseline,2024-11-08,6.94
+31550.0,36282.5,29972.5,LOSS,5,-5.0,7.13,VPB,Banking,Flag Pullback,baseline,2025-09-15,31.06
+31700.0,36455.0,30115.0,LOSS,3,-5.0,5.36,VPB,Banking,Flag Pullback,baseline,2025-09-16,29.31
+31000.0,35650.0,29450.0,LOSS,3,-5.0,5.48,VPB,Banking,Flag Pullback,baseline,2025-09-17,27.49
+30800.0,35420.0,29260.0,LOSS,23,-5.0,7.95,VPB,Banking,Flag Pullback,baseline,2025-09-18,44.92
+30400.0,34960.0,28880.0,LOSS,22,-5.0,6.74,VPB,Banking,Flag Pullback,baseline,2025-09-19,44.75
+29500.0,33925.0,28025.0,WIN,17,15.0,0.0,VPB,Banking,Flag Pullback,baseline,2025-09-22,49.81
+29900.0,34385.0,28405.0,WIN,16,15.0,1.34,VPB,Banking,Flag Pullback,baseline,2025-09-23,39.34
+31600.0,36340.0,30020.0,LOSS,7,-5.0,6.65,VPB,Banking,Flag Pullback,baseline,2025-09-24,26.89
+30950.0,35592.5,29402.5,LOSS,18,-5.0,8.4,VPB,Banking,Flag Pullback,baseline,2025-09-25,29.43
+30400.0,34960.0,28880.0,LOSS,17,-5.0,6.74,VPB,Banking,Flag Pullback,baseline,2025-09-26,22.88
+31100.0,35765.0,29545.0,LOSS,4,-5.0,5.14,VPB,Banking,Flag Pullback,baseline,2025-09-29,17.44
+31100.0,35765.0,29545.0,LOSS,3,-5.0,5.14,VPB,Banking,Flag Pullback,baseline,2025-09-30,18.44
+30900.0,35535.0,29355.0,LOSS,14,-5.0,8.25,VPB,Banking,Flag Pullback,baseline,2025-10-01,16.55
+30150.0,34672.5,28642.5,LOSS,13,-5.0,5.97,VPB,Banking,Flag Pullback,baseline,2025-10-02,17.91
+27500.0,31625.0,26125.0,LOSS,19,-5.0,9.82,VPB,Banking,Flag Pullback,baseline,2026-02-03,8.66
+27750.0,31912.5,26362.5,LOSS,4,-5.0,5.05,VPB,Banking,Flag Pullback,baseline,2026-02-04,6.36
+26600.0,30590.0,25270.0,LOSS,14,-5.0,6.77,VPB,Banking,Flag Pullback,baseline,2026-02-10,7.21
+31550.0,36282.5,29972.5,LOSS,5,-5.0,7.13,VPB,Banking,Flag Pullback,trend_filter,2025-09-15,31.06
+31700.0,36455.0,30115.0,LOSS,3,-5.0,5.36,VPB,Banking,Flag Pullback,trend_filter,2025-09-16,29.31
+31000.0,35650.0,29450.0,LOSS,3,-5.0,5.48,VPB,Banking,Flag Pullback,trend_filter,2025-09-17,27.49
+30800.0,35420.0,29260.0,LOSS,23,-5.0,7.95,VPB,Banking,Flag Pullback,trend_filter,2025-09-18,44.92
+30400.0,34960.0,28880.0,LOSS,22,-5.0,6.74,VPB,Banking,Flag Pullback,trend_filter,2025-09-19,44.75
+29500.0,33925.0,28025.0,WIN,17,15.0,0.0,VPB,Banking,Flag Pullback,trend_filter,2025-09-22,49.81
+29900.0,34385.0,28405.0,WIN,16,15.0,1.34,VPB,Banking,Flag Pullback,trend_filter,2025-09-23,39.34
+31600.0,36340.0,30020.0,LOSS,7,-5.0,6.65,VPB,Banking,Flag Pullback,trend_filter,2025-09-24,26.89
+30950.0,35592.5,29402.5,LOSS,18,-5.0,8.4,VPB,Banking,Flag Pullback,trend_filter,2025-09-25,29.43
+30400.0,34960.0,28880.0,LOSS,17,-5.0,6.74,VPB,Banking,Flag Pullback,trend_filter,2025-09-26,22.88
+31100.0,35765.0,29545.0,LOSS,4,-5.0,5.14,VPB,Banking,Flag Pullback,trend_filter,2025-09-29,17.44
+31100.0,35765.0,29545.0,LOSS,3,-5.0,5.14,VPB,Banking,Flag Pullback,trend_filter,2025-09-30,18.44
+30900.0,35535.0,29355.0,LOSS,14,-5.0,8.25,VPB,Banking,Flag Pullback,trend_filter,2025-10-01,16.55
+31100.0,35765.0,29545.0,LOSS,4,-5.0,5.14,VPB,Banking,Flag Pullback,vol_filter,2025-09-29,17.44
+30900.0,35535.0,29355.0,LOSS,14,-5.0,8.25,VPB,Banking,Flag Pullback,vol_filter,2025-10-01,16.55
+30150.0,34672.5,28642.5,LOSS,13,-5.0,5.97,VPB,Banking,Flag Pullback,vol_filter,2025-10-02,17.91
+31100.0,35765.0,29545.0,LOSS,4,-5.0,5.14,VPB,Banking,Flag Pullback,combined,2025-09-29,17.44
+30900.0,35535.0,29355.0,LOSS,14,-5.0,8.25,VPB,Banking,Flag Pullback,combined,2025-10-01,16.55
+17815.87,20488.25,16925.08,OPEN,40,0.27,1.91,VPB,Banking,Pennant Pullback,baseline,2024-06-11,5.23
+18886.77,21719.79,17942.43,LOSS,5,-5.0,5.15,VPB,Banking,Pennant Pullback,baseline,2024-06-12,5.25
+18000.0,20700.0,17100.0,WIN,30,15.0,1.94,VPB,Banking,Pennant Pullback,baseline,2025-06-02,4.08
+21000.0,24150.0,19950.0,WIN,9,15.0,2.38,VPB,Banking,Pennant Pullback,baseline,2025-07-14,3.58
+20750.0,23862.5,19712.5,WIN,7,15.0,1.2,VPB,Banking,Pennant Pullback,baseline,2025-07-15,3.87
+35000.0,40250.0,33250.0,LOSS,4,-5.0,10.86,VPB,Banking,Pennant Pullback,baseline,2025-08-29,28.04
+34500.0,39675.0,32775.0,LOSS,3,-5.0,9.57,VPB,Banking,Pennant Pullback,baseline,2025-09-03,25.71
+34900.0,40135.0,33155.0,LOSS,2,-5.0,10.6,VPB,Banking,Pennant Pullback,baseline,2025-09-04,27.71
+33500.0,38525.0,31825.0,LOSS,1,-5.0,6.87,VPB,Banking,Pennant Pullback,baseline,2025-09-05,29.98
+31200.0,35880.0,29640.0,LOSS,10,-5.0,6.09,VPB,Banking,Pennant Pullback,baseline,2025-09-08,38.52
+32400.0,37260.0,30780.0,LOSS,2,-5.0,6.02,VPB,Banking,Pennant Pullback,baseline,2025-09-09,38.41
+32450.0,37317.5,30827.5,LOSS,1,-5.0,6.16,VPB,Banking,Pennant Pullback,baseline,2025-09-10,32.74
+28650.0,32947.5,27217.5,LOSS,25,-5.0,6.46,VPB,Banking,Pennant Pullback,baseline,2025-12-31,8.04
+27900.0,32085.0,26505.0,LOSS,26,-5.0,5.56,VPB,Banking,Pennant Pullback,baseline,2026-01-05,9.01
+21000.0,24150.0,19950.0,WIN,9,15.0,2.38,VPB,Banking,Pennant Pullback,trend_filter,2025-07-14,3.58
+20750.0,23862.5,19712.5,WIN,7,15.0,1.2,VPB,Banking,Pennant Pullback,trend_filter,2025-07-15,3.87
+35000.0,40250.0,33250.0,LOSS,4,-5.0,10.86,VPB,Banking,Pennant Pullback,trend_filter,2025-08-29,28.04
+34500.0,39675.0,32775.0,LOSS,3,-5.0,9.57,VPB,Banking,Pennant Pullback,trend_filter,2025-09-03,25.71
+34900.0,40135.0,33155.0,LOSS,2,-5.0,10.6,VPB,Banking,Pennant Pullback,trend_filter,2025-09-04,27.71
+33500.0,38525.0,31825.0,LOSS,1,-5.0,6.87,VPB,Banking,Pennant Pullback,trend_filter,2025-09-05,29.98
+31200.0,35880.0,29640.0,LOSS,10,-5.0,6.09,VPB,Banking,Pennant Pullback,trend_filter,2025-09-08,38.52
+32400.0,37260.0,30780.0,LOSS,2,-5.0,6.02,VPB,Banking,Pennant Pullback,trend_filter,2025-09-09,38.41
+32450.0,37317.5,30827.5,LOSS,1,-5.0,6.16,VPB,Banking,Pennant Pullback,trend_filter,2025-09-10,32.74
+22300.0,25645.0,21185.0,WIN,6,15.0,2.24,VPB,Banking,Triangle Pullback,baseline,2025-07-21,3.58
+22500.0,25875.0,21375.0,WIN,7,15.0,0.0,VPB,Banking,Triangle Pullback,baseline,2025-07-22,3.87
+35000.0,40250.0,33250.0,LOSS,4,-5.0,10.86,VPB,Banking,Triangle Pullback,baseline,2025-08-29,28.27
+34500.0,39675.0,32775.0,LOSS,3,-5.0,9.57,VPB,Banking,Triangle Pullback,baseline,2025-09-03,30.05
+34900.0,40135.0,33155.0,LOSS,2,-5.0,10.6,VPB,Banking,Triangle Pullback,baseline,2025-09-04,20.41
+33500.0,38525.0,31825.0,LOSS,1,-5.0,6.87,VPB,Banking,Triangle Pullback,baseline,2025-09-05,25.94
+31200.0,35880.0,29640.0,LOSS,10,-5.0,6.09,VPB,Banking,Triangle Pullback,baseline,2025-09-08,28.04
+32400.0,37260.0,30780.0,LOSS,2,-5.0,6.02,VPB,Banking,Triangle Pullback,baseline,2025-09-09,28.04
+32450.0,37317.5,30827.5,LOSS,1,-5.0,6.16,VPB,Banking,Triangle Pullback,baseline,2025-09-10,25.71
+28250.0,32487.5,26837.5,LOSS,20,-5.0,5.13,VPB,Banking,Triangle Pullback,baseline,2026-01-09,8.04
+30200.0,34730.0,28690.0,LOSS,9,-5.0,5.63,VPB,Banking,Triangle Pullback,baseline,2026-01-12,9.01
+22300.0,25645.0,21185.0,WIN,6,15.0,2.24,VPB,Banking,Triangle Pullback,trend_filter,2025-07-21,3.58
+22500.0,25875.0,21375.0,WIN,7,15.0,0.0,VPB,Banking,Triangle Pullback,trend_filter,2025-07-22,3.87
+35000.0,40250.0,33250.0,LOSS,4,-5.0,10.86,VPB,Banking,Triangle Pullback,trend_filter,2025-08-29,28.27
+34500.0,39675.0,32775.0,LOSS,3,-5.0,9.57,VPB,Banking,Triangle Pullback,trend_filter,2025-09-03,30.05
+34900.0,40135.0,33155.0,LOSS,2,-5.0,10.6,VPB,Banking,Triangle Pullback,trend_filter,2025-09-04,20.41
+33500.0,38525.0,31825.0,LOSS,1,-5.0,6.87,VPB,Banking,Triangle Pullback,trend_filter,2025-09-05,25.94
+31200.0,35880.0,29640.0,LOSS,10,-5.0,6.09,VPB,Banking,Triangle Pullback,trend_filter,2025-09-08,28.04
+32400.0,37260.0,30780.0,LOSS,2,-5.0,6.02,VPB,Banking,Triangle Pullback,trend_filter,2025-09-09,28.04
+32450.0,37317.5,30827.5,LOSS,1,-5.0,6.16,VPB,Banking,Triangle Pullback,trend_filter,2025-09-10,25.71
+30200.0,34730.0,28690.0,LOSS,9,-5.0,5.63,VPB,Banking,Triangle Pullback,trend_filter,2026-01-12,9.01
+52589.01,60477.36,49959.56,WIN,15,15.0,3.93,BCM,Real Estate,Flag Pullback,baseline,2025-04-17,5.63
+53080.5,61042.57,50426.47,WIN,14,15.0,4.81,BCM,Real Estate,Flag Pullback,baseline,2025-04-18,4.61
+54260.06,62399.07,51547.06,LOSS,1,-5.0,6.88,BCM,Real Estate,Flag Pullback,baseline,2025-04-21,3.96
+63696.59,73251.08,60511.76,OPEN,40,1.7,4.01,BCM,Real Estate,Flag Pullback,baseline,2025-10-14,3.76
+63401.7,72911.96,60231.62,OPEN,40,2.17,3.57,BCM,Real Estate,Flag Pullback,baseline,2025-10-15,7.23
+63696.59,73251.08,60511.76,OPEN,40,1.7,4.01,BCM,Real Estate,Flag Pullback,vol_filter,2025-10-14,3.76
+63401.7,72911.96,60231.62,OPEN,40,2.17,3.57,BCM,Real Estate,Flag Pullback,vol_filter,2025-10-15,7.23
+60708.33,69814.58,57672.91,WIN,27,15.0,2.55,BCM,Real Estate,Pennant Pullback,baseline,2024-06-19,20.42
+69228.8,79613.12,65767.36,LOSS,18,-5.0,5.17,BCM,Real Estate,Pennant Pullback,baseline,2024-09-10,5.15
+69131.98,79501.77,65675.38,LOSS,17,-5.0,5.04,BCM,Real Estate,Pennant Pullback,baseline,2024-09-11,5.46
+69131.98,79501.77,65675.38,LOSS,16,-5.0,5.04,BCM,Real Estate,Pennant Pullback,baseline,2024-09-12,5.17
+68647.86,78945.04,65215.47,LOSS,24,-5.0,5.5,BCM,Real Estate,Pennant Pullback,baseline,2024-09-13,6.75
+69692.73,80146.64,66208.09,WIN,21,15.0,2.26,BCM,Real Estate,Pennant Pullback,baseline,2025-02-10,3.84
+68906.34,79242.3,65461.03,WIN,20,15.0,1.14,BCM,Real Estate,Pennant Pullback,baseline,2025-02-11,6.76
+76082.05,87494.35,72277.94,LOSS,5,-5.0,9.04,BCM,Real Estate,Pennant Pullback,baseline,2025-03-27,7.34
+76278.64,87720.44,72464.71,LOSS,4,-5.0,9.28,BCM,Real Estate,Pennant Pullback,baseline,2025-03-28,8.14
+73526.32,84555.27,69850.0,LOSS,3,-5.0,5.88,BCM,Real Estate,Pennant Pullback,baseline,2025-03-31,6.63
+74607.59,85798.72,70877.21,LOSS,2,-5.0,7.25,BCM,Real Estate,Pennant Pullback,baseline,2025-04-01,8.13
+74312.7,85459.6,70597.06,LOSS,1,-5.0,6.88,BCM,Real Estate,Pennant Pullback,baseline,2025-04-02,6.52
+69201.24,79581.43,65741.18,LOSS,1,-5.0,6.96,BCM,Real Estate,Pennant Pullback,baseline,2025-04-03,7.28
+64384.68,74042.38,61165.44,LOSS,1,-5.0,6.87,BCM,Real Estate,Pennant Pullback,baseline,2025-04-04,6.99
+59961.3,68955.5,56963.24,LOSS,1,-5.0,6.89,BCM,Real Estate,Pennant Pullback,baseline,2025-04-08,14.9
+66547.21,76529.29,63219.85,LOSS,28,-5.0,6.94,BCM,Real Estate,Pennant Pullback,baseline,2025-09-05,3.87
+65760.84,75624.96,62472.79,LOSS,27,-5.0,5.83,BCM,Real Estate,Pennant Pullback,baseline,2025-09-08,4.9
+66743.81,76755.38,63406.62,LOSS,26,-5.0,7.22,BCM,Real Estate,Pennant Pullback,baseline,2025-09-09,4.28
+66350.62,76303.21,63033.09,LOSS,25,-5.0,6.67,BCM,Real Estate,Pennant Pullback,baseline,2025-09-10,5.84
+69692.73,80146.64,66208.09,WIN,21,15.0,2.26,BCM,Real Estate,Pennant Pullback,trend_filter,2025-02-10,3.84
+68906.34,79242.3,65461.03,WIN,20,15.0,1.14,BCM,Real Estate,Pennant Pullback,trend_filter,2025-02-11,6.76
+76082.05,87494.35,72277.94,LOSS,5,-5.0,9.04,BCM,Real Estate,Pennant Pullback,trend_filter,2025-03-27,7.34
+76278.64,87720.44,72464.71,LOSS,4,-5.0,9.28,BCM,Real Estate,Pennant Pullback,trend_filter,2025-03-28,8.14
+73526.32,84555.27,69850.0,LOSS,3,-5.0,5.88,BCM,Real Estate,Pennant Pullback,trend_filter,2025-03-31,6.63
+74607.59,85798.72,70877.21,LOSS,2,-5.0,7.25,BCM,Real Estate,Pennant Pullback,trend_filter,2025-04-01,8.13
+74312.7,85459.6,70597.06,LOSS,1,-5.0,6.88,BCM,Real Estate,Pennant Pullback,trend_filter,2025-04-02,6.52
+69228.8,79613.12,65767.36,LOSS,18,-5.0,5.17,BCM,Real Estate,Pennant Pullback,vol_filter,2024-09-10,5.15
+69131.98,79501.77,65675.38,LOSS,17,-5.0,5.04,BCM,Real Estate,Pennant Pullback,vol_filter,2024-09-11,5.46
+69131.98,79501.77,65675.38,LOSS,16,-5.0,5.04,BCM,Real Estate,Pennant Pullback,vol_filter,2024-09-12,5.17
+68647.86,78945.04,65215.47,LOSS,24,-5.0,5.5,BCM,Real Estate,Pennant Pullback,vol_filter,2024-09-13,6.75
+66743.81,76755.38,63406.62,LOSS,26,-5.0,7.22,BCM,Real Estate,Pennant Pullback,vol_filter,2025-09-09,4.28
+66350.62,76303.21,63033.09,LOSS,25,-5.0,6.67,BCM,Real Estate,Pennant Pullback,vol_filter,2025-09-10,5.84
+69712.91,80169.85,66227.27,LOSS,19,-5.0,5.56,BCM,Real Estate,Triangle Pullback,baseline,2024-09-06,9.9
+68938.33,79279.08,65491.41,LOSS,20,-5.0,5.2,BCM,Real Estate,Triangle Pullback,baseline,2024-09-09,11.79
+69228.8,79613.12,65767.36,LOSS,18,-5.0,5.17,BCM,Real Estate,Triangle Pullback,baseline,2024-09-10,4.95
+69131.98,79501.77,65675.38,LOSS,17,-5.0,5.04,BCM,Real Estate,Triangle Pullback,baseline,2024-09-11,5.85
+68647.86,78945.04,65215.47,LOSS,24,-5.0,5.5,BCM,Real Estate,Triangle Pullback,baseline,2024-09-13,3.65
+66645.51,76642.33,63313.23,OPEN,40,6.78,2.21,BCM,Real Estate,Triangle Pullback,baseline,2024-12-18,3.66
+65367.65,75172.8,62099.27,OPEN,40,12.63,0.3,BCM,Real Estate,Triangle Pullback,baseline,2024-12-19,7.14
+66547.21,76529.29,63219.85,OPEN,40,10.04,1.77,BCM,Real Estate,Triangle Pullback,baseline,2024-12-20,5.24
+66743.81,76755.38,63406.62,OPEN,40,12.81,2.06,BCM,Real Estate,Triangle Pullback,baseline,2024-12-23,3.37
+68906.34,79242.3,65461.03,WIN,18,15.0,1.14,BCM,Real Estate,Triangle Pullback,baseline,2025-02-13,5.67
+68906.34,79242.3,65461.03,WIN,17,15.0,1.14,BCM,Real Estate,Triangle Pullback,baseline,2025-02-14,4.44
+68611.45,78903.17,65180.88,WIN,16,15.0,0.72,BCM,Real Estate,Triangle Pullback,baseline,2025-02-17,3.84
+68316.56,78564.05,64900.73,WIN,14,15.0,0.0,BCM,Real Estate,Triangle Pullback,baseline,2025-02-18,6.76
+69201.24,79581.43,65741.18,LOSS,1,-5.0,6.96,BCM,Real Estate,Triangle Pullback,baseline,2025-04-03,7.34
+64384.68,74042.38,61165.44,LOSS,1,-5.0,6.87,BCM,Real Estate,Triangle Pullback,baseline,2025-04-04,8.14
+59961.3,68955.5,56963.24,LOSS,1,-5.0,6.89,BCM,Real Estate,Triangle Pullback,baseline,2025-04-08,6.63
+55832.82,64207.74,53041.18,LOSS,5,-5.0,5.81,BCM,Real Estate,Triangle Pullback,baseline,2025-04-09,8.13
+59666.41,68616.37,56683.09,LOSS,1,-5.0,6.92,BCM,Real Estate,Triangle Pullback,baseline,2025-04-10,6.52
+58683.44,67485.95,55749.27,LOSS,2,-5.0,5.7,BCM,Real Estate,Triangle Pullback,baseline,2025-04-11,7.28
+59469.82,68390.29,56496.33,LOSS,1,-5.0,6.94,BCM,Real Estate,Triangle Pullback,baseline,2025-04-14,6.99
+55537.93,63868.61,52761.03,LOSS,1,-5.0,5.31,BCM,Real Estate,Triangle Pullback,baseline,2025-04-15,14.9
+66645.51,76642.33,63313.23,OPEN,40,6.78,2.21,BCM,Real Estate,Triangle Pullback,trend_filter,2024-12-18,3.66
+68906.34,79242.3,65461.03,WIN,18,15.0,1.14,BCM,Real Estate,Triangle Pullback,trend_filter,2025-02-13,5.67
+68906.34,79242.3,65461.03,WIN,17,15.0,1.14,BCM,Real Estate,Triangle Pullback,trend_filter,2025-02-14,4.44
+68611.45,78903.17,65180.88,WIN,16,15.0,0.72,BCM,Real Estate,Triangle Pullback,trend_filter,2025-02-17,3.84
+68316.56,78564.05,64900.73,WIN,14,15.0,0.0,BCM,Real Estate,Triangle Pullback,trend_filter,2025-02-18,6.76
+69131.98,79501.77,65675.38,LOSS,17,-5.0,5.04,BCM,Real Estate,Triangle Pullback,vol_filter,2024-09-11,5.85
+68647.86,78945.04,65215.47,LOSS,24,-5.0,5.5,BCM,Real Estate,Triangle Pullback,vol_filter,2024-09-13,3.65
+30272.73,34813.64,28759.09,LOSS,20,-5.0,5.41,KDH,Real Estate,Flag Pullback,baseline,2024-10-23,3.16
+30590.91,35179.54,29061.36,LOSS,16,-5.0,5.2,KDH,Real Estate,Flag Pullback,baseline,2024-10-24,3.69
+30136.36,34656.82,28629.55,OPEN,40,8.14,4.98,KDH,Real Estate,Flag Pullback,baseline,2024-10-25,3.04
+30454.54,35022.73,28931.82,LOSS,16,-5.0,5.52,KDH,Real Estate,Flag Pullback,baseline,2024-10-28,3.46
+30454.54,35022.73,28931.82,LOSS,15,-5.0,5.52,KDH,Real Estate,Flag Pullback,baseline,2024-10-29,5.36
+26850.0,30877.5,25507.5,LOSS,3,-5.0,5.4,KDH,Real Estate,Flag Pullback,baseline,2026-02-03,4.43
+26850.0,30877.5,25507.5,LOSS,2,-5.0,5.4,KDH,Real Estate,Flag Pullback,baseline,2026-02-04,5.91
+31322.31,36020.66,29756.2,LOSS,5,-5.0,6.33,KDH,Real Estate,Pennant Pullback,baseline,2024-07-10,3.69
+34850.0,40077.5,33107.5,LOSS,7,-5.0,5.16,KDH,Real Estate,Pennant Pullback,baseline,2025-11-21,6.46
+34500.0,39675.0,32775.0,LOSS,10,-5.0,6.38,KDH,Real Estate,Pennant Pullback,baseline,2025-11-25,3.88
+34850.0,40077.5,33107.5,LOSS,7,-5.0,5.16,KDH,Real Estate,Pennant Pullback,trend_filter,2025-11-21,6.46
+34500.0,39675.0,32775.0,LOSS,10,-5.0,6.38,KDH,Real Estate,Pennant Pullback,trend_filter,2025-11-25,3.88
+30991.74,35640.5,29442.15,LOSS,6,-5.0,5.33,KDH,Real Estate,Triangle Pullback,baseline,2024-07-09,4.46
+40000.0,46000.0,38000.0,LOSS,20,-5.0,5.5,VHM,Real Estate,Flag Pullback,baseline,2025-01-06,3.11
+99600.0,114540.0,94620.0,LOSS,2,-5.0,7.63,VHM,Real Estate,Flag Pullback,baseline,2025-11-05,4.47
+98900.0,113735.0,93955.0,LOSS,1,-5.0,6.98,VHM,Real Estate,Flag Pullback,baseline,2025-11-06,11.11
+92000.0,105800.0,87400.0,LOSS,1,-5.0,5.54,VHM,Real Estate,Flag Pullback,baseline,2025-11-07,20.94
+86900.0,99935.0,82555.0,WIN,10,15.0,0.0,VHM,Real Estate,Flag Pullback,baseline,2025-11-10,24.82
+90000.0,103500.0,85500.0,WIN,9,15.0,0.0,VHM,Real Estate,Flag Pullback,baseline,2025-11-11,28.67
+91300.0,104995.0,86735.0,WIN,6,15.0,0.11,VHM,Real Estate,Flag Pullback,baseline,2026-02-04,61.62
+97600.0,112240.0,92720.0,WIN,10,15.0,4.61,VHM,Real Estate,Flag Pullback,baseline,2026-02-05,46.42
+40000.0,46000.0,38000.0,LOSS,20,-5.0,5.5,VHM,Real Estate,Flag Pullback,vol_filter,2025-01-06,3.11
+41500.0,47725.0,39425.0,WIN,11,15.0,1.93,VHM,Real Estate,Pennant Pullback,baseline,2024-10-04,20.77
+41200.0,47380.0,39140.0,WIN,10,15.0,1.21,VHM,Real Estate,Pennant Pullback,baseline,2024-10-07,15.59
+124200.0,142830.0,117990.0,LOSS,4,-5.0,7.73,VHM,Real Estate,Pennant Pullback,baseline,2025-10-13,4.71
+124200.0,142830.0,117990.0,LOSS,4,-5.0,7.73,VHM,Real Estate,Pennant Pullback,trend_filter,2025-10-13,4.71
+105500.0,121325.0,100225.0,LOSS,5,-5.0,5.4,VHM,Real Estate,Triangle Pullback,baseline,2025-09-12,10.8
+105500.0,121325.0,100225.0,LOSS,5,-5.0,5.4,VHM,Real Estate,Triangle Pullback,trend_filter,2025-09-12,10.8
+75200.0,86480.0,71440.0,OPEN,40,-2.53,3.19,MSN,Retail,Flag Pullback,baseline,2024-09-10,4.63
+75100.0,86365.0,71345.0,OPEN,40,-3.73,3.86,MSN,Retail,Flag Pullback,baseline,2024-09-11,5.92
+75100.0,86365.0,71345.0,LOSS,40,-5.0,5.06,MSN,Retail,Flag Pullback,baseline,2024-09-12,4.16
+74200.0,85330.0,70490.0,OPEN,40,-2.29,3.91,MSN,Retail,Flag Pullback,baseline,2024-09-13,5.35
+72900.0,83835.0,69255.0,OPEN,40,0.14,2.19,MSN,Retail,Flag Pullback,baseline,2024-09-16,6.99
+74500.0,85675.0,70775.0,OPEN,40,-4.16,4.3,MSN,Retail,Flag Pullback,baseline,2024-09-17,5.63
+74400.0,85560.0,70680.0,LOSS,40,-5.0,5.11,MSN,Retail,Flag Pullback,baseline,2024-09-18,4.46
+74400.0,85560.0,70680.0,LOSS,39,-5.0,5.11,MSN,Retail,Flag Pullback,baseline,2024-09-19,5.14
+74700.0,85905.0,70965.0,LOSS,38,-5.0,5.49,MSN,Retail,Flag Pullback,baseline,2024-09-20,4.02
+74400.0,85560.0,70680.0,LOSS,37,-5.0,5.11,MSN,Retail,Flag Pullback,baseline,2024-09-23,4.59
+54000.0,62100.0,51300.0,LOSS,1,-5.0,6.85,MSN,Retail,Flag Pullback,baseline,2025-04-08,3.77
+58500.0,67275.0,55575.0,LOSS,2,-5.0,5.98,MSN,Retail,Flag Pullback,baseline,2025-04-15,4.29
+72100.0,82915.0,68495.0,OPEN,40,3.47,0.42,MSN,Retail,Pennant Pullback,baseline,2026-03-24,5.48
+78400.0,90160.0,74480.0,LOSS,35,-5.0,5.61,MSN,Retail,Triangle Pullback,baseline,2026-01-07,3.68
+75500.0,86825.0,71725.0,OPEN,40,-1.19,1.59,MSN,Retail,Triangle Pullback,baseline,2026-03-31,5.48
+63979.43,73576.34,60780.46,WIN,34,15.0,1.08,MWG,Retail,Flag Pullback,baseline,2025-06-24,6.28
+64078.01,73689.71,60874.11,WIN,33,15.0,1.23,MWG,Retail,Flag Pullback,baseline,2025-06-25,7.15
+89500.0,102925.0,85025.0,LOSS,19,-5.0,6.37,MWG,Retail,Flag Pullback,baseline,2026-01-29,5.36
+92900.0,106835.0,88255.0,LOSS,5,-5.0,7.43,MWG,Retail,Flag Pullback,baseline,2026-01-30,6.51
+93700.0,107755.0,89015.0,LOSS,4,-5.0,8.22,MWG,Retail,Flag Pullback,baseline,2026-02-02,6.2
+74200.0,85330.0,70490.0,OPEN,40,3.5,0.0,MWG,Retail,Flag Pullback,baseline,2026-03-23,9.39
+76000.0,87400.0,72200.0,OPEN,40,1.05,0.0,MWG,Retail,Flag Pullback,baseline,2026-03-24,8.47
+63979.43,73576.34,60780.46,WIN,34,15.0,1.08,MWG,Retail,Flag Pullback,trend_filter,2025-06-24,6.28
+64078.01,73689.71,60874.11,WIN,33,15.0,1.23,MWG,Retail,Flag Pullback,trend_filter,2025-06-25,7.15
+89500.0,102925.0,85025.0,LOSS,19,-5.0,6.37,MWG,Retail,Flag Pullback,trend_filter,2026-01-29,5.36
+92900.0,106835.0,88255.0,LOSS,5,-5.0,7.43,MWG,Retail,Flag Pullback,trend_filter,2026-01-30,6.51
+93700.0,107755.0,89015.0,LOSS,4,-5.0,8.22,MWG,Retail,Flag Pullback,trend_filter,2026-02-02,6.2
+64965.25,74710.03,61716.98,OPEN,40,-2.28,3.64,MWG,Retail,Pennant Pullback,baseline,2024-08-15,3.34
+68021.27,78224.46,64620.21,LOSS,19,-5.0,5.07,MWG,Retail,Pennant Pullback,baseline,2024-08-16,5.13
+69007.09,79358.16,65556.74,LOSS,13,-5.0,5.0,MWG,Retail,Triangle Pullback,baseline,2024-08-22,3.34
+69007.09,79358.16,65556.74,LOSS,12,-5.0,5.0,MWG,Retail,Triangle Pullback,baseline,2024-08-23,5.13
+60233.33,69268.33,57221.67,LOSS,20,-5.0,6.71,MWG,Retail,Triangle Pullback,baseline,2024-12-06,3.58
+87100.0,100165.0,82745.0,LOSS,33,-5.0,6.2,MWG,Retail,Triangle Pullback,baseline,2026-01-13,4.55
+86000.0,98900.0,81700.0,LOSS,32,-5.0,5.0,MWG,Retail,Triangle Pullback,baseline,2026-01-14,3.03
+87100.0,100165.0,82745.0,LOSS,33,-5.0,6.2,MWG,Retail,Triangle Pullback,trend_filter,2026-01-13,4.55
+86000.0,98900.0,81700.0,LOSS,32,-5.0,5.0,MWG,Retail,Triangle Pullback,trend_filter,2026-01-14,3.03
+48505.66,55781.5,46080.37,LOSS,10,-5.0,6.64,SAB,Retail,Flag Pullback,baseline,2024-07-22,3.54
+48331.49,55581.21,45914.91,OPEN,40,3.06,1.44,SAB,Retail,Flag Pullback,baseline,2024-10-25,3.17
+48350.0,55602.5,45932.5,LOSS,10,-5.0,6.31,SAB,Retail,Flag Pullback,baseline,2026-02-10,5.31
+48700.0,56005.0,46265.0,LOSS,9,-5.0,6.98,SAB,Retail,Flag Pullback,baseline,2026-02-11,12.88
+48800.0,56120.0,46360.0,LOSS,8,-5.0,7.17,SAB,Retail,Flag Pullback,baseline,2026-02-12,11.0
+42450.0,48817.5,40327.5,OPEN,40,3.53,0.94,SAB,Retail,Flag Pullback,baseline,2026-03-09,6.17
+44750.0,51462.5,42512.5,LOSS,9,-5.0,5.7,SAB,Retail,Flag Pullback,baseline,2026-03-10,3.78
+42450.0,48817.5,40327.5,OPEN,40,3.53,0.94,SAB,Retail,Flag Pullback,vol_filter,2026-03-09,6.17
+44750.0,51462.5,42512.5,LOSS,9,-5.0,5.7,SAB,Retail,Flag Pullback,vol_filter,2026-03-10,3.78
+64310.91,73957.54,61095.36,LOSS,17,-5.0,5.06,VNM,Retail,Flag Pullback,baseline,2024-09-20,11.67
+64487.83,74161.0,61263.44,LOSS,16,-5.0,5.32,VNM,Retail,Flag Pullback,baseline,2024-09-23,5.17
+64350.52,74003.09,61132.99,LOSS,15,-5.0,5.12,VNM,Retail,Flag Pullback,baseline,2024-09-24,5.55
+63709.77,73266.23,60524.28,LOSS,25,-5.0,6.18,VNM,Retail,Flag Pullback,baseline,2024-09-25,4.76
+56643.51,65140.03,53811.33,LOSS,8,-5.0,8.31,VNM,Retail,Flag Pullback,baseline,2025-03-24,5.45
+56643.51,65140.03,53811.33,LOSS,7,-5.0,8.31,VNM,Retail,Flag Pullback,baseline,2025-03-25,4.49
+71000.0,81650.0,67450.0,LOSS,6,-5.0,5.35,VNM,Retail,Flag Pullback,baseline,2026-01-15,3.72
+70600.0,81190.0,67070.0,LOSS,6,-5.0,6.37,VNM,Retail,Flag Pullback,baseline,2026-01-19,3.06
+63000.0,72450.0,59850.0,LOSS,8,-5.0,6.03,VNM,Retail,Flag Pullback,baseline,2026-03-11,6.35
+71000.0,81650.0,67450.0,LOSS,6,-5.0,5.35,VNM,Retail,Flag Pullback,trend_filter,2026-01-15,3.72
+70600.0,81190.0,67070.0,LOSS,6,-5.0,6.37,VNM,Retail,Flag Pullback,trend_filter,2026-01-19,3.06
+64310.91,73957.54,61095.36,LOSS,17,-5.0,5.06,VNM,Retail,Flag Pullback,vol_filter,2024-09-20,11.67
+64487.83,74161.0,61263.44,LOSS,16,-5.0,5.32,VNM,Retail,Flag Pullback,vol_filter,2024-09-23,5.17
+64350.52,74003.09,61132.99,LOSS,15,-5.0,5.12,VNM,Retail,Flag Pullback,vol_filter,2024-09-24,5.55
+63709.77,73266.23,60524.28,LOSS,25,-5.0,6.18,VNM,Retail,Flag Pullback,vol_filter,2024-09-25,4.76
+57000.0,65550.0,54150.0,WIN,15,15.0,0.0,VNM,Retail,Pennant Pullback,baseline,2025-11-10,4.23
+58900.0,67735.0,55955.0,OPEN,40,5.6,0.68,VNM,Retail,Pennant Pullback,baseline,2025-11-11,3.08
+61500.0,70725.0,58425.0,WIN,12,15.0,2.44,VNM,Retail,Pennant Pullback,baseline,2025-12-26,11.11
+62100.0,71415.0,58995.0,WIN,11,15.0,3.38,VNM,Retail,Pennant Pullback,baseline,2025-12-29,13.86
+61800.0,71070.0,58710.0,WIN,10,15.0,2.91,VNM,Retail,Pennant Pullback,baseline,2025-12-30,10.36
+61200.0,70380.0,58140.0,WIN,9,15.0,1.96,VNM,Retail,Pennant Pullback,baseline,2025-12-31,8.03
+69100.0,79465.0,65645.0,LOSS,9,-5.0,8.25,VNM,Retail,Pennant Pullback,baseline,2026-02-11,7.12
+69000.0,79350.0,65550.0,LOSS,8,-5.0,8.12,VNM,Retail,Pennant Pullback,baseline,2026-02-12,13.42
+69500.0,79925.0,66025.0,LOSS,7,-5.0,8.78,VNM,Retail,Pennant Pullback,baseline,2026-02-13,13.17
+70600.0,81190.0,67070.0,LOSS,5,-5.0,5.81,VNM,Retail,Pennant Pullback,baseline,2026-02-23,15.17
+70200.0,80730.0,66690.0,LOSS,4,-5.0,5.27,VNM,Retail,Pennant Pullback,baseline,2026-02-24,19.35
+58900.0,67735.0,55955.0,OPEN,40,5.6,0.68,VNM,Retail,Pennant Pullback,trend_filter,2025-11-11,3.08
+61500.0,70725.0,58425.0,WIN,12,15.0,2.44,VNM,Retail,Pennant Pullback,trend_filter,2025-12-26,11.11
+62100.0,71415.0,58995.0,WIN,11,15.0,3.38,VNM,Retail,Pennant Pullback,trend_filter,2025-12-29,13.86
+61800.0,71070.0,58710.0,WIN,10,15.0,2.91,VNM,Retail,Pennant Pullback,trend_filter,2025-12-30,10.36
+61200.0,70380.0,58140.0,WIN,9,15.0,1.96,VNM,Retail,Pennant Pullback,trend_filter,2025-12-31,8.03
+69100.0,79465.0,65645.0,LOSS,9,-5.0,8.25,VNM,Retail,Pennant Pullback,trend_filter,2026-02-11,7.12
+69000.0,79350.0,65550.0,LOSS,8,-5.0,8.12,VNM,Retail,Pennant Pullback,trend_filter,2026-02-12,13.42
+69500.0,79925.0,66025.0,LOSS,7,-5.0,8.78,VNM,Retail,Pennant Pullback,trend_filter,2026-02-13,13.17
+70600.0,81190.0,67070.0,LOSS,5,-5.0,5.81,VNM,Retail,Pennant Pullback,trend_filter,2026-02-23,15.17
+70200.0,80730.0,66690.0,LOSS,4,-5.0,5.27,VNM,Retail,Pennant Pullback,trend_filter,2026-02-24,19.35
+57311.32,65908.02,54445.75,OPEN,40,2.6,2.5,VNM,Retail,Triangle Pullback,baseline,2025-08-20,5.81
+57406.84,66017.87,54536.5,OPEN,40,-4.19,4.19,VNM,Retail,Triangle Pullback,baseline,2025-08-21,6.56
+56069.58,64480.01,53266.1,OPEN,40,0.77,1.91,VNM,Retail,Triangle Pullback,baseline,2025-08-22,4.15
+56069.58,64480.01,53266.1,OPEN,40,0.41,1.91,VNM,Retail,Triangle Pullback,baseline,2025-08-25,3.45
+58000.0,66700.0,55100.0,OPEN,40,5.52,1.72,VNM,Retail,Triangle Pullback,baseline,2025-11-05,3.85
+61800.0,71070.0,58710.0,WIN,10,15.0,2.91,VNM,Retail,Triangle Pullback,baseline,2025-12-30,8.03
+61200.0,70380.0,58140.0,WIN,9,15.0,1.96,VNM,Retail,Triangle Pullback,baseline,2025-12-31,8.28
+72300.0,83145.0,68685.0,LOSS,2,-5.0,5.95,VNM,Retail,Triangle Pullback,baseline,2026-02-25,7.12
+70600.0,81190.0,67070.0,LOSS,2,-5.0,5.81,VNM,Retail,Triangle Pullback,baseline,2026-02-26,13.42
+68200.0,78430.0,64790.0,LOSS,2,-5.0,7.04,VNM,Retail,Triangle Pullback,baseline,2026-02-27,13.17
+66600.0,76590.0,63270.0,LOSS,2,-5.0,6.91,VNM,Retail,Triangle Pullback,baseline,2026-03-02,15.17
+63400.0,72910.0,60230.0,LOSS,4,-5.0,8.36,VNM,Retail,Triangle Pullback,baseline,2026-03-03,19.35
+64900.0,74635.0,61655.0,LOSS,3,-5.0,10.48,VNM,Retail,Triangle Pullback,baseline,2026-03-04,13.2
+63200.0,72680.0,60040.0,LOSS,2,-5.0,8.07,VNM,Retail,Triangle Pullback,baseline,2026-03-05,14.72
+62400.0,71760.0,59280.0,LOSS,1,-5.0,6.89,VNM,Retail,Triangle Pullback,baseline,2026-03-06,9.8
+61500.0,70725.0,58425.0,OPEN,40,-1.79,2.44,VNM,Retail,Triangle Pullback,baseline,2026-03-27,3.42
+60500.0,69575.0,57475.0,OPEN,40,-0.17,0.83,VNM,Retail,Triangle Pullback,baseline,2026-03-31,3.69
+57311.32,65908.02,54445.75,OPEN,40,2.6,2.5,VNM,Retail,Triangle Pullback,trend_filter,2025-08-20,5.81
+57406.84,66017.87,54536.5,OPEN,40,-4.19,4.19,VNM,Retail,Triangle Pullback,trend_filter,2025-08-21,6.56
+61800.0,71070.0,58710.0,WIN,10,15.0,2.91,VNM,Retail,Triangle Pullback,trend_filter,2025-12-30,8.03
+61200.0,70380.0,58140.0,WIN,9,15.0,1.96,VNM,Retail,Triangle Pullback,trend_filter,2025-12-31,8.28
+72300.0,83145.0,68685.0,LOSS,2,-5.0,5.95,VNM,Retail,Triangle Pullback,trend_filter,2026-02-25,7.12
+70600.0,81190.0,67070.0,LOSS,2,-5.0,5.81,VNM,Retail,Triangle Pullback,trend_filter,2026-02-26,13.42
+68200.0,78430.0,64790.0,LOSS,2,-5.0,7.04,VNM,Retail,Triangle Pullback,trend_filter,2026-02-27,13.17
+66600.0,76590.0,63270.0,LOSS,2,-5.0,6.91,VNM,Retail,Triangle Pullback,trend_filter,2026-03-02,15.17
+66490.2,76463.73,63165.69,OPEN,40,4.49,2.44,GAS,Energy,Flag Pullback,baseline,2024-06-18,3.65
+66660.69,76659.79,63327.65,OPEN,40,4.86,2.69,GAS,Energy,Flag Pullback,baseline,2024-06-19,4.22
+66490.2,76463.73,63165.69,OPEN,40,4.1,2.44,GAS,Energy,Flag Pullback,baseline,2024-06-20,8.12
+66404.96,76365.71,63084.71,OPEN,40,6.03,2.31,GAS,Energy,Flag Pullback,baseline,2024-06-21,6.47
+65211.54,74993.27,61950.97,OPEN,40,10.46,0.52,GAS,Energy,Flag Pullback,baseline,2024-06-24,8.29
+65041.05,74797.21,61789.0,OPEN,40,10.75,0.26,GAS,Energy,Flag Pullback,baseline,2024-06-25,7.34
+65211.54,74993.27,61950.97,OPEN,40,11.11,0.26,GAS,Energy,Flag Pullback,baseline,2024-06-26,6.2
+65211.54,74993.27,61950.97,OPEN,40,10.46,0.26,GAS,Energy,Flag Pullback,baseline,2024-06-27,6.57
+65296.79,75091.3,62031.95,OPEN,40,10.57,0.39,GAS,Energy,Flag Pullback,baseline,2024-06-28,6.09
+66234.48,76169.65,62922.75,OPEN,40,8.37,1.8,GAS,Energy,Flag Pullback,baseline,2024-07-01,6.91
+66660.69,76659.79,63327.65,OPEN,40,6.78,2.43,GAS,Energy,Flag Pullback,baseline,2024-07-02,7.45
+66660.69,76659.79,63327.65,OPEN,40,7.16,2.43,GAS,Energy,Flag Pullback,baseline,2024-07-03,6.75
+67001.66,77051.91,63651.58,OPEN,40,5.98,2.93,GAS,Energy,Flag Pullback,baseline,2024-07-05,6.08
+67086.91,77149.94,63732.56,OPEN,40,6.61,3.05,GAS,Energy,Flag Pullback,baseline,2024-07-08,5.66
+67342.64,77444.04,63975.51,OPEN,40,5.44,3.42,GAS,Energy,Flag Pullback,baseline,2024-07-09,4.69
+69589.22,80027.6,66109.76,LOSS,26,-5.0,5.41,GAS,Energy,Flag Pullback,baseline,2024-09-26,8.02
+69119.02,79486.88,65663.07,LOSS,27,-5.0,5.58,GAS,Energy,Flag Pullback,baseline,2024-09-27,5.54
+62000.0,71300.0,58900.0,LOSS,24,-5.0,5.16,GAS,Energy,Flag Pullback,baseline,2025-09-11,3.83
+66660.69,76659.79,63327.65,OPEN,40,6.78,2.43,GAS,Energy,Flag Pullback,vol_filter,2024-07-02,7.45
+66660.69,76659.79,63327.65,OPEN,40,7.16,2.43,GAS,Energy,Flag Pullback,vol_filter,2024-07-03,6.75
+67001.66,77051.91,63651.58,OPEN,40,5.98,2.93,GAS,Energy,Flag Pullback,vol_filter,2024-07-05,6.08
+67086.91,77149.94,63732.56,OPEN,40,6.61,3.05,GAS,Energy,Flag Pullback,vol_filter,2024-07-08,5.66
+67342.64,77444.04,63975.51,OPEN,40,5.44,3.42,GAS,Energy,Flag Pullback,vol_filter,2024-07-09,4.69
+69589.22,80027.6,66109.76,LOSS,26,-5.0,5.41,GAS,Energy,Flag Pullback,vol_filter,2024-09-26,8.02
+69119.02,79486.88,65663.07,LOSS,27,-5.0,5.58,GAS,Energy,Flag Pullback,vol_filter,2024-09-27,5.54
+72201.55,83031.78,68591.47,LOSS,5,-5.0,5.44,GAS,Energy,Pennant Pullback,baseline,2024-09-09,4.61
+71690.08,82443.59,68105.57,LOSS,5,-5.0,5.16,GAS,Energy,Pennant Pullback,baseline,2024-09-10,4.88
+71263.86,81953.44,67700.67,LOSS,26,-5.0,6.04,GAS,Energy,Pennant Pullback,baseline,2024-09-11,7.14
+71263.86,81953.44,67700.67,LOSS,25,-5.0,6.04,GAS,Energy,Pennant Pullback,baseline,2024-09-12,6.12
+69871.34,80352.04,66377.77,LOSS,34,-5.0,5.11,GAS,Energy,Pennant Pullback,baseline,2024-09-13,6.49
+68272.66,78513.56,64859.03,OPEN,40,-3.44,4.41,GAS,Energy,Pennant Pullback,baseline,2024-09-16,5.73
+68272.66,78513.56,64859.03,OPEN,40,-3.44,4.41,GAS,Energy,Triangle Pullback,baseline,2024-09-16,4.61
+64134.93,73755.16,60928.18,OPEN,40,-3.48,3.95,GAS,Energy,Triangle Pullback,baseline,2025-07-14,4.28
+63664.73,73214.44,60481.49,OPEN,40,-2.61,3.71,GAS,Energy,Triangle Pullback,baseline,2025-07-15,3.97
+63382.61,72890.0,60213.48,OPEN,40,-1.39,3.29,GAS,Energy,Triangle Pullback,baseline,2025-07-16,3.81
+63476.65,72998.15,60302.82,OPEN,40,0.82,3.43,GAS,Energy,Triangle Pullback,baseline,2025-07-21,9.37
+63852.8,73430.73,60660.16,OPEN,40,-1.34,4.0,GAS,Energy,Triangle Pullback,baseline,2025-07-22,8.79
+64887.24,74620.32,61642.88,LOSS,32,-5.0,5.07,GAS,Energy,Triangle Pullback,baseline,2025-07-23,10.61
+64981.28,74728.47,61732.21,LOSS,31,-5.0,5.2,GAS,Energy,Triangle Pullback,baseline,2025-07-24,12.19
+64605.12,74295.89,61374.87,LOSS,32,-5.0,5.12,GAS,Energy,Triangle Pullback,baseline,2025-07-25,6.92
+64793.2,74512.18,61553.54,LOSS,31,-5.0,5.39,GAS,Energy,Triangle Pullback,baseline,2025-07-28,10.84
+63476.65,72998.15,60302.82,OPEN,40,0.82,3.43,GAS,Energy,Triangle Pullback,trend_filter,2025-07-21,9.37
+63852.8,73430.73,60660.16,OPEN,40,-1.34,4.0,GAS,Energy,Triangle Pullback,trend_filter,2025-07-22,8.79
+64887.24,74620.32,61642.88,LOSS,32,-5.0,5.07,GAS,Energy,Triangle Pullback,trend_filter,2025-07-23,10.61
+64981.28,74728.47,61732.21,LOSS,31,-5.0,5.2,GAS,Energy,Triangle Pullback,trend_filter,2025-07-24,12.19
+64605.12,74295.89,61374.87,LOSS,32,-5.0,5.12,GAS,Energy,Triangle Pullback,trend_filter,2025-07-25,6.92
+64793.2,74512.18,61553.54,LOSS,31,-5.0,5.39,GAS,Energy,Triangle Pullback,trend_filter,2025-07-28,10.84
+29085.24,33448.02,27630.97,LOSS,29,-5.0,5.08,GVR,Industrial,Flag Pullback,baseline,2025-07-30,12.61
+27700.0,31855.0,26315.0,LOSS,7,-5.0,9.39,GVR,Industrial,Flag Pullback,baseline,2025-12-03,5.83
+27850.0,32027.5,26457.5,LOSS,6,-5.0,9.87,GVR,Industrial,Flag Pullback,baseline,2025-12-04,5.51
+26950.0,30992.5,25602.5,LOSS,4,-5.0,6.86,GVR,Industrial,Flag Pullback,baseline,2025-12-08,10.69
+26900.0,30935.0,25555.0,LOSS,3,-5.0,6.69,GVR,Industrial,Flag Pullback,baseline,2025-12-09,9.84
+26750.0,30762.5,25412.5,LOSS,2,-5.0,6.17,GVR,Industrial,Flag Pullback,baseline,2025-12-10,7.36
+26650.0,30647.5,25317.5,LOSS,1,-5.0,5.82,GVR,Industrial,Flag Pullback,baseline,2025-12-11,10.75
+31700.0,36455.0,30115.0,OPEN,40,-2.52,3.79,GVR,Industrial,Flag Pullback,baseline,2026-03-31,6.89
+32930.4,37869.96,31283.88,LOSS,10,-5.0,5.39,GVR,Industrial,Triangle Pullback,baseline,2025-03-18,4.14
+23958.33,27552.08,22760.42,LOSS,15,-5.0,5.74,HPG,Industrial,Flag Pullback,baseline,2024-07-03,3.13
+21916.67,25204.17,20820.83,OPEN,40,1.71,3.99,HPG,Industrial,Flag Pullback,baseline,2024-11-04,6.24
+22083.33,25395.83,20979.17,OPEN,40,0.57,4.72,HPG,Industrial,Flag Pullback,baseline,2024-11-05,6.73
+22458.33,25827.08,21335.42,LOSS,8,-5.0,5.38,HPG,Industrial,Flag Pullback,baseline,2024-11-06,9.56
+22458.33,25827.08,21335.42,LOSS,7,-5.0,5.38,HPG,Industrial,Flag Pullback,baseline,2024-11-07,7.92
+22625.0,26018.75,21493.75,LOSS,8,-5.0,6.63,HPG,Industrial,Flag Pullback,baseline,2025-03-24,4.92
+22958.33,26402.08,21810.42,LOSS,6,-5.0,7.99,HPG,Industrial,Flag Pullback,baseline,2025-03-26,3.54
+22916.67,26354.17,21770.83,LOSS,5,-5.0,7.82,HPG,Industrial,Flag Pullback,baseline,2025-03-27,6.16
+22625.0,26018.75,21493.75,LOSS,8,-5.0,6.63,HPG,Industrial,Flag Pullback,trend_filter,2025-03-24,4.92
+22958.33,26402.08,21810.42,LOSS,6,-5.0,7.99,HPG,Industrial,Flag Pullback,trend_filter,2025-03-26,3.54
+22916.67,26354.17,21770.83,LOSS,5,-5.0,7.82,HPG,Industrial,Flag Pullback,trend_filter,2025-03-27,6.16
+22083.33,25395.83,20979.17,OPEN,40,0.57,4.72,HPG,Industrial,Flag Pullback,vol_filter,2024-11-05,6.73
+22458.33,25827.08,21335.42,LOSS,8,-5.0,5.38,HPG,Industrial,Flag Pullback,vol_filter,2024-11-06,9.56
+22458.33,25827.08,21335.42,LOSS,7,-5.0,5.38,HPG,Industrial,Flag Pullback,vol_filter,2024-11-07,7.92
+22500.0,25875.0,21375.0,LOSS,13,-5.0,5.56,HPG,Industrial,Pennant Pullback,baseline,2024-10-30,3.75
+22416.67,25779.17,21295.83,LOSS,12,-5.0,5.2,HPG,Industrial,Pennant Pullback,baseline,2024-10-31,4.38
+22125.0,25443.75,21018.75,OPEN,40,1.13,4.9,HPG,Industrial,Pennant Pullback,baseline,2024-11-01,4.8
+25950.0,29842.5,24652.5,WIN,6,15.0,0.0,HPG,Industrial,Pennant Pullback,baseline,2025-08-25,11.65
+25950.0,29842.5,24652.5,WIN,6,15.0,0.0,HPG,Industrial,Pennant Pullback,trend_filter,2025-08-25,11.65
+21291.67,24485.42,20227.08,OPEN,40,7.83,0.59,HPG,Industrial,Triangle Pullback,baseline,2025-01-10,5.89
+27200.0,31280.0,25840.0,OPEN,40,-2.57,4.41,HPG,Industrial,Triangle Pullback,baseline,2025-08-26,16.78
+26750.0,30762.5,25412.5,WIN,11,15.0,0.0,HPG,Industrial,Triangle Pullback,baseline,2025-08-27,15.28
+27100.0,31165.0,25745.0,OPEN,40,-3.14,4.06,HPG,Industrial,Triangle Pullback,baseline,2025-08-28,12.55
+27500.0,31625.0,26125.0,LOSS,34,-5.0,5.27,HPG,Industrial,Triangle Pullback,baseline,2025-08-29,12.04
+28150.0,32372.5,26742.5,LOSS,33,-5.0,7.46,HPG,Industrial,Triangle Pullback,baseline,2025-09-03,11.65
+27200.0,31280.0,25840.0,OPEN,40,-2.57,4.41,HPG,Industrial,Triangle Pullback,trend_filter,2025-08-26,16.78
+26750.0,30762.5,25412.5,WIN,11,15.0,0.0,HPG,Industrial,Triangle Pullback,trend_filter,2025-08-27,15.28
+27100.0,31165.0,25745.0,OPEN,40,-3.14,4.06,HPG,Industrial,Triangle Pullback,trend_filter,2025-08-28,12.55
+27500.0,31625.0,26125.0,LOSS,34,-5.0,5.27,HPG,Industrial,Triangle Pullback,trend_filter,2025-08-29,12.04
+28150.0,32372.5,26742.5,LOSS,33,-5.0,7.46,HPG,Industrial,Triangle Pullback,trend_filter,2025-09-03,11.65
+44943.51,51685.04,42696.34,LOSS,26,-5.0,8.5,PLX,Energy,Flag Pullback,baseline,2024-09-09,6.22
+43927.57,50516.7,41731.19,LOSS,23,-5.0,6.39,PLX,Energy,Flag Pullback,baseline,2024-09-12,5.39
+44314.59,50961.78,42098.86,LOSS,22,-5.0,7.21,PLX,Energy,Flag Pullback,baseline,2024-09-13,7.36
+43540.54,50071.62,41363.51,LOSS,21,-5.0,5.56,PLX,Energy,Flag Pullback,baseline,2024-09-16,5.81
+43540.54,50071.62,41363.51,LOSS,20,-5.0,5.56,PLX,Energy,Flag Pullback,baseline,2024-09-17,5.72
+43540.54,50071.62,41363.51,LOSS,19,-5.0,5.56,PLX,Energy,Flag Pullback,baseline,2024-09-18,5.86
+44508.11,51184.33,42282.7,LOSS,17,-5.0,7.61,PLX,Energy,Flag Pullback,baseline,2024-09-20,4.99
+43782.43,50349.8,41593.31,LOSS,16,-5.0,6.08,PLX,Energy,Flag Pullback,baseline,2024-09-23,6.32
+43734.05,50294.16,41547.35,LOSS,15,-5.0,5.97,PLX,Energy,Flag Pullback,baseline,2024-09-24,8.17
+43927.57,50516.7,41731.19,LOSS,14,-5.0,6.39,PLX,Energy,Flag Pullback,baseline,2024-09-25,3.16
+44121.08,50739.24,41915.03,LOSS,13,-5.0,6.8,PLX,Energy,Flag Pullback,baseline,2024-09-26,6.7
+43492.16,50015.98,41317.55,LOSS,12,-5.0,5.45,PLX,Energy,Flag Pullback,baseline,2024-09-27,5.11
+36912.7,42449.61,35067.07,WIN,37,15.0,2.23,PLX,Energy,Flag Pullback,baseline,2025-01-02,3.6
+35600.0,40940.0,33820.0,LOSS,11,-5.0,6.46,PLX,Energy,Flag Pullback,baseline,2025-09-18,5.07
+40400.0,46460.0,38380.0,OPEN,40,-4.21,4.33,PLX,Energy,Flag Pullback,baseline,2026-03-31,10.17
+43540.54,50071.62,41363.51,LOSS,21,-5.0,5.56,PLX,Energy,Flag Pullback,vol_filter,2024-09-16,5.81
+43540.54,50071.62,41363.51,LOSS,20,-5.0,5.56,PLX,Energy,Flag Pullback,vol_filter,2024-09-17,5.72
+43540.54,50071.62,41363.51,LOSS,19,-5.0,5.56,PLX,Energy,Flag Pullback,vol_filter,2024-09-18,5.86
+44508.11,51184.33,42282.7,LOSS,17,-5.0,7.61,PLX,Energy,Flag Pullback,vol_filter,2024-09-20,4.99
+43782.43,50349.8,41593.31,LOSS,16,-5.0,6.08,PLX,Energy,Flag Pullback,vol_filter,2024-09-23,6.32
+43734.05,50294.16,41547.35,LOSS,15,-5.0,5.97,PLX,Energy,Flag Pullback,vol_filter,2024-09-24,8.17
+43927.57,50516.7,41731.19,LOSS,14,-5.0,6.39,PLX,Energy,Flag Pullback,vol_filter,2024-09-25,3.16
+44121.08,50739.24,41915.03,LOSS,13,-5.0,6.8,PLX,Energy,Flag Pullback,vol_filter,2024-09-26,6.7
+43492.16,50015.98,41317.55,LOSS,12,-5.0,5.45,PLX,Energy,Flag Pullback,vol_filter,2024-09-27,5.11
+35600.0,40940.0,33820.0,LOSS,11,-5.0,6.46,PLX,Energy,Flag Pullback,vol_filter,2025-09-18,5.07
+42524.59,48903.28,40398.36,WIN,30,15.0,0.23,PLX,Energy,Pennant Pullback,baseline,2024-07-05,9.35
+44991.89,51740.67,42742.3,LOSS,7,-5.0,5.7,PLX,Energy,Pennant Pullback,baseline,2024-07-08,10.39
+44508.11,51184.33,42282.7,OPEN,40,2.07,4.67,PLX,Energy,Pennant Pullback,baseline,2024-07-09,15.2
+42524.59,48903.28,40398.36,WIN,30,15.0,0.23,PLX,Energy,Pennant Pullback,vol_filter,2024-07-05,9.35
+44798.38,51518.14,42558.46,LOSS,3,-5.0,5.29,PLX,Energy,Triangle Pullback,baseline,2024-07-12,9.35
+46443.24,53409.73,44121.08,LOSS,2,-5.0,8.65,PLX,Energy,Triangle Pullback,baseline,2024-07-15,10.39
+41847.3,48124.39,39754.93,LOSS,12,-5.0,5.2,PLX,Energy,Triangle Pullback,baseline,2025-02-26,4.03
+41557.03,47790.58,39479.18,LOSS,20,-5.0,5.01,PLX,Energy,Triangle Pullback,baseline,2025-02-27,3.63
+9621.85,11065.13,9140.76,OPEN,40,6.11,2.62,POW,Energy,Flag Pullback,baseline,2024-11-04,3.66
+10210.08,11741.6,9699.58,LOSS,6,-5.0,5.35,POW,Energy,Flag Pullback,baseline,2024-12-26,6.41
+10084.03,11596.64,9579.83,LOSS,16,-5.0,5.42,POW,Energy,Flag Pullback,baseline,2024-12-27,5.98
+10210.08,11741.6,9699.58,LOSS,4,-5.0,5.35,POW,Energy,Flag Pullback,baseline,2024-12-30,5.98
+10084.03,11596.64,9579.83,LOSS,14,-5.0,5.42,POW,Energy,Flag Pullback,baseline,2024-12-31,8.12
+10084.03,11596.64,9579.83,LOSS,13,-5.0,5.42,POW,Energy,Flag Pullback,baseline,2025-01-02,5.13
+9915.97,11403.36,9420.17,OPEN,40,2.54,4.24,POW,Energy,Flag Pullback,baseline,2025-01-03,8.7
+9705.88,11161.77,9220.59,OPEN,40,4.33,2.16,POW,Energy,Flag Pullback,baseline,2025-01-06,10.67
+9621.85,11065.13,9140.76,OPEN,40,5.24,1.31,POW,Energy,Flag Pullback,baseline,2025-01-07,10.62
+9789.92,11258.4,9300.42,OPEN,40,3.86,3.0,POW,Energy,Flag Pullback,baseline,2025-01-08,12.95
+9789.92,11258.4,9300.42,OPEN,40,3.0,3.0,POW,Energy,Flag Pullback,baseline,2025-01-10,7.42
+9915.97,11403.36,9420.17,OPEN,40,2.54,4.24,POW,Energy,Flag Pullback,baseline,2025-01-13,7.46
+13300.0,15295.0,12635.0,WIN,7,15.0,0.75,POW,Energy,Flag Pullback,baseline,2026-02-12,11.33
+13400.0,15410.0,12730.0,WIN,6,15.0,0.0,POW,Energy,Flag Pullback,baseline,2026-02-13,11.76
+13850.0,15927.5,13157.5,WIN,6,15.0,1.08,POW,Energy,Flag Pullback,baseline,2026-02-23,13.1
+13900.0,15985.0,13205.0,WIN,5,15.0,0.0,POW,Energy,Flag Pullback,baseline,2026-02-24,11.72
+14300.0,16445.0,13585.0,WIN,4,15.0,2.45,POW,Energy,Flag Pullback,baseline,2026-02-25,12.69
+14100.0,16215.0,13395.0,WIN,3,15.0,0.0,POW,Energy,Flag Pullback,baseline,2026-02-26,15.62
+13300.0,15295.0,12635.0,WIN,7,15.0,0.75,POW,Energy,Flag Pullback,trend_filter,2026-02-12,11.33
+13400.0,15410.0,12730.0,WIN,6,15.0,0.0,POW,Energy,Flag Pullback,trend_filter,2026-02-13,11.76
+13850.0,15927.5,13157.5,WIN,6,15.0,1.08,POW,Energy,Flag Pullback,trend_filter,2026-02-23,13.1
+13900.0,15985.0,13205.0,WIN,5,15.0,0.0,POW,Energy,Flag Pullback,trend_filter,2026-02-24,11.72
+14300.0,16445.0,13585.0,WIN,4,15.0,2.45,POW,Energy,Flag Pullback,trend_filter,2026-02-25,12.69
+14100.0,16215.0,13395.0,WIN,3,15.0,0.0,POW,Energy,Flag Pullback,trend_filter,2026-02-26,15.62
+9789.92,11258.4,9300.42,OPEN,40,3.0,3.0,POW,Energy,Flag Pullback,vol_filter,2025-01-10,7.42
+9915.97,11403.36,9420.17,OPEN,40,2.54,4.24,POW,Energy,Flag Pullback,vol_filter,2025-01-13,7.46
+10042.02,11548.32,9539.92,WIN,18,15.0,2.09,POW,Energy,Pennant Pullback,baseline,2025-04-23,7.41
+10084.03,11596.64,9579.83,WIN,18,15.0,2.5,POW,Energy,Pennant Pullback,baseline,2025-04-24,8.79
+10000.0,11500.0,9500.0,WIN,16,15.0,1.68,POW,Energy,Pennant Pullback,baseline,2025-04-25,6.2
+9873.95,11355.04,9380.25,WIN,15,15.0,0.43,POW,Energy,Pennant Pullback,baseline,2025-04-28,5.79
+9957.98,11451.68,9460.08,WIN,14,15.0,0.42,POW,Energy,Pennant Pullback,baseline,2025-04-29,6.22
+10336.13,11886.55,9819.33,OPEN,40,5.69,1.22,POW,Energy,Pennant Pullback,baseline,2025-05-05,7.47
+10252.1,11789.92,9739.5,OPEN,40,6.56,0.0,POW,Energy,Pennant Pullback,baseline,2025-05-06,5.79
+10336.13,11886.55,9819.33,OPEN,40,5.69,1.22,POW,Energy,Pennant Pullback,trend_filter,2025-05-05,7.47
+10252.1,11789.92,9739.5,OPEN,40,6.56,0.0,POW,Energy,Pennant Pullback,trend_filter,2025-05-06,5.79
+11596.64,13336.13,11016.81,LOSS,3,-5.0,5.43,POW,Energy,Triangle Pullback,baseline,2024-08-08,4.24
+11638.66,13384.45,11056.72,LOSS,2,-5.0,5.78,POW,Energy,Triangle Pullback,baseline,2024-08-09,6.18
+11428.57,13142.86,10857.14,LOSS,16,-5.0,5.15,POW,Energy,Triangle Pullback,baseline,2024-08-12,7.89
+10336.13,11886.55,9819.33,OPEN,40,5.69,1.22,POW,Energy,Triangle Pullback,baseline,2025-05-05,7.41
+10252.1,11789.92,9739.5,OPEN,40,6.56,0.0,POW,Energy,Triangle Pullback,baseline,2025-05-06,8.79
+10672.27,12273.11,10138.66,OPEN,40,1.57,0.39,POW,Energy,Triangle Pullback,baseline,2025-05-07,6.2
+10756.3,12369.75,10218.49,OPEN,40,3.52,1.17,POW,Energy,Triangle Pullback,baseline,2025-05-08,5.79
+10714.29,12321.43,10178.57,OPEN,40,5.49,0.78,POW,Energy,Triangle Pullback,baseline,2025-05-09,6.22
+14200.0,16330.0,13490.0,LOSS,2,-5.0,5.63,POW,Energy,Triangle Pullback,baseline,2026-02-05,5.05
+13500.0,15525.0,12825.0,LOSS,2,-5.0,5.19,POW,Energy,Triangle Pullback,baseline,2026-02-06,3.25
+13450.0,15467.5,12777.5,WIN,10,15.0,4.83,POW,Energy,Triangle Pullback,baseline,2026-02-09,4.55
+10336.13,11886.55,9819.33,OPEN,40,5.69,1.22,POW,Energy,Triangle Pullback,trend_filter,2025-05-05,7.41
+10252.1,11789.92,9739.5,OPEN,40,6.56,0.0,POW,Energy,Triangle Pullback,trend_filter,2025-05-06,8.79
+10672.27,12273.11,10138.66,OPEN,40,1.57,0.39,POW,Energy,Triangle Pullback,trend_filter,2025-05-07,6.2
+10756.3,12369.75,10218.49,OPEN,40,3.52,1.17,POW,Energy,Triangle Pullback,trend_filter,2025-05-08,5.79
+10714.29,12321.43,10178.57,OPEN,40,5.49,0.78,POW,Energy,Triangle Pullback,trend_filter,2025-05-09,6.22
+14200.0,16330.0,13490.0,LOSS,2,-5.0,5.63,POW,Energy,Triangle Pullback,trend_filter,2026-02-05,5.05
+13500.0,15525.0,12825.0,LOSS,2,-5.0,5.19,POW,Energy,Triangle Pullback,trend_filter,2026-02-06,3.25
+13450.0,15467.5,12777.5,WIN,10,15.0,4.83,POW,Energy,Triangle Pullback,trend_filter,2026-02-09,4.55
+109059.66,125418.6,103606.67,LOSS,4,-5.0,6.2,FPT,Technology,Flag Pullback,baseline,2024-07-29,3.64
+96693.82,111197.89,91859.13,LOSS,27,-5.0,5.02,FPT,Technology,Flag Pullback,baseline,2025-08-20,8.41
+99000.0,113850.0,94050.0,LOSS,5,-5.0,5.96,FPT,Technology,Flag Pullback,baseline,2026-02-09,5.4
+97800.0,112470.0,92910.0,LOSS,5,-5.0,5.42,FPT,Technology,Flag Pullback,baseline,2026-02-10,5.32
+98600.0,113390.0,93670.0,LOSS,3,-5.0,5.58,FPT,Technology,Flag Pullback,baseline,2026-02-11,6.51
+98800.0,113620.0,93860.0,LOSS,2,-5.0,5.77,FPT,Technology,Flag Pullback,baseline,2026-02-12,4.79
+96300.0,110745.0,91485.0,LOSS,3,-5.0,7.58,FPT,Technology,Flag Pullback,baseline,2026-02-13,12.5
+94500.0,108675.0,89775.0,LOSS,2,-5.0,5.82,FPT,Technology,Flag Pullback,baseline,2026-02-23,13.76
+99283.11,114175.58,94318.95,OPEN,40,10.35,1.29,FPT,Technology,Pennant Pullback,baseline,2025-05-30,4.09
+98942.22,113783.55,93995.11,OPEN,40,11.33,0.95,FPT,Technology,Pennant Pullback,baseline,2025-06-02,3.13
+98004.78,112705.5,93104.54,OPEN,40,8.05,0.0,FPT,Technology,Triangle Pullback,baseline,2025-06-06,4.09
+99027.43,113881.54,94076.06,OPEN,40,6.54,0.49,FPT,Technology,Triangle Pullback,baseline,2025-06-09,3.13
+96600.0,111090.0,91770.0,LOSS,18,-5.0,5.8,FPT,Technology,Triangle Pullback,baseline,2025-12-02,7.02
+96600.0,111090.0,91770.0,LOSS,17,-5.0,5.8,FPT,Technology,Triangle Pullback,baseline,2025-12-03,7.62
+97500.0,112125.0,92625.0,LOSS,8,-5.0,5.64,FPT,Technology,Triangle Pullback,baseline,2025-12-04,9.02
+96200.0,110630.0,91390.0,LOSS,15,-5.0,5.41,FPT,Technology,Triangle Pullback,baseline,2025-12-05,8.12
+95500.0,109825.0,90725.0,OPEN,40,6.7,4.71,FPT,Technology,Triangle Pullback,baseline,2025-12-08,11.7
+96900.0,111435.0,92055.0,LOSS,5,-5.0,5.06,FPT,Technology,Triangle Pullback,baseline,2025-12-09,11.8
+95600.0,109940.0,90820.0,OPEN,40,2.09,4.81,FPT,Technology,Triangle Pullback,baseline,2025-12-10,12.61
+96000.0,110400.0,91200.0,LOSS,11,-5.0,5.21,FPT,Technology,Triangle Pullback,baseline,2025-12-11,11.58
+93700.0,107755.0,89015.0,WIN,24,15.0,2.88,FPT,Technology,Triangle Pullback,baseline,2025-12-12,14.64
+93800.0,107870.0,89110.0,WIN,23,15.0,2.99,FPT,Technology,Triangle Pullback,baseline,2025-12-15,10.57
+96600.0,111090.0,91770.0,LOSS,17,-5.0,5.8,FPT,Technology,Triangle Pullback,vol_filter,2025-12-03,7.62
+97500.0,112125.0,92625.0,LOSS,8,-5.0,5.64,FPT,Technology,Triangle Pullback,vol_filter,2025-12-04,9.02
+96200.0,110630.0,91390.0,LOSS,15,-5.0,5.41,FPT,Technology,Triangle Pullback,vol_filter,2025-12-05,8.12
+95500.0,109825.0,90725.0,OPEN,40,6.7,4.71,FPT,Technology,Triangle Pullback,vol_filter,2025-12-08,11.7
+96900.0,111435.0,92055.0,LOSS,5,-5.0,5.06,FPT,Technology,Triangle Pullback,vol_filter,2025-12-09,11.8
+95600.0,109940.0,90820.0,OPEN,40,2.09,4.81,FPT,Technology,Triangle Pullback,vol_filter,2025-12-10,12.61
+96000.0,110400.0,91200.0,LOSS,11,-5.0,5.21,FPT,Technology,Triangle Pullback,vol_filter,2025-12-11,11.58
+93700.0,107755.0,89015.0,WIN,24,15.0,2.88,FPT,Technology,Triangle Pullback,vol_filter,2025-12-12,14.64
+93800.0,107870.0,89110.0,WIN,23,15.0,2.99,FPT,Technology,Triangle Pullback,vol_filter,2025-12-15,10.57
+44099.06,50713.92,41894.11,LOSS,17,-5.0,5.43,BVH,Insurance,Flag Pullback,baseline,2024-06-28,10.2
+44482.53,51154.91,42258.4,LOSS,15,-5.0,5.06,BVH,Insurance,Flag Pullback,baseline,2024-07-01,12.11
+41702.37,47957.73,39617.25,OPEN,40,-0.69,4.6,BVH,Insurance,Flag Pullback,baseline,2024-08-02,4.27
+40168.49,46193.76,38160.06,OPEN,40,2.39,0.95,BVH,Insurance,Flag Pullback,baseline,2024-08-05,4.51
+52393.89,60252.97,49774.19,LOSS,11,-5.0,9.18,BVH,Insurance,Flag Pullback,baseline,2025-03-19,11.44
+52001.42,59801.64,49401.35,LOSS,10,-5.0,8.49,BVH,Insurance,Flag Pullback,baseline,2025-03-20,12.23
+51510.84,59237.47,48935.3,LOSS,9,-5.0,7.62,BVH,Insurance,Flag Pullback,baseline,2025-03-21,14.17
+51216.5,58898.97,48655.67,LOSS,8,-5.0,7.09,BVH,Insurance,Flag Pullback,baseline,2025-03-24,15.78
+51412.73,59124.64,48842.09,LOSS,7,-5.0,7.44,BVH,Insurance,Flag Pullback,baseline,2025-03-25,11.28
+51216.5,58898.97,48655.67,LOSS,6,-5.0,7.09,BVH,Insurance,Flag Pullback,baseline,2025-03-26,12.67
+52197.65,60027.3,49587.77,LOSS,5,-5.0,8.83,BVH,Insurance,Flag Pullback,baseline,2025-03-27,12.89
+52295.77,60140.13,49680.98,LOSS,3,-5.0,9.01,BVH,Insurance,Flag Pullback,baseline,2025-03-31,7.56
+51707.07,59463.14,49121.72,LOSS,2,-5.0,7.97,BVH,Insurance,Flag Pullback,baseline,2025-04-01,7.4
+57594.03,66233.13,54714.33,LOSS,4,-5.0,6.3,BVH,Insurance,Flag Pullback,baseline,2025-09-18,23.39
+56809.1,65330.47,53968.65,LOSS,3,-5.0,5.01,BVH,Insurance,Flag Pullback,baseline,2025-09-19,19.88
+55435.48,63750.8,52663.71,LOSS,9,-5.0,6.37,BVH,Insurance,Flag Pullback,baseline,2025-09-22,21.83
+54944.9,63186.63,52197.65,LOSS,8,-5.0,5.54,BVH,Insurance,Flag Pullback,baseline,2025-09-23,14.2
+52393.89,60252.97,49774.19,LOSS,11,-5.0,9.18,BVH,Insurance,Flag Pullback,trend_filter,2025-03-19,11.44
+57594.03,66233.13,54714.33,LOSS,4,-5.0,6.3,BVH,Insurance,Flag Pullback,trend_filter,2025-09-18,23.39
+56809.1,65330.47,53968.65,LOSS,3,-5.0,5.01,BVH,Insurance,Flag Pullback,trend_filter,2025-09-19,19.88
+55435.48,63750.8,52663.71,LOSS,9,-5.0,6.37,BVH,Insurance,Flag Pullback,trend_filter,2025-09-22,21.83
+54944.9,63186.63,52197.65,LOSS,8,-5.0,5.54,BVH,Insurance,Flag Pullback,trend_filter,2025-09-23,14.2
+51412.73,59124.64,48842.09,LOSS,7,-5.0,7.44,BVH,Insurance,Flag Pullback,vol_filter,2025-03-25,11.28
+51216.5,58898.97,48655.67,LOSS,6,-5.0,7.09,BVH,Insurance,Flag Pullback,vol_filter,2025-03-26,12.67
+52197.65,60027.3,49587.77,LOSS,5,-5.0,8.83,BVH,Insurance,Flag Pullback,vol_filter,2025-03-27,12.89
+52295.77,60140.13,49680.98,LOSS,3,-5.0,9.01,BVH,Insurance,Flag Pullback,vol_filter,2025-03-31,7.56
+51707.07,59463.14,49121.72,LOSS,2,-5.0,7.97,BVH,Insurance,Flag Pullback,vol_filter,2025-04-01,7.4
+57594.03,66233.13,54714.33,LOSS,4,-5.0,6.3,BVH,Insurance,Flag Pullback,vol_filter,2025-09-18,23.39
+56809.1,65330.47,53968.65,LOSS,3,-5.0,5.01,BVH,Insurance,Flag Pullback,vol_filter,2025-09-19,19.88
+55435.48,63750.8,52663.71,LOSS,9,-5.0,6.37,BVH,Insurance,Flag Pullback,vol_filter,2025-09-22,21.83
+54944.9,63186.63,52197.65,LOSS,8,-5.0,5.54,BVH,Insurance,Flag Pullback,vol_filter,2025-09-23,14.2
+57594.03,66233.13,54714.33,LOSS,4,-5.0,6.3,BVH,Insurance,Flag Pullback,combined,2025-09-18,23.39
+56809.1,65330.47,53968.65,LOSS,3,-5.0,5.01,BVH,Insurance,Flag Pullback,combined,2025-09-19,19.88
+55435.48,63750.8,52663.71,LOSS,9,-5.0,6.37,BVH,Insurance,Flag Pullback,combined,2025-09-22,21.83
+54944.9,63186.63,52197.65,LOSS,8,-5.0,5.54,BVH,Insurance,Flag Pullback,combined,2025-09-23,14.2
+41127.16,47296.23,39070.8,WIN,40,15.0,0.35,BVH,Insurance,Pennant Pullback,baseline,2024-10-03,3.23
+41079.23,47241.12,39025.27,WIN,39,15.0,0.0,BVH,Insurance,Pennant Pullback,baseline,2024-10-04,4.67
+55631.71,63976.47,52850.13,LOSS,5,-5.0,6.0,BVH,Insurance,Pennant Pullback,baseline,2025-03-07,5.25
+55141.13,63412.3,52384.08,LOSS,4,-5.0,5.16,BVH,Insurance,Pennant Pullback,baseline,2025-03-10,6.87
+53865.62,61945.47,51172.34,LOSS,4,-5.0,6.01,BVH,Insurance,Pennant Pullback,baseline,2025-03-11,3.74
+53963.74,62058.3,51265.55,LOSS,3,-5.0,6.18,BVH,Insurance,Pennant Pullback,baseline,2025-03-12,6.25
+53080.7,61042.8,50426.66,LOSS,15,-5.0,10.35,BVH,Insurance,Pennant Pullback,baseline,2025-03-13,6.25
+52590.12,60478.63,49960.61,LOSS,14,-5.0,9.51,BVH,Insurance,Pennant Pullback,baseline,2025-03-14,4.21
+55631.71,63976.47,52850.13,LOSS,5,-5.0,6.0,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-07,5.25
+55141.13,63412.3,52384.08,LOSS,4,-5.0,5.16,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-10,6.87
+53865.62,61945.47,51172.34,LOSS,4,-5.0,6.01,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-11,3.74
+53963.74,62058.3,51265.55,LOSS,3,-5.0,6.18,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-12,6.25
+53080.7,61042.8,50426.66,LOSS,15,-5.0,10.35,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-13,6.25
+52590.12,60478.63,49960.61,LOSS,14,-5.0,9.51,BVH,Insurance,Pennant Pullback,trend_filter,2025-03-14,4.21
+41127.16,47296.23,39070.8,WIN,40,15.0,0.35,BVH,Insurance,Pennant Pullback,vol_filter,2024-10-03,3.23
+41079.23,47241.12,39025.27,WIN,39,15.0,0.0,BVH,Insurance,Pennant Pullback,vol_filter,2024-10-04,4.67
+41606.5,47847.47,39526.17,OPEN,40,4.7,1.5,BVH,Insurance,Triangle Pullback,baseline,2024-10-01,4.67
+41414.77,47626.98,39344.03,OPEN,40,12.53,1.04,BVH,Insurance,Triangle Pullback,baseline,2024-10-02,6.44
+41127.16,47296.23,39070.8,WIN,40,15.0,0.35,BVH,Insurance,Triangle Pullback,baseline,2024-10-03,9.31
+41079.23,47241.12,39025.27,WIN,39,15.0,0.0,BVH,Insurance,Triangle Pullback,baseline,2024-10-04,6.73
+41175.1,47351.36,39116.34,WIN,38,15.0,0.23,BVH,Insurance,Triangle Pullback,baseline,2024-10-07,7.21
+41175.1,47351.36,39116.34,WIN,37,15.0,0.23,BVH,Insurance,Triangle Pullback,baseline,2024-10-08,6.81
+41462.7,47682.1,39389.56,WIN,36,15.0,0.58,BVH,Insurance,Triangle Pullback,baseline,2024-10-09,3.23
+42085.84,48398.72,39981.55,WIN,36,15.0,2.05,BVH,Insurance,Triangle Pullback,baseline,2024-10-10,3.23
+42277.57,48619.21,40163.7,WIN,35,15.0,2.49,BVH,Insurance,Triangle Pullback,baseline,2024-10-11,4.67
+50431.57,57996.3,47909.99,WIN,17,15.0,1.36,BVH,Insurance,Triangle Pullback,baseline,2025-02-04,8.37
+50235.34,57770.64,47723.57,WIN,12,15.0,0.2,BVH,Insurance,Triangle Pullback,baseline,2025-02-06,3.08
+55141.13,63412.3,52384.08,LOSS,4,-5.0,5.16,BVH,Insurance,Triangle Pullback,baseline,2025-03-10,4.54
+53865.62,61945.47,51172.34,LOSS,4,-5.0,6.01,BVH,Insurance,Triangle Pullback,baseline,2025-03-11,5.33
+53963.74,62058.3,51265.55,LOSS,3,-5.0,6.18,BVH,Insurance,Triangle Pullback,baseline,2025-03-12,3.85
+53080.7,61042.8,50426.66,LOSS,15,-5.0,10.35,BVH,Insurance,Triangle Pullback,baseline,2025-03-13,4.49
+52590.12,60478.63,49960.61,LOSS,14,-5.0,9.51,BVH,Insurance,Triangle Pullback,baseline,2025-03-14,5.25
+50431.57,57996.3,47909.99,WIN,17,15.0,1.36,BVH,Insurance,Triangle Pullback,trend_filter,2025-02-04,8.37
+50235.34,57770.64,47723.57,WIN,12,15.0,0.2,BVH,Insurance,Triangle Pullback,trend_filter,2025-02-06,3.08
+55141.13,63412.3,52384.08,LOSS,4,-5.0,5.16,BVH,Insurance,Triangle Pullback,trend_filter,2025-03-10,4.54
+53865.62,61945.47,51172.34,LOSS,4,-5.0,6.01,BVH,Insurance,Triangle Pullback,trend_filter,2025-03-11,5.33
+53963.74,62058.3,51265.55,LOSS,3,-5.0,6.18,BVH,Insurance,Triangle Pullback,trend_filter,2025-03-12,3.85
+53080.7,61042.8,50426.66,LOSS,15,-5.0,10.35,BVH,Insurance,Triangle Pullback,trend_filter,2025-03-13,4.49
+52590.12,60478.63,49960.61,LOSS,14,-5.0,9.51,BVH,Insurance,Triangle Pullback,trend_filter,2025-03-14,5.25
+41127.16,47296.23,39070.8,WIN,40,15.0,0.35,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-03,9.31
+41079.23,47241.12,39025.27,WIN,39,15.0,0.0,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-04,6.73
+41175.1,47351.36,39116.34,WIN,38,15.0,0.23,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-07,7.21
+41175.1,47351.36,39116.34,WIN,37,15.0,0.23,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-08,6.81
+41462.7,47682.1,39389.56,WIN,36,15.0,0.58,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-09,3.23
+42085.84,48398.72,39981.55,WIN,36,15.0,2.05,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-10,3.23
+42277.57,48619.21,40163.7,WIN,35,15.0,2.49,BVH,Insurance,Triangle Pullback,vol_filter,2024-10-11,4.67
+50431.57,57996.3,47909.99,WIN,17,15.0,1.36,BVH,Insurance,Triangle Pullback,vol_filter,2025-02-04,8.37
+50431.57,57996.3,47909.99,WIN,17,15.0,1.36,BVH,Insurance,Triangle Pullback,combined,2025-02-04,8.37
+26231.68,30166.43,24920.09,LOSS,11,-5.0,5.02,SSI,Financial Services,Flag Pullback,baseline,2024-10-23,3.05
+26134.16,30054.29,24827.45,LOSS,12,-5.0,5.78,SSI,Financial Services,Flag Pullback,baseline,2024-10-24,3.39
+26134.16,30054.29,24827.45,LOSS,10,-5.0,5.78,SSI,Financial Services,Flag Pullback,baseline,2024-10-28,5.53
+26036.65,29942.14,24734.81,LOSS,9,-5.0,5.43,SSI,Financial Services,Flag Pullback,baseline,2024-10-29,6.78
+25695.34,29549.64,24410.57,LOSS,5,-5.0,6.45,SSI,Financial Services,Flag Pullback,baseline,2024-11-07,4.27
+24817.7,28540.36,23576.82,LOSS,2,-5.0,6.48,SSI,Financial Services,Flag Pullback,baseline,2024-11-13,3.95
+23793.79,27362.86,22604.1,OPEN,40,8.81,0.61,SSI,Financial Services,Flag Pullback,baseline,2025-01-16,7.82
+23940.06,27531.07,22743.06,OPEN,40,8.35,0.81,SSI,Financial Services,Flag Pullback,baseline,2025-01-17,7.82
+37550.0,43182.5,35672.5,WIN,11,15.0,0.93,SSI,Financial Services,Flag Pullback,baseline,2025-09-29,19.49
+38550.0,44332.5,36622.5,LOSS,18,-5.0,7.39,SSI,Financial Services,Flag Pullback,baseline,2025-09-30,18.87
+38600.0,44390.0,36670.0,LOSS,17,-5.0,7.51,SSI,Financial Services,Flag Pullback,baseline,2025-10-01,10.27
+37850.0,43527.5,35957.5,LOSS,16,-5.0,5.68,SSI,Financial Services,Flag Pullback,baseline,2025-10-02,15.1
+37650.0,43297.5,35767.5,WIN,7,15.0,0.0,SSI,Financial Services,Flag Pullback,baseline,2025-10-03,10.2
+40250.0,46287.5,38237.5,LOSS,10,-5.0,5.71,SSI,Financial Services,Flag Pullback,baseline,2025-10-06,9.24
+40800.0,46920.0,38760.0,LOSS,9,-5.0,6.99,SSI,Financial Services,Flag Pullback,baseline,2025-10-07,14.91
+34900.0,40135.0,33155.0,LOSS,2,-5.0,5.87,SSI,Financial Services,Flag Pullback,baseline,2025-11-05,4.06
+32950.0,37892.5,31302.5,LOSS,21,-5.0,10.77,SSI,Financial Services,Flag Pullback,baseline,2025-11-07,3.44
+33600.0,38640.0,31920.0,LOSS,16,-5.0,5.65,SSI,Financial Services,Flag Pullback,baseline,2025-11-10,7.9
+29950.0,34442.5,28452.5,WIN,12,15.0,0.0,SSI,Financial Services,Flag Pullback,baseline,2026-02-10,6.33
+37550.0,43182.5,35672.5,WIN,11,15.0,0.93,SSI,Financial Services,Flag Pullback,trend_filter,2025-09-29,19.49
+38550.0,44332.5,36622.5,LOSS,18,-5.0,7.39,SSI,Financial Services,Flag Pullback,trend_filter,2025-09-30,18.87
+38600.0,44390.0,36670.0,LOSS,17,-5.0,7.51,SSI,Financial Services,Flag Pullback,trend_filter,2025-10-01,10.27
+37850.0,43527.5,35957.5,LOSS,16,-5.0,5.68,SSI,Financial Services,Flag Pullback,trend_filter,2025-10-02,15.1
+37650.0,43297.5,35767.5,WIN,7,15.0,0.0,SSI,Financial Services,Flag Pullback,trend_filter,2025-10-03,10.2
+40250.0,46287.5,38237.5,LOSS,10,-5.0,5.71,SSI,Financial Services,Flag Pullback,trend_filter,2025-10-06,9.24
+40800.0,46920.0,38760.0,LOSS,9,-5.0,6.99,SSI,Financial Services,Flag Pullback,trend_filter,2025-10-07,14.91
+26134.16,30054.29,24827.45,LOSS,12,-5.0,5.78,SSI,Financial Services,Flag Pullback,vol_filter,2024-10-24,3.39
+26134.16,30054.29,24827.45,LOSS,10,-5.0,5.78,SSI,Financial Services,Flag Pullback,vol_filter,2024-10-28,5.53
+26036.65,29942.14,24734.81,LOSS,9,-5.0,5.43,SSI,Financial Services,Flag Pullback,vol_filter,2024-10-29,6.78
+25695.34,29549.64,24410.57,LOSS,5,-5.0,6.45,SSI,Financial Services,Flag Pullback,vol_filter,2024-11-07,4.27
+37550.0,43182.5,35672.5,WIN,11,15.0,0.93,SSI,Financial Services,Flag Pullback,vol_filter,2025-09-29,19.49
+38550.0,44332.5,36622.5,LOSS,18,-5.0,7.39,SSI,Financial Services,Flag Pullback,vol_filter,2025-09-30,18.87
+38600.0,44390.0,36670.0,LOSS,17,-5.0,7.51,SSI,Financial Services,Flag Pullback,vol_filter,2025-10-01,10.27
+37850.0,43527.5,35957.5,LOSS,16,-5.0,5.68,SSI,Financial Services,Flag Pullback,vol_filter,2025-10-02,15.1
+37650.0,43297.5,35767.5,WIN,7,15.0,0.0,SSI,Financial Services,Flag Pullback,vol_filter,2025-10-03,10.2
+40250.0,46287.5,38237.5,LOSS,10,-5.0,5.71,SSI,Financial Services,Flag Pullback,vol_filter,2025-10-06,9.24
+40800.0,46920.0,38760.0,LOSS,9,-5.0,6.99,SSI,Financial Services,Flag Pullback,vol_filter,2025-10-07,14.91
+37550.0,43182.5,35672.5,WIN,11,15.0,0.93,SSI,Financial Services,Flag Pullback,combined,2025-09-29,19.49
+38550.0,44332.5,36622.5,LOSS,18,-5.0,7.39,SSI,Financial Services,Flag Pullback,combined,2025-09-30,18.87
+38600.0,44390.0,36670.0,LOSS,17,-5.0,7.51,SSI,Financial Services,Flag Pullback,combined,2025-10-01,10.27
+37850.0,43527.5,35957.5,LOSS,16,-5.0,5.68,SSI,Financial Services,Flag Pullback,combined,2025-10-02,15.1
+37650.0,43297.5,35767.5,WIN,7,15.0,0.0,SSI,Financial Services,Flag Pullback,combined,2025-10-03,10.2
+40250.0,46287.5,38237.5,LOSS,10,-5.0,5.71,SSI,Financial Services,Flag Pullback,combined,2025-10-06,9.24
+40800.0,46920.0,38760.0,LOSS,9,-5.0,6.99,SSI,Financial Services,Flag Pullback,combined,2025-10-07,14.91
+26329.19,30278.57,25012.73,LOSS,34,-5.0,5.37,SSI,Financial Services,Pennant Pullback,baseline,2024-09-20,3.93
+25939.13,29830.0,24642.17,LOSS,35,-5.0,5.08,SSI,Financial Services,Pennant Pullback,baseline,2024-09-23,9.24
+40859.01,46987.86,38816.06,LOSS,6,-5.0,6.44,SSI,Financial Services,Pennant Pullback,baseline,2025-09-12,13.95
+41151.55,47324.29,39093.98,LOSS,5,-5.0,7.11,SSI,Financial Services,Pennant Pullback,baseline,2025-09-15,15.0
+40859.01,46987.86,38816.06,LOSS,6,-5.0,6.44,SSI,Financial Services,Pennant Pullback,trend_filter,2025-09-12,13.95
+41151.55,47324.29,39093.98,LOSS,5,-5.0,7.11,SSI,Financial Services,Pennant Pullback,trend_filter,2025-09-15,15.0
+26914.29,30951.43,25568.57,LOSS,24,-5.0,5.62,SSI,Financial Services,Triangle Pullback,baseline,2024-09-27,3.93
+27206.83,31287.86,25846.49,LOSS,22,-5.0,5.73,SSI,Financial Services,Triangle Pullback,baseline,2024-09-30,9.24
+39347.52,45249.64,37380.14,LOSS,6,-5.0,5.46,SSI,Financial Services,Triangle Pullback,baseline,2025-09-19,13.95
+38323.6,44072.14,36407.42,LOSS,24,-5.0,6.85,SSI,Financial Services,Triangle Pullback,baseline,2025-09-22,15.0
+38421.12,44184.28,36500.06,LOSS,23,-5.0,7.08,SSI,Financial Services,Triangle Pullback,baseline,2025-09-23,7.5
+39000.0,44850.0,37050.0,LOSS,18,-5.0,5.26,SSI,Financial Services,Triangle Pullback,baseline,2025-09-25,10.36
+38000.0,43700.0,36100.0,LOSS,20,-5.0,6.05,SSI,Financial Services,Triangle Pullback,baseline,2025-09-26,6.49
+31550.0,36282.5,29972.5,LOSS,2,-5.0,5.23,SSI,Financial Services,Triangle Pullback,baseline,2026-02-04,3.74
+31000.0,35650.0,29450.0,LOSS,17,-5.0,5.48,SSI,Financial Services,Triangle Pullback,baseline,2026-02-05,6.43
+29900.0,34385.0,28405.0,WIN,14,15.0,1.34,SSI,Financial Services,Triangle Pullback,baseline,2026-02-06,3.42
+39347.52,45249.64,37380.14,LOSS,6,-5.0,5.46,SSI,Financial Services,Triangle Pullback,trend_filter,2025-09-19,13.95
+38323.6,44072.14,36407.42,LOSS,24,-5.0,6.85,SSI,Financial Services,Triangle Pullback,trend_filter,2025-09-22,15.0
+38421.12,44184.28,36500.06,LOSS,23,-5.0,7.08,SSI,Financial Services,Triangle Pullback,trend_filter,2025-09-23,7.5
+39000.0,44850.0,37050.0,LOSS,18,-5.0,5.26,SSI,Financial Services,Triangle Pullback,trend_filter,2025-09-25,10.36
+38000.0,43700.0,36100.0,LOSS,20,-5.0,6.05,SSI,Financial Services,Triangle Pullback,trend_filter,2025-09-26,6.49
+128700.0,148005.0,122265.0,WIN,8,15.0,0.85,VJC,Aviation,Flag Pullback,baseline,2025-10-02,10.24
+129300.0,148695.0,122835.0,WIN,7,15.0,0.0,VJC,Aviation,Flag Pullback,baseline,2025-10-03,11.46
+134300.0,154445.0,127585.0,WIN,7,15.0,3.2,VJC,Aviation,Flag Pullback,baseline,2025-10-06,4.11
+170500.0,196075.0,161975.0,LOSS,1,-5.0,5.98,VJC,Aviation,Flag Pullback,baseline,2026-01-30,6.31
+170000.0,195500.0,161500.0,LOSS,2,-5.0,5.18,VJC,Aviation,Flag Pullback,baseline,2026-02-02,10.37
+168000.0,193200.0,159600.0,LOSS,16,-5.0,7.26,VJC,Aviation,Flag Pullback,baseline,2026-02-03,14.7
+128700.0,148005.0,122265.0,WIN,8,15.0,0.85,VJC,Aviation,Flag Pullback,vol_filter,2025-10-02,10.24
+129300.0,148695.0,122835.0,WIN,7,15.0,0.0,VJC,Aviation,Flag Pullback,vol_filter,2025-10-03,11.46
+105000.0,120750.0,99750.0,OPEN,40,-2.48,4.67,VJC,Aviation,Pennant Pullback,baseline,2024-10-02,3.37
+141900.0,163185.0,134805.0,LOSS,10,-5.0,7.68,VJC,Aviation,Pennant Pullback,baseline,2025-09-08,35.42
+145000.0,166750.0,137750.0,LOSS,8,-5.0,6.9,VJC,Aviation,Pennant Pullback,baseline,2025-09-09,30.23
+144900.0,166635.0,137655.0,LOSS,7,-5.0,6.83,VJC,Aviation,Pennant Pullback,baseline,2025-09-10,30.39
+141900.0,163185.0,134805.0,LOSS,10,-5.0,7.68,VJC,Aviation,Pennant Pullback,trend_filter,2025-09-08,35.42
+145000.0,166750.0,137750.0,LOSS,8,-5.0,6.9,VJC,Aviation,Pennant Pullback,trend_filter,2025-09-09,30.23
+144900.0,166635.0,137655.0,LOSS,7,-5.0,6.83,VJC,Aviation,Pennant Pullback,trend_filter,2025-09-10,30.39
+105000.0,120750.0,99750.0,OPEN,40,-2.48,4.67,VJC,Aviation,Pennant Pullback,vol_filter,2024-10-02,3.37
+141900.0,163185.0,134805.0,LOSS,10,-5.0,7.68,VJC,Aviation,Pennant Pullback,vol_filter,2025-09-08,35.42
+145000.0,166750.0,137750.0,LOSS,8,-5.0,6.9,VJC,Aviation,Pennant Pullback,vol_filter,2025-09-09,30.23
+144900.0,166635.0,137655.0,LOSS,7,-5.0,6.83,VJC,Aviation,Pennant Pullback,vol_filter,2025-09-10,30.39
+141900.0,163185.0,134805.0,LOSS,10,-5.0,7.68,VJC,Aviation,Pennant Pullback,combined,2025-09-08,35.42
+145000.0,166750.0,137750.0,LOSS,8,-5.0,6.9,VJC,Aviation,Pennant Pullback,combined,2025-09-09,30.23
+144900.0,166635.0,137655.0,LOSS,7,-5.0,6.83,VJC,Aviation,Pennant Pullback,combined,2025-09-10,30.39
+103000.0,118450.0,97850.0,OPEN,40,1.84,0.1,VJC,Aviation,Triangle Pullback,baseline,2024-09-09,4.85
+104200.0,119830.0,98990.0,OPEN,40,0.1,1.25,VJC,Aviation,Triangle Pullback,baseline,2024-09-10,3.17
