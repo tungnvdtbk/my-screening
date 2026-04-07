@@ -810,13 +810,15 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
         tail_idx    = df.tail(200).index
         win_s       = max(0, idx - lookback_n)
         win_e       = min(len(tail_idx) - 1, idx)
+        last_i      = len(tail_idx) - 1        # extend lines to last visible bar
         _tl = {
-            "x0":      tail_idx[win_s],
-            "x1":      tail_idx[win_e],
-            "high_y0": slmax * win_s + intercmax,
-            "high_y1": slmax * win_e + intercmax,
-            "low_y0":  slmin * win_s + intercmin,
-            "low_y1":  slmin * win_e + intercmin,
+            "x0":          tail_idx[win_s],
+            "x1":          tail_idx[last_i],   # extend to current bar
+            "high_y0":     slmax * win_s  + intercmax,
+            "high_y1":     slmax * last_i + intercmax,
+            "low_y0":      slmin * win_s  + intercmin,
+            "low_y1":      slmin * last_i + intercmin,
+            "zone_x1":     tail_idx[win_e],    # zone ends at detection bar
         }
 
         return {
@@ -950,50 +952,54 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
         tl       = p.get("_tl")
         wb       = p.get("_window_bars", 30)
 
-        # shaded pattern zone
-        x0_zone = tl["x0"] if tl else df_chart.index[-min(wb, len(df_chart))]
-        x1_zone = tl["x1"] if tl else df_chart.index[-1]
+        # shaded pattern zone (only over the consolidation window)
+        x0_zone = tl["x0"]        if tl else df_chart.index[-min(wb, len(df_chart))]
+        x1_zone = tl["zone_x1"]   if tl else df_chart.index[-1]
         fig.add_vrect(
             x0=x0_zone, x1=x1_zone,
-            fillcolor="rgba(108,156,255,0.07)", layer="below", line_width=0,
+            fillcolor="rgba(108,156,255,0.09)", layer="below", line_width=0,
         )
 
-        # pivot horizontal line (red dashed)
+        # pivot horizontal line
         if pivot:
             fig.add_hline(
-                y=pivot, line_dash="dash", line_color="#ef4444",
-                line_width=1.3, opacity=0.85,
+                y=pivot, line_dash="dash", line_color="#ff4d94",
+                line_width=1.8, opacity=0.9,
                 annotation_text=f"Pivot {pivot:.1f}",
-                annotation_font_color="#ef4444", annotation_font_size=10,
+                annotation_font_color="#ff4d94", annotation_font_size=10,
                 annotation_position="right",
             )
 
-        # stoploss horizontal line (amber dotted)
+        # stoploss horizontal line
         if stoploss:
             fig.add_hline(
-                y=stoploss, line_dash="dot", line_color="#f59e0b",
-                line_width=1.1, opacity=0.75,
+                y=stoploss, line_dash="dot", line_color="#ff9900",
+                line_width=1.5, opacity=0.85,
                 annotation_text=f"SL {stoploss:.1f}",
-                annotation_font_color="#f59e0b", annotation_font_size=10,
+                annotation_font_color="#ff9900", annotation_font_size=10,
                 annotation_position="right",
             )
 
-        # diagonal trendlines for flag/pennant/triangle
+        # diagonal trendlines — solid, bright, extended to current bar
         if tl:
-            fig.add_shape(
-                type="line",
-                x0=tl["x0"], y0=tl["high_y0"],
-                x1=tl["x1"], y1=tl["high_y1"],
-                line=dict(color="#ef4444", width=1.8, dash="dash"),
-                layer="above",
-            )
-            fig.add_shape(
-                type="line",
-                x0=tl["x0"], y0=tl["low_y0"],
-                x1=tl["x1"], y1=tl["low_y1"],
-                line=dict(color="#f59e0b", width=1.8, dash="dot"),
-                layer="above",
-            )
+            high_vals = [tl["high_y0"], tl["high_y1"]]
+            low_vals  = [tl["low_y0"],  tl["low_y1"]]
+            if not any(v != v for v in high_vals):   # NaN check (v != v iff NaN)
+                fig.add_shape(
+                    type="line",
+                    x0=tl["x0"], y0=tl["high_y0"],
+                    x1=tl["x1"], y1=tl["high_y1"],
+                    line=dict(color="#00e5ff", width=2.5),   # electric cyan
+                    layer="above",
+                )
+            if not any(v != v for v in low_vals):
+                fig.add_shape(
+                    type="line",
+                    x0=tl["x0"], y0=tl["low_y0"],
+                    x1=tl["x1"], y1=tl["low_y1"],
+                    line=dict(color="#ff6b35", width=2.5),   # bright orange
+                    layer="above",
+                )
 
     fig.update_layout(
         xaxis_rangeslider_visible=False,
