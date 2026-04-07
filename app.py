@@ -9,6 +9,8 @@ import os
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import urllib.request
 
 try:
     from vnstock3 import Vnstock
@@ -886,6 +888,59 @@ def _cp_quality(pole_gain: float, vol_ok: bool, trend_ok: bool,
     return "★", "~25%"
 
 
+def _cp_score(pole_gain: float, vol_ok: bool, trend_ok: bool, entry_ok: bool) -> int:
+    """
+    Pattern score 0-100. Weights calibrated from backtest evidence:
+    vol_ok=25pts because Triangle vol_filter lifts win rate 16.8%→52.4%.
+    """
+    score = 0
+    if vol_ok:
+        score += 25
+    if trend_ok:
+        score += 20
+    if entry_ok:
+        score += 15
+    # pole_gain component: 25 pts max, scales linearly up to 8% pole gain
+    score += min(25, int(pole_gain / 0.08 * 25))
+    # combo bonuses
+    if vol_ok and trend_ok:
+        score += 10
+    if vol_ok and entry_ok:
+        score += 5
+    return min(100, score)
+
+
+def _entry_zone_ok(df: pd.DataFrame, idx: int,
+                   slmax: float, slmin: float,
+                   intercmax: float, intercmin: float) -> bool:
+    """
+    Returns True if current price is in the bottom 35% of the channel width
+    at the signal bar (backtest: bottom of channel = best entry zone).
+    """
+    tail_offset = max(0, len(df) - 200)
+    price = float(df["Close"].iloc[tail_offset + idx])
+    top    = slmax * idx + intercmax
+    bottom = slmin * idx + intercmin
+    width  = top - bottom
+    if width <= 0:
+        return False
+    return bottom <= price <= (bottom + 0.35 * width)
+
+
+def _pivot_sl_from_window(df: pd.DataFrame, idx: int, lookback_n: int) -> float | None:
+    """
+    Pivot-based stop loss: min Low in the consolidation window × 0.99.
+    More reliable than regression stoploss for actual trade placement.
+    """
+    tail_offset = max(0, len(df) - 200)
+    win_start   = tail_offset + max(0, idx - lookback_n)
+    try:
+        sl = round(float(df["Low"].iloc[win_start:tail_offset + idx + 1].min()) * 0.99, 2)
+        return sl
+    except Exception:
+        return None
+
+
 def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
                      gain_col: str, slmax_col: str, slmin_col: str,
                      intercmax_col: str, intercmin_col: str,
@@ -930,6 +985,14 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
         if require_vol and not vol_ok:
             return None
 
+        entry_ok  = _entry_zone_ok(df, idx, slmax, slmin, intercmax, intercmin)
+        pivot_sl  = _pivot_sl_from_window(df, idx, lookback_n)
+        score     = _cp_score(pole_gain, vol_ok, trend_ok, entry_ok)
+
+        # use pivot-based SL if available (more reliable for trade placement)
+        if pivot_sl is not None:
+            stoploss = pivot_sl
+
         quality, exp_wr = _cp_quality(pole_gain, vol_ok, trend_ok, pattern_name)
 
         # trendline endpoints in datetime coords (for Plotly shapes)
@@ -955,6 +1018,8 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
             "pivot":        pivot,
             "stoploss":     stoploss,
             "quality":      quality,
+            "score":        score,
+            "entry_ok":     entry_ok,
             "notes":        (f"Pole: {pole_gain*100:.1f}%  "
                              f"{vol_lbl}  {trend_lbl}  exp:{exp_wr}"),
             "entry_candle": "—",
@@ -1020,6 +1085,87 @@ def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
              triangle_type="symmetrical"),
         require_vol=True,   # hard filter: VN30 vol_filter=52.4% vs 16.8% baseline
     )
+
+
+def _compute_breadth() -> dict:
+    """
+    Market breadth across VN30 + VNMID. Uses cached load_price_data.
+    Not decorated with @st.cache_data since it calls cached functions internally.
+    Fail-open: returns empty dict on any error.
+    """
+    try:
+        all_syms = list(VN30_STOCKS.keys()) + list(VNMID_STOCKS.keys())
+        above_ma20 = 0
+        above_ma50 = 0
+        new_highs  = 0
+        new_lows   = 0
+        total      = 0
+        for sym in all_syms:
+            try:
+                df = load_price_data(sym, use_cache=True)
+                if df is None or len(df) < 52:
+                    continue
+                close = df["Close"]
+                price = float(close.iloc[-1])
+                ma20  = float(close.rolling(20).mean().iloc[-1])
+                ma50  = float(close.rolling(50).mean().iloc[-1])
+                high52 = float(close.iloc[-min(252, len(close)):].max())
+                low52  = float(close.iloc[-min(252, len(close)):].min())
+                total += 1
+                if not pd.isna(ma20) and price > ma20:
+                    above_ma20 += 1
+                if not pd.isna(ma50) and price > ma50:
+                    above_ma50 += 1
+                if high52 > 0 and price >= high52 * 0.98:
+                    new_highs += 1
+                if low52 > 0 and price <= low52 * 1.02:
+                    new_lows += 1
+            except Exception:
+                continue
+        if total == 0:
+            return {}
+        return {
+            "pct_above_ma20": round(above_ma20 / total * 100, 1),
+            "pct_above_ma50": round(above_ma50 / total * 100, 1),
+            "new_highs":      new_highs,
+            "new_lows":       new_lows,
+            "total":          total,
+        }
+    except Exception:
+        return {}
+
+
+def _post_webhook(url: str, rows: list[dict]) -> None:
+    """
+    POST top signals (score >= 65) as JSON to a Slack/Discord webhook URL.
+    Fail-open: any error is silently ignored so scanner still works.
+    """
+    try:
+        top = [r for r in rows if r.get("score", 0) >= 65]
+        if not top:
+            return
+        payload = {
+            "text": f"VN Pattern Scan — {len(top)} signals",
+            "patterns": [
+                {
+                    "sym":     r.get("sym", ""),
+                    "pattern": r.get("pattern", ""),
+                    "score":   r.get("score", 0),
+                    "status":  r.get("status", ""),
+                    "pivot":   r.get("pivot", ""),
+                }
+                for r in top
+            ],
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req  = urllib.request.Request(
+            url, data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
 
 
 def _market_regime_ok() -> bool:
@@ -1304,6 +1450,15 @@ with st.sidebar:
     st.markdown("**Quản trị rủi ro**")
     sl_pct  = st.slider("Stop Loss %",  min_value=3,  max_value=15, value=5,  step=1)
     tgt_pct = st.slider("Target %",     min_value=5,  max_value=50, value=10, step=5)
+    st.markdown("---")
+    st.markdown("**Webhook Alert**")
+    _text_input = getattr(st, "text_input", None) or (lambda *a, **kw: "")
+    webhook_url = _text_input(
+        "Webhook URL (Slack/Discord)", value="",
+        placeholder="https://hooks.slack.com/...",
+        key="webhook_url",
+    )
+    webhook_url = webhook_url if isinstance(webhook_url, str) else ""
 
 # ── Scan buttons ─────────────────────────────────────────────
 btn_col1, btn_col2, btn_col3 = st.columns(3)
@@ -1319,24 +1474,54 @@ with btn_col3:
 
 # ── Pattern Scan helper ────────────────────────────────────────────────
 def _run_pattern_scan(syms: list, state_key: str, meta_key: str,
-                      progress_label: str) -> None:
+                      progress_label: str,
+                      webhook_url: str = "") -> None:
     prog = st.progress(0, text=progress_label)
-    rows = []
     n = len(syms)
+
+    # Pre-compute market regime ONCE (not per symbol)
+    market_ok = _market_regime_ok()
+
+    # Phase 1: fetch all data concurrently (0% → 50%)
+    data_map: dict[str, object] = {}
+    futures_map = {}
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        for sym in syms:
+            futures_map[executor.submit(load_price_data, sym, True)] = sym
+        done_count = 0
+        for future in as_completed(futures_map):
+            sym = futures_map[future]
+            done_count += 1
+            prog.progress(done_count / n * 0.5,
+                          text=f"Fetching [{done_count}/{n}] {sym}")
+            try:
+                data_map[sym] = future.result()
+            except Exception:
+                data_map[sym] = None
+
+    # Phase 2: detect patterns sequentially (50% → 100%)
+    rows = []
     for i, sym in enumerate(syms):
-        prog.progress((i + 1) / n, text=f"[{i+1}/{n}] {sym}")
-        df = load_price_data(sym, use_cache=True)
-        if df is None or df.empty:
+        prog.progress(0.5 + (i + 1) / n * 0.5,
+                      text=f"Detecting [{i+1}/{n}] {sym}")
+        df = data_map.get(sym)
+        if df is None or (hasattr(df, "empty") and df.empty):
             continue
-        for p in detect_patterns(df, require_trend=False):
-            rows.append({"sym": sym, **p})
+        for p in detect_patterns(df, require_trend=False,
+                                  apply_market_filter=False):
+            rows.append({"sym": sym, "market_ok": market_ok, **p})
+
     prog.empty()
     st.session_state[state_key] = rows
     st.session_state[meta_key]  = {
-        "scanned": n,
-        "found":   len(rows),
-        "time":    datetime.now().strftime("%H:%M:%S"),
+        "scanned":   n,
+        "found":     len(rows),
+        "time":      datetime.now().strftime("%H:%M:%S"),
+        "market_ok": market_ok,
     }
+    # send webhook if URL provided
+    if webhook_url:
+        _post_webhook(webhook_url, rows)
     st.rerun()
 
 # ── VN30 Pattern Scan ──────────────────────────────────────────────────
@@ -1345,6 +1530,7 @@ if do_pattern:
         list(VN30_STOCKS.keys()),
         "pattern_rows", "pattern_scan_meta",
         "Scanning VN30 patterns...",
+        webhook_url=webhook_url,
     )
 
 # ── VN100 Pattern Scan (VNMID stocks outside VN30) ────────────────────
@@ -1353,6 +1539,7 @@ if do_pattern_vn100:
         list(VNMID_STOCKS.keys()),
         "pattern_rows_vn100", "pattern_scan_meta_vn100",
         "Scanning VN100 patterns...",
+        webhook_url=webhook_url,
     )
 
 if do_scan:
@@ -1639,26 +1826,46 @@ if "pattern_scan_meta" in st.session_state:
 
         filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
 
+        # Market breadth panel above pattern table
+        try:
+            breadth = _compute_breadth()
+            if breadth:
+                bc1, bc2, bc3, bc4 = st.columns(4)
+                bc1.metric("MA20", f"{breadth.get('pct_above_ma20', 0):.0f}%",
+                           help="% stocks above MA20")
+                bc2.metric("MA50", f"{breadth.get('pct_above_ma50', 0):.0f}%",
+                           help="% stocks above MA50")
+                bc3.metric("52w Highs", str(breadth.get("new_highs", 0)),
+                           help="Stocks within 2% of 52-week high")
+                bc4.metric("52w Lows", str(breadth.get("new_lows", 0)),
+                           help="Stocks within 2% of 52-week low")
+        except Exception:
+            pass
+
         if filtered_p:
             _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
             _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
             _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
+            # Sort: Score desc (primary), Status (secondary), Quality (tertiary)
             filtered_p  = sorted(filtered_p, key=lambda r: (
+                -r.get("score", 0),
                 _status_ord.get(r.get("status",      "⏳ Setup"), 3),
-                _grade_ord.get( r.get("trend_grade", "🔴"),       3),
                 _q_ord2.get(    r.get("quality",     "★"),        3),
             ))
             p_table = []
             for r in filtered_p:
                 p_table.append({
                     "Mã":           r["sym"].replace(".VN", ""),
+                    "Score":        r.get("score", 0),
                     "Trend":        r.get("trend_grade", "🔴"),
                     "Pattern":      r["pattern"],
                     "Status":       r.get("status", "⏳ Setup"),
+                    "Entry✓":       "✓" if r.get("entry_ok") else "✗",
                     "Entry Candle": r.get("entry_candle", "—"),
                     "Quality":      r["quality"],
                     "Pivot":        r["pivot"],
                     "Stoploss":     r["stoploss"],
+                    "Sector":       VN30_STOCKS.get(r["sym"], VNMID_STOCKS.get(r["sym"], "")),
                     "Notes":        r["notes"],
                 })
             result_pdf    = pd.DataFrame(p_table)
@@ -1717,19 +1924,22 @@ if "pattern_scan_meta_vn100" in st.session_state:
             _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
             _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
             _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
+            # Sort: Score desc (primary), Status (secondary), Quality (tertiary)
             filtered_100 = sorted(filtered_100, key=lambda r: (
+                -r.get("score", 0),
                 _status_ord.get(r.get("status",      "⏳ Setup"), 3),
-                _grade_ord.get( r.get("trend_grade", "🔴"),       3),
                 _q_ord2.get(    r.get("quality",     "★"),        3),
             ))
             p100_table = []
             for r in filtered_100:
                 p100_table.append({
                     "Mã":           r["sym"].replace(".VN", ""),
-                    "Sector":       VNMID_STOCKS.get(r["sym"], ""),
+                    "Score":        r.get("score", 0),
+                    "Sector":       VNMID_STOCKS.get(r["sym"], VN30_STOCKS.get(r["sym"], "")),
                     "Trend":        r.get("trend_grade", "🔴"),
                     "Pattern":      r["pattern"],
                     "Status":       r.get("status", "⏳ Setup"),
+                    "Entry✓":       "✓" if r.get("entry_ok") else "✗",
                     "Entry Candle": r.get("entry_candle", "—"),
                     "Quality":      r["quality"],
                     "Pivot":        r["pivot"],
@@ -1760,3 +1970,204 @@ if "pattern_scan_meta_vn100" in st.session_state:
             )
         else:
             st.info("Không có pattern nào khớp bộ lọc.")
+
+# ── Watchlist ──────────────────────────────────────────────────────────
+st.markdown("---")
+st.subheader("📋 Watchlist")
+
+if "watchlist" not in st.session_state:
+    st.session_state["watchlist"] = []
+
+# Determine if any pattern row is currently selected (from either table)
+_wl_candidate = None
+for _tbl_key, _rows_key in [
+    ("pattern_tbl",       "pattern_rows"),
+    ("pattern_tbl_vn100", "pattern_rows_vn100"),
+]:
+    try:
+        _tbl_state = st.session_state.get(_tbl_key)
+        if _tbl_state and hasattr(_tbl_state, "selection"):
+            _sel = _tbl_state.selection.rows
+            if _sel:
+                _rows_data = st.session_state.get(_rows_key, [])
+                if _rows_data and _sel[0] < len(_rows_data):
+                    _wl_candidate = _rows_data[_sel[0]]
+                    break
+    except Exception:
+        pass
+
+if _wl_candidate:
+    if st.button("➕ Add to Watchlist"):
+        entry = {
+            "Sym":        _wl_candidate.get("sym", "").replace(".VN", ""),
+            "Pattern":    _wl_candidate.get("pattern", ""),
+            "Score":      _wl_candidate.get("score", 0),
+            "Pivot":      _wl_candidate.get("pivot", ""),
+            "SL":         _wl_candidate.get("stoploss", ""),
+            "Date Added": datetime.now().strftime("%Y-%m-%d"),
+        }
+        existing = [(r["Sym"], r["Pattern"]) for r in st.session_state["watchlist"]]
+        if (entry["Sym"], entry["Pattern"]) not in existing:
+            st.session_state["watchlist"].append(entry)
+            st.success(f"Added {entry['Sym']} {entry['Pattern']} to watchlist.")
+        else:
+            st.info(f"{entry['Sym']} {entry['Pattern']} already in watchlist.")
+
+if st.session_state["watchlist"]:
+    wl_df = pd.DataFrame(st.session_state["watchlist"])
+    st.dataframe(wl_df, use_container_width=True, hide_index=True)
+    if st.button("🗑️ Clear Watchlist"):
+        st.session_state["watchlist"] = []
+        st.rerun()
+else:
+    st.caption("Watchlist trống. Chọn một pattern từ bảng kết quả và nhấn ➕ Add to Watchlist.")
+
+
+# ── Inline Backtest ───────────────────────────────────────────────────
+def _run_inline_backtest(syms: list[str], risk_pct: float,
+                         reward_pct: float, max_hold: int) -> pd.DataFrame:
+    """
+    Simplified walk-forward backtest on all detected signals.
+    WIN if High touches entry*(1+reward_pct/100) before Low touches entry*(1-risk_pct/100).
+    """
+    if not HAS_CP:
+        return pd.DataFrame()
+    records = []
+    for sym in syms:
+        try:
+            df = load_price_data(sym, use_cache=True)
+            if df is None or len(df) < 60:
+                continue
+            for (detector_fn, point_col, gain_col, slmax_col, slmin_col,
+                 intercmax_col, intercmin_col, pname, params, req_vol) in [
+                (find_pullback_pennant,
+                 "pullback_pennant_point", "pullback_pennant_pole_gain",
+                 "pullback_pennant_slmax", "pullback_pennant_slmin",
+                 "pullback_pennant_intercmax", "pullback_pennant_intercmin",
+                 "Pennant Pullback",
+                 dict(lookback=20, min_points=2, pole_lookback=15,
+                      min_pole_gain=0.03, r_max=0.90, r_min=0.90),
+                 False),
+                (find_pullback_triangle,
+                 "pullback_triangle_point", "pullback_triangle_prior_gain",
+                 "pullback_triangle_slmax", "pullback_triangle_slmin",
+                 "pullback_triangle_intercmax", "pullback_triangle_intercmin",
+                 "Triangle Pullback",
+                 dict(lookback=25, min_points=2, prior_lookback=15,
+                      min_prior_gain=0.04, rlimit=0.90,
+                      triangle_type="symmetrical"),
+                 True),
+            ]:
+                try:
+                    df_w = df.tail(200).reset_index()
+                    result_df = detector_fn(df_w.copy(), **params)
+                    hits = result_df[result_df[point_col] > 0]
+                    for _, row in hits.iterrows():
+                        idx        = int(row[point_col])
+                        pole_gain  = float(row[gain_col])
+                        slmax      = float(row[slmax_col])
+                        slmin      = float(row[slmin_col])
+                        intercmax  = float(row[intercmax_col])
+                        intercmin  = float(row[intercmin_col])
+                        pivot      = round(slmax * idx + intercmax, 2)
+                        lookback_n = params.get("lookback", 20)
+                        pole_lb    = params.get("pole_lookback", params.get("prior_lookback", 15))
+                        vol_ok     = _cp_vol_contraction(df, idx, lookback_n, pole_lb)
+                        trend_ok   = _cp_trend_ok(df, idx)
+                        entry_ok   = _entry_zone_ok(df, idx, slmax, slmin, intercmax, intercmin)
+                        if req_vol and not vol_ok:
+                            continue
+                        score = _cp_score(pole_gain, vol_ok, trend_ok, entry_ok)
+                        tail_offset = max(0, len(df) - 200)
+                        bar_i = tail_offset + idx
+                        if bar_i >= len(df) - 1:
+                            continue
+                        entry_px = float(df["Close"].iloc[bar_i])
+                        if entry_px <= 0:
+                            continue
+                        target_px = entry_px * (1 + reward_pct / 100)
+                        stop_px   = entry_px * (1 - risk_pct / 100)
+                        outcome   = "OPEN"
+                        days_held = 0
+                        ret_pct   = 0.0
+                        for j in range(bar_i + 1, min(bar_i + max_hold + 1, len(df))):
+                            hi = float(df["High"].iloc[j])
+                            lo = float(df["Low"].iloc[j])
+                            days_held += 1
+                            if hi >= target_px:
+                                outcome = "WIN"
+                                ret_pct = reward_pct
+                                break
+                            if lo <= stop_px:
+                                outcome = "LOSS"
+                                ret_pct = -risk_pct
+                                break
+                        if outcome == "OPEN":
+                            last_px = float(df["Close"].iloc[
+                                min(bar_i + max_hold, len(df) - 1)])
+                            ret_pct = round((last_px / entry_px - 1) * 100, 2)
+                        sig_date = df.index[bar_i] if bar_i < len(df) else None
+                        records.append({
+                            "symbol":  sym.replace(".VN", ""),
+                            "date":    sig_date,
+                            "pattern": pname,
+                            "score":   score,
+                            "outcome": outcome,
+                            "days":    days_held,
+                            "ret_pct": round(ret_pct, 2),
+                        })
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return pd.DataFrame(records) if records else pd.DataFrame(
+        columns=["symbol", "date", "pattern", "score", "outcome", "days", "ret_pct"]
+    )
+
+
+st.markdown("---")
+with st.expander("🔬 Pattern Backtest (inline)", expanded=False):
+    bt_universe = st.selectbox("Universe", ["VN30", "VN100 (VNMID)"],
+                               key="bt_universe")
+    bt_col1, bt_col2, bt_col3 = st.columns(3)
+    with bt_col1:
+        bt_risk   = st.slider("Risk %",   3, 10, 5, key="bt_risk")
+    with bt_col2:
+        bt_reward = st.slider("Reward %", 10, 30, 15, key="bt_reward")
+    with bt_col3:
+        bt_hold   = st.slider("Max hold (bars)", 10, 60, 30, key="bt_hold")
+
+    if st.button("▶ Run", key="bt_run"):
+        bt_syms = (list(VN30_STOCKS.keys())
+                   if bt_universe == "VN30"
+                   else list(VNMID_STOCKS.keys()))
+        with st.spinner(f"Running backtest on {len(bt_syms)} symbols..."):
+            bt_df = _run_inline_backtest(bt_syms, bt_risk, bt_reward, bt_hold)
+
+        if bt_df.empty:
+            st.warning("No signals found. Ensure data cache is populated.")
+        else:
+            rr = bt_reward / bt_risk
+            breakeven_pct = round(100 / (1 + rr))
+            st.caption(
+                f"Breakeven at {rr:.1f}:1 R:R = {breakeven_pct}%  "
+                "(rule of thumb: need >25% win rate at 3:1 R:R)"
+            )
+
+            closed = bt_df[bt_df["outcome"].isin(["WIN", "LOSS"])]
+            if not closed.empty:
+                summary = (
+                    closed.groupby("pattern")
+                    .apply(lambda g: pd.Series({
+                        "signals": len(g),
+                        "win%":    round(g["outcome"].eq("WIN").mean() * 100, 1),
+                        "avg_ret": round(g["ret_pct"].mean(), 2),
+                    }))
+                    .reset_index()
+                )
+                st.subheader("Summary by Pattern")
+                st.dataframe(summary, use_container_width=True, hide_index=True)
+
+            st.subheader("Top 10 Signals by Score")
+            top10 = bt_df.sort_values("score", ascending=False).head(10)
+            st.dataframe(top10, use_container_width=True, hide_index=True)
