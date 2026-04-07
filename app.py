@@ -4,13 +4,12 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import json
 import os
+import json
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
-from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import urllib.request
 
 try:
     from vnstock3 import Vnstock
@@ -18,143 +17,65 @@ try:
 except ImportError:
     HAS_VNSTOCK = False
 
-# pullback pattern detectors (bundled in chart_patterns/ subpackage)
-try:
-    from chart_patterns.pullback_flag     import find_pullback_flag
-    from chart_patterns.pullback_pennant  import find_pullback_pennant
-    from chart_patterns.pullback_triangle import find_pullback_triangle
-    HAS_CP = True
-except ImportError:
-    HAS_CP = False
-
 # ============================================================
 # CONFIG
 # ============================================================
-DATA_PATH = "./data"
-CACHE_DIR = f"{DATA_PATH}/cache"
+DATA_PATH   = "./data"
+CACHE_DIR   = f"{DATA_PATH}/cache"
+BACKTEST_DIR = f"{DATA_PATH}/backtest"
 SYMBOLS_CACHE_FILE = f"{DATA_PATH}/hose_symbols.json"
 os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs(BACKTEST_DIR, exist_ok=True)
 
-MIN_VOL_20 = 200_000    # avg 20-session volume ≥ 200,000 shares
-MIN_PRICE = 15          # ≥ 15,000 VND (yfinance returns VN prices in thousands)
-RS_MIN = 80             # RS percentile threshold
-TOP_N = 5               # number of top stocks to highlight
+BG_COLOR   = "#0a0e17"
+CARD_COLOR = "#131829"
 
-# VN30 as fallback symbol list
-VN30_STOCKS = {
-    "ACB.VN": "Banking", "BID.VN": "Banking", "CTG.VN": "Banking",
-    "HDB.VN": "Banking", "LPB.VN": "Banking", "MBB.VN": "Banking",
-    "SHB.VN": "Banking", "SSB.VN": "Banking", "STB.VN": "Banking",
-    "TCB.VN": "Banking", "TPB.VN": "Banking", "VCB.VN": "Banking",
-    "VIB.VN": "Banking", "VPB.VN": "Banking",
-    "BCM.VN": "Real Estate", "KDH.VN": "Real Estate", "VHM.VN": "Real Estate",
-    "MSN.VN": "Retail",     "MWG.VN": "Retail", "SAB.VN": "Retail", "VNM.VN": "Retail",
-    "GAS.VN": "Energy",     "GVR.VN": "Industrial", "HPG.VN": "Industrial",
-    "PLX.VN": "Energy",     "POW.VN": "Energy",
-    "FPT.VN": "Technology",
-    "BVH.VN": "Insurance",
-    "SSI.VN": "Financial Services",
-    "VJC.VN": "Aviation",
+# ============================================================
+# SYMBOL LISTS
+# ============================================================
+VN30_STOCKS: dict[str, str] = {
+    "ACB.VN": "Banking",          "BID.VN": "Banking",
+    "CTG.VN": "Banking",          "HDB.VN": "Banking",
+    "LPB.VN": "Banking",          "MBB.VN": "Banking",
+    "SHB.VN": "Banking",          "SSB.VN": "Banking",
+    "STB.VN": "Banking",          "TCB.VN": "Banking",
+    "TPB.VN": "Banking",          "VCB.VN": "Banking",
+    "VIB.VN": "Banking",          "VPB.VN": "Banking",
+    "BCM.VN": "Real Estate",      "KDH.VN": "Real Estate",
+    "VHM.VN": "Real Estate",      "MSN.VN": "Retail",
+    "MWG.VN": "Retail",           "SAB.VN": "Retail",
+    "VNM.VN": "Retail",           "GAS.VN": "Energy",
+    "GVR.VN": "Industrial",       "HPG.VN": "Industrial",
+    "PLX.VN": "Energy",           "POW.VN": "Energy",
+    "FPT.VN": "Technology",       "BVH.VN": "Insurance",
+    "SSI.VN": "Financial Svcs",   "VJC.VN": "Aviation",
 }
 
-# VNMID — liquid mid-cap stocks outside VN30 (VN100 = VN30 + VNMID)
-# Verified active on yfinance (removed delisted: MBS, IDC, CEO, OIL, PVS, MML, QNS, MCH, HBC, TNG)
-# Backtest (5% risk / 15% reward, 2y): Flag+combined=51.7%, Pennant baseline=33.6%, Triangle baseline=29.5%
-VNMID_STOCKS = {
-    # Banking / Finance
+VNMID_STOCKS: dict[str, str] = {
     "MSB.VN": "Banking",     "OCB.VN": "Banking",     "EIB.VN": "Banking",
     "VIX.VN": "Securities",  "VCI.VN": "Securities",  "HCM.VN": "Securities",
     "FTS.VN": "Securities",  "BSI.VN": "Securities",
-    # Real Estate
     "NLG.VN": "Real Estate", "DIG.VN": "Real Estate", "NVL.VN": "Real Estate",
     "PDR.VN": "Real Estate", "KBC.VN": "Real Estate", "HDG.VN": "Real Estate",
     "DXG.VN": "Real Estate", "AGG.VN": "Real Estate", "SJS.VN": "Real Estate",
     "CII.VN": "Real Estate", "HDC.VN": "Real Estate", "TDH.VN": "Real Estate",
-    # Logistics / Industrial
     "GMD.VN": "Logistics",   "HAH.VN": "Logistics",   "PVT.VN": "Logistics",
-    "VTP.VN": "Logistics",
-    "DRC.VN": "Industrial",  "VGC.VN": "Industrial",  "PHR.VN": "Industrial",
-    "HSG.VN": "Steel",       "NKG.VN": "Steel",       "CSV.VN": "Industrial",
-    # Energy
-    "BSR.VN": "Energy",  "PVD.VN": "Energy",  "NT2.VN": "Energy",
-    "VSH.VN": "Energy",  "PC1.VN": "Energy",  "REE.VN": "Energy",  "TBC.VN": "Energy",
-    # Consumer / Retail
-    "PNJ.VN": "Retail",   "DGW.VN": "Technology", "FRT.VN": "Retail",
-    "VHC.VN": "Seafood",  "ANV.VN": "Seafood",    "IDI.VN": "Seafood",
-    "HVN.VN": "Aviation",
-    # Food / Agriculture
-    "KDC.VN": "FMCG",  "SBT.VN": "FMCG",  "DBC.VN": "Agriculture",
-    "PAN.VN": "Agriculture",  "BAF.VN": "Agriculture",
-    # Technology
+    "VTP.VN": "Logistics",   "DRC.VN": "Industrial",  "VGC.VN": "Industrial",
+    "PHR.VN": "Industrial",  "HSG.VN": "Steel",       "NKG.VN": "Steel",
+    "CSV.VN": "Industrial",  "BSR.VN": "Energy",      "PVD.VN": "Energy",
+    "NT2.VN": "Energy",      "VSH.VN": "Energy",      "PC1.VN": "Energy",
+    "REE.VN": "Energy",      "TBC.VN": "Energy",      "PNJ.VN": "Retail",
+    "DGW.VN": "Technology",  "FRT.VN": "Retail",      "VHC.VN": "Seafood",
+    "ANV.VN": "Seafood",     "IDI.VN": "Seafood",     "HVN.VN": "Aviation",
+    "KDC.VN": "FMCG",        "SBT.VN": "FMCG",        "DBC.VN": "Agriculture",
+    "PAN.VN": "Agriculture", "BAF.VN": "Agriculture",
     "CMG.VN": "Technology",  "ELC.VN": "Technology",  "SGT.VN": "Technology",
-    # Healthcare / Pharma
-    "DHG.VN": "Pharma",  "IMP.VN": "Pharma",  "TRA.VN": "Pharma",  "DMC.VN": "Pharma",
-    # Construction
-    "CTD.VN": "Construction",  "VCG.VN": "Construction",  "FCN.VN": "Construction",
+    "DHG.VN": "Pharma",      "IMP.VN": "Pharma",      "TRA.VN": "Pharma",
+    "DMC.VN": "Pharma",      "CTD.VN": "Construction","VCG.VN": "Construction",
+    "FCN.VN": "Construction",
 }
 
-# ============================================================
-# HOSE SYMBOL LIST
-# ============================================================
-def _load_symbols_cache():
-    try:
-        with open(SYMBOLS_CACHE_FILE) as f:
-            data = json.load(f)
-        age = datetime.now() - datetime.fromisoformat(data["updated"])
-        if age.days < 7 and len(data.get("symbols", [])) > 50:
-            return data["symbols"]
-    except Exception:
-        pass
-    return None
-
-
-def _fetch_hose_symbols_vnstock():
-    """Try multiple vnstock3 API paths to get all HOSE symbols."""
-    try:
-        stock = Vnstock().stock(symbol="ACB", source="VCI")
-        df = stock.listing.symbols_by_exchange()
-        col_ex = next((c for c in df.columns if "exchange" in c.lower()), None)
-        col_sym = next((c for c in df.columns if "symbol" in c.lower() or "ticker" in c.lower()), None)
-        if col_ex and col_sym:
-            hose_df = df[df[col_ex].str.upper() == "HOSE"]
-            syms = [f"{s}.VN" for s in hose_df[col_sym].tolist()]
-            if len(syms) > 50:
-                return syms
-    except Exception:
-        pass
-    try:
-        from vnstock3.common.data.data_explorer import StockComponents
-        df = StockComponents("VCI").listing()
-        col_ex = next((c for c in df.columns if "exchange" in c.lower()), None)
-        col_sym = next((c for c in df.columns if "symbol" in c.lower()), None)
-        if col_ex and col_sym:
-            hose_df = df[df[col_ex].str.upper() == "HOSE"]
-            syms = [f"{s}.VN" for s in hose_df[col_sym].tolist()]
-            if len(syms) > 50:
-                return syms
-    except Exception:
-        pass
-    return None
-
-
-@st.cache_data(ttl=86_400, show_spinner=False)
-def get_hose_symbols():
-    """Return list of all HOSE symbols with .VN suffix."""
-    cached = _load_symbols_cache()
-    if cached:
-        return cached
-
-    if HAS_VNSTOCK:
-        syms = _fetch_hose_symbols_vnstock()
-        if syms:
-            try:
-                with open(SYMBOLS_CACHE_FILE, "w") as f:
-                    json.dump({"updated": datetime.now().isoformat(), "symbols": syms}, f)
-            except Exception:
-                pass
-            return syms
-
-    return list(VN30_STOCKS.keys())
+VN100_STOCKS: dict[str, str] = {**VN30_STOCKS, **VNMID_STOCKS}
 
 
 # ============================================================
@@ -165,7 +86,6 @@ def _cache_path(symbol: str) -> str:
 
 
 def _save_df(df: pd.DataFrame, path: str) -> None:
-    """Save to parquet; fall back to CSV if pyarrow not installed."""
     try:
         df.to_parquet(path)
     except Exception:
@@ -173,38 +93,31 @@ def _save_df(df: pd.DataFrame, path: str) -> None:
 
 
 def _load_df(path: str) -> pd.DataFrame | None:
-    """Load parquet or CSV cache file."""
     if os.path.exists(path):
         try:
             return pd.read_parquet(path)
         except Exception:
             pass
-    csv_path = path.replace(".parquet", ".csv")
-    if os.path.exists(csv_path):
+    csv = path.replace(".parquet", ".csv")
+    if os.path.exists(csv):
         try:
-            return pd.read_csv(csv_path, index_col=0, parse_dates=True)
+            return pd.read_csv(csv, index_col=0, parse_dates=True)
         except Exception:
             pass
     return None
 
 
 def cache_stats() -> tuple[int, float]:
-    """Return (file_count, total_size_mb) for all cached price files."""
     try:
-        files = [f for f in os.listdir(CACHE_DIR)
-                 if f.endswith((".parquet", ".csv"))]
-        size = sum(
-            os.path.getsize(os.path.join(CACHE_DIR, f))
-            for f in files
-            if os.path.exists(os.path.join(CACHE_DIR, f))
-        )
+        files = [f for f in os.listdir(CACHE_DIR) if f.endswith((".parquet", ".csv"))]
+        size  = sum(os.path.getsize(os.path.join(CACHE_DIR, f)) for f in files
+                    if os.path.exists(os.path.join(CACHE_DIR, f)))
         return len(files), size / (1024 * 1024)
     except Exception:
         return 0, 0.0
 
 
 def clear_cache() -> int:
-    """Delete all price cache files. Returns count of deleted files."""
     deleted = 0
     try:
         for fname in os.listdir(CACHE_DIR):
@@ -221,13 +134,9 @@ def clear_cache() -> int:
 
 def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
     """Load from parquet cache; append only new bars from yfinance."""
-    path = _cache_path(symbol)
-    cached = None
+    path   = _cache_path(symbol)
+    cached = _load_df(path) if use_cache else None
 
-    if use_cache:
-        cached = _load_df(path)
-
-    # Normalise index to UTC-naive for comparison
     def strip_tz(df):
         if df is not None and not df.empty and df.index.tz is not None:
             df = df.copy()
@@ -235,28 +144,25 @@ def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
         return df
 
     cached = strip_tz(cached)
-    today = pd.Timestamp.today().normalize()
+    today  = pd.Timestamp.today().normalize()
 
     if cached is not None and not cached.empty:
         last_date = cached.index.max()
-        if last_date >= today - pd.Timedelta(days=3):  # covers weekends
-            return cached  # already up-to-date
-
-        # Fetch only missing range
+        if last_date >= today - pd.Timedelta(days=3):
+            return cached
         start_str = (last_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         try:
             new_df = strip_tz(yf.Ticker(symbol).history(start=start_str))
             if new_df is not None and not new_df.empty:
                 combined = pd.concat([cached, new_df])
                 combined = combined[~combined.index.duplicated(keep="last")].sort_index()
-                combined = combined.iloc[-500:]   # keep last ~2 years
+                combined = combined.iloc[-500:]
                 _save_df(combined, path)
                 return combined
         except Exception:
             pass
         return cached
 
-    # Full fetch (no cache or cache empty)
     try:
         df = strip_tz(yf.Ticker(symbol).history(period="2y"))
         if df is not None and not df.empty:
@@ -268,18 +174,18 @@ def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
 
 
 # ============================================================
-# VNINDEX DATA (multiple sources, no cache — small dataset)
+# VNINDEX — market filter
 # ============================================================
 def _fetch_vnstock_index(source: str) -> pd.DataFrame | None:
     try:
         stock = Vnstock().stock(symbol="VN30", source=source)
-        end = datetime.now().strftime("%Y-%m-%d")
+        end   = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
-        df = stock.quote.history(symbol="VNINDEX", start=start, end=end)
+        df    = stock.quote.history(symbol="VNINDEX", start=start, end=end)
         if df is None or df.empty:
             return None
         df = df.rename(columns={"close": "Close", "open": "Open",
-                                  "high": "High", "low": "Low", "volume": "Volume"})
+                                 "high": "High", "low": "Low", "volume": "Volume"})
         date_col = next((c for c in ["time", "date"] if c in df.columns), None)
         if date_col:
             df.index = pd.to_datetime(df[date_col])
@@ -309,2104 +215,1170 @@ def get_vnindex_data() -> pd.DataFrame | None:
     return None
 
 
-# ============================================================
-# TREND TEMPLATE — 10 criteria (he-thong-trading-vn.html, ch4)
-# ============================================================
-def check_trend_template(
-    df: pd.DataFrame,
-    sl_pct: float = 5.0,
-    tgt_pct: float = 10.0,
-) -> tuple[bool, int, dict]:
-    """
-    Returns (all_pass, score_out_of_9, details_dict).
-    Criterion 9 (RS percentile) is excluded here — ranked separately.
-    details includes stoploss_price/pct and target_price/pct derived from
-    sl_pct and tgt_pct (percentage distances from current price).
-    """
-    if df is None or df.empty or len(df) < 160:
-        return False, 0, {}
-
-    close = df["Close"]
-    volume = df["Volume"]
-
-    ma50  = close.rolling(50).mean()
-    ma150 = close.rolling(150).mean()
-    vol20 = volume.rolling(20).mean()
-
-    price    = close.iloc[-1]
-    ma50_v   = ma50.iloc[-1]
-    ma150_v  = ma150.iloc[-1]
-    vol20_v  = vol20.iloc[-1]
-
-    if any(pd.isna(v) for v in [price, ma50_v, ma150_v, vol20_v]):
-        return False, 0, {}
-
-    n = len(close)
-    high52 = close.iloc[-min(252, n):].max()
-    low52  = close.iloc[-min(252, n):].min()
-
-    # ── 1. Price > MA50
-    c1 = bool(price > ma50_v)
-
-    # ── 2. Price > MA150
-    c2 = bool(price > ma150_v)
-
-    # ── 3. MA50 > MA150
-    c3 = bool(ma50_v > ma150_v)
-
-    # ── 4. MA150 trending up for 4 consecutive weeks (~5 trading-day steps)
-    c4 = False
-    ma150_clean = ma150.dropna()
-    if len(ma150_clean) >= 22:
-        pts = [ma150_clean.iloc[i] for i in [-1, -6, -11, -16, -21]]
-        c4 = all(pts[i] > pts[i + 1] for i in range(4))
-
-    # ── 5. Price ≥ 25% above 52-week low
-    c5 = bool(low52 > 0 and price >= low52 * 1.25)
-
-    # ── 6. Price within 30% of 52-week high (≥ 70% of high)
-    c6 = bool(high52 > 0 and price >= high52 * 0.70)
-
-    # ── 7. Avg 20-session volume ≥ 200,000 shares
-    c7 = bool(vol20_v >= MIN_VOL_20)
-
-    # ── 8. Price ≥ 15 (= 15,000 VND in yfinance thousands)
-    c8 = bool(price >= MIN_PRICE)
-
-    # ── 10. No distribution: no 3 consecutive sessions of (price↓ + vol↑)
-    c10 = True
-    if len(df) >= 10:
-        recent = df[["Close", "Volume"]].iloc[-10:].copy()
-        price_down = recent["Close"].diff() < 0
-        vol_up     = recent["Volume"].diff() > 0
-        consec = 0
-        for is_dist in (price_down & vol_up):
-            consec = consec + 1 if is_dist else 0
-            if consec >= 3:
-                c10 = False
-                break
-
-    criteria_without_rs = [c1, c2, c3, c4, c5, c6, c7, c8, c10]
-    score = sum(criteria_without_rs)
-    all_pass = all(criteria_without_rs)
-
-    _price = round(float(price), 1)
+def compute_market_filter(vnindex_df: pd.DataFrame | None) -> tuple[str, dict]:
+    if vnindex_df is None or len(vnindex_df) < 55:
+        return "⚪ Không có dữ liệu", {}
+    close   = vnindex_df["Close"]
+    ma20    = close.rolling(20).mean()
+    ma50    = close.rolling(50).mean()
+    price   = close.iloc[-1]
+    ma20_v  = ma20.iloc[-1]
+    ma50_v  = ma50.iloc[-1]
     details = {
-        "price":          _price,
-        "ma50":           round(float(ma50_v), 1),
-        "ma150":          round(float(ma150_v), 1),
-        "vol20":          int(vol20_v),
-        "high52":         round(float(high52), 1),
-        "low52":          round(float(low52), 1),
-        "score9":         score,
-        # ── Stop loss & target (from current price) ──────────────
-        "stoploss_price": round(_price * (1 - sl_pct  / 100), 1),
-        "stoploss_pct":   sl_pct,
-        "target_price":   round(_price * (1 + tgt_pct / 100), 1),
-        "target_pct":     tgt_pct,
-        # ── Criteria ─────────────────────────────────────────────
-        "c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5,
-        "c6": c6, "c7": c7, "c8": c8, "c10": c10,
+        "VNINDEX": round(price, 1),
+        "MA20":    round(ma20_v, 1),
+        "MA50":    round(ma50_v, 1),
     }
-    return all_pass, score, details
+    if price > ma50_v and ma20_v > ma50_v:
+        label = "🟢 Thị trường thuận lợi"
+    elif price < ma50_v or ma20_v < ma50_v:
+        label = "🔴 Thị trường bất lợi"
+    else:
+        label = "🟡 Thị trường trung tính"
+    return label, details
 
 
 # ============================================================
-# RELATIVE STRENGTH (RS) — percentile vs all HOSE stocks
+# INDICATORS
 # ============================================================
-def compute_rs_raw(df: pd.DataFrame) -> float | None:
+def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
-    RS_raw = Perf_1M*0.25 + Perf_3M*0.35 + Perf_6M*0.25 + Perf_12M*0.15
-    Uses available periods with re-normalised weights if some periods missing.
+    Add columns used by scan rules.
+    Index convention:
+      [-1] = signal candle (last row of df)
+      shift(2).rolling(N) → covers [-N-1] to [-2], excludes signal candle
     """
-    if df is None or df.empty or len(df) < 63:
+    d = df.copy()
+    tr = pd.concat([
+        d["High"] - d["Low"],
+        (d["High"] - d["Close"].shift(1)).abs(),
+        (d["Low"]  - d["Close"].shift(1)).abs(),
+    ], axis=1).max(axis=1)
+
+    # ATR(10) on [-11] to [-2]
+    d["atr10"]        = tr.shift(2).rolling(10).mean()
+    # avg volume on [-21] to [-2]
+    d["avg_vol20"]    = d["Volume"].shift(2).rolling(20).mean()
+    # avg volume on [-6] to [-2]
+    d["avg_vol_pre5"] = d["Volume"].shift(2).rolling(5).mean()
+    # max high on [-11] to [-2] and [-21] to [-2]
+    d["high10"]       = d["High"].shift(2).rolling(10).max()
+    d["high20"]       = d["High"].shift(2).rolling(20).max()
+    # MAs at signal candle
+    d["ma50"]         = d["Close"].rolling(50).mean()
+    d["ma200"]        = d["Close"].rolling(200).mean()
+    # MA50 from 5 days ago
+    d["ma50_prev5"]   = d["ma50"].shift(5)
+    # Previous candle's high — close-above confirmation
+    d["high_prev1"]   = d["High"].shift(1)
+    # Candle range for NR7 detection
+    d["candle_range"] = d["High"] - d["Low"]
+    d["nr7"]          = d["candle_range"] <= d["candle_range"].rolling(7).min()
+    # Gap vs prior close
+    d["gap_pct"]      = (d["Open"] - d["Close"].shift(1)) / d["Close"].shift(1)
+    return d
+
+
+# ============================================================
+# VOLUME TIER
+# ============================================================
+def _vol_tier(vol: float, avg_vol20: float, avg_vol_pre5: float) -> str:
+    if pd.isna(avg_vol20) or avg_vol20 == 0:
+        return "NO_VOL_DATA"
+    spike    = bool(vol > 2.0 * avg_vol20)
+    contract = (not pd.isna(avg_vol_pre5)) and bool(avg_vol_pre5 < avg_vol20 * 0.75)
+    if spike and contract:
+        return "TIER1"
+    if spike:
+        return "TIER2"
+    return "TIER3"
+
+
+# ============================================================
+# RELATIVE STRENGTH (4-week vs VNINDEX)
+# ============================================================
+def compute_rs4w(df: pd.DataFrame, vnindex_df: pd.DataFrame | None) -> float | None:
+    """
+    4-week RS = (stock 21-day return) / (VNINDEX 21-day return).
+    > 1.0 → outperforming. > 1.05 → clearly outperforming.
+    """
+    if vnindex_df is None or len(vnindex_df) < 22 or len(df) < 22:
         return None
-    close = df["Close"]
-    price = float(close.iloc[-1])
-
-    def perf(days):
-        idx = -(days + 1)
-        if len(close) <= days:
+    try:
+        stock_ret = df["Close"].iloc[-1] / df["Close"].iloc[-22] - 1
+        idx_col   = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+        idx_ret   = vnindex_df[idx_col].iloc[-1] / vnindex_df[idx_col].iloc[-22] - 1
+        if abs(idx_ret) < 0.001:
             return None
-        old = float(close.iloc[idx])
-        return (price / old - 1) * 100 if old > 0 else None
-
-    candidates = [(perf(21), 0.25), (perf(63), 0.35), (perf(126), 0.25), (perf(252), 0.15)]
-    valid = [(v, w) for v, w in candidates if v is not None]
-    if not valid:
+        return round((1 + stock_ret) / (1 + idx_ret), 3)
+    except Exception:
         return None
-    total_w = sum(w for _, w in valid)
-    return sum(v * w for v, w in valid) / total_w
-
-
-def rank_rs(rs_map: dict) -> dict:
-    """Convert {symbol: rs_raw} → {symbol: percentile 0-100}."""
-    valid = {k: v for k, v in rs_map.items() if v is not None}
-    if not valid:
-        return {}
-    sorted_vals = sorted(valid.values())
-    n = len(sorted_vals)
-    return {sym: round(sum(1 for v in sorted_vals if v <= val) / n * 100, 1)
-            for sym, val in valid.items()}
 
 
 # ============================================================
-# MARKET FILTER (Traffic Light)
+# SIGNAL QUALITY HELPERS
 # ============================================================
-def compute_market_filter(vnindex_df: pd.DataFrame, breadth_pct: float) -> tuple[str, dict]:
+def compute_vol_character(df: pd.DataFrame, lookback: int = 15) -> str:
     """
-    Green:  VN-Index > MA50  AND  MA20 > MA50  AND  Breadth ≥ 55%
-    Yellow: intermediate
-    Red:    VN-Index < MA50  OR   MA20 < MA50  OR   Breadth < 40%
+    Compare total volume on up-close vs down-close days over last `lookback` bars
+    (excludes signal candle). Returns ACCUM, DISTRIB, or NEUTRAL.
     """
-    if vnindex_df is None or vnindex_df.empty or len(vnindex_df) < 50:
-        return "unknown", {}
-
-    close  = vnindex_df["Close"]
-    ma20_v = float(close.rolling(20).mean().iloc[-1])
-    ma50_v = float(close.rolling(50).mean().iloc[-1])
-    price  = float(close.iloc[-1])
-
-    if pd.isna(ma20_v) or pd.isna(ma50_v):
-        return "unknown", {}
-
-    details = {
-        "price": round(price, 1),
-        "ma20":  round(ma20_v, 1),
-        "ma50":  round(ma50_v, 1),
-        "breadth": round(breadth_pct, 1),
-    }
-
-    above_ma50   = price  > ma50_v
-    ma20_gt_ma50 = ma20_v > ma50_v
-
-    # Red — any single condition triggers
-    if (not above_ma50) or (not ma20_gt_ma50) or (breadth_pct < 40):
-        return "red", details
-
-    # Green — all conditions met
-    if above_ma50 and ma20_gt_ma50 and breadth_pct >= 55:
-        return "green", details
-
-    return "yellow", details
-
-
-# ============================================================
-# PATTERN DETECTION — Setup A / B / C
-# ============================================================
-
-def _detect_candle_pattern(df: pd.DataFrame) -> str:
-    """
-    Detect bullish / reversal candlestick pattern on the last bar.
-    Returns: "Hammer" | "Bullish Engulfing" | "Marubozu" | "Pin Bar" |
-             "Strong Bull" | "None"
-
-    Normalises H/L so they always encompass O and C (robust to synthetic data).
-    """
-    if len(df) < 2:
-        return "None"
-
-    o  = float(df["Open"].iloc[-1])
-    h  = float(df["High"].iloc[-1])
-    l  = float(df["Low"].iloc[-1])
-    c  = float(df["Close"].iloc[-1])
-    po = float(df["Open"].iloc[-2])
-    pc = float(df["Close"].iloc[-2])
-
-    # Normalise H/L to always contain O and C (handles synthetic test data)
-    h = max(h, o, c)
-    l = min(l, o, c)
-
-    total_range = h - l
-    if total_range < 1e-8:
-        return "None"
-
-    body       = abs(c - o)
-    upper_wick = h - max(o, c)
-    lower_wick = min(o, c) - l
-
-    # 1. Bullish Marubozu — strong green bar, body ≥ 75% of range
-    if c > o and body / total_range >= 0.75:
-        return "Marubozu"
-
-    # 2. Bullish Engulfing — current green fully engulfs prior red body
-    if c > o and pc < po and o <= pc and c >= po:
-        return "Bullish Engulfing"
-
-    # 3. Hammer — small body in top half, lower wick ≥ 2× body
-    if (lower_wick >= 2 * max(body, total_range * 0.02) and
-            upper_wick <= body * 0.8 and
-            min(o, c) >= l + total_range * 0.45):
-        return "Hammer"
-
-    # 4. Pin Bar — lower wick ≥ 60% of range (strong wick rejection)
-    if lower_wick >= total_range * 0.60 and body <= total_range * 0.35:
-        return "Pin Bar"
-
-    # 5. Strong Bull — closes in top 30%, body ≥ 50% of range
-    if c > o and (c - l) / total_range >= 0.70 and body / total_range >= 0.50:
-        return "Strong Bull"
-
-    return "None"
-
-
-def _check_entry_candle(df: pd.DataFrame, pivot: float) -> tuple[str, str]:
-    """
-    Determine entry status relative to pivot.
-
-    Returns (status, entry_candle):
-      "🔥 BUY"        — price > pivot + volume ≥ 1.5× avg (entry triggered)
-      "👀 Monitoring" — within 3% of pivot with a bullish/reversal candle
-      "⏳ Setup"      — pattern detected, waiting for price to approach pivot
-    """
-    price    = float(df["Close"].iloc[-1])
-    last_vol = float(df["Volume"].iloc[-1])
-    vol_ma20 = float(df["Volume"].rolling(20).mean().iloc[-1])
-    vol_ok   = (not pd.isna(vol_ma20)) and (last_vol >= vol_ma20 * 1.5)
-    candle   = _detect_candle_pattern(df)
-
-    above_pivot = price > pivot
-    near_pivot  = price >= pivot * 0.97     # within 3% below pivot
-
-    if above_pivot and vol_ok:
-        return "🔥 BUY", candle if candle != "None" else "Breakout"
-
-    if near_pivot and candle != "None":
-        return "👀 Monitoring", candle
-
-    return "⏳ Setup", candle
-
-
-def _range_pct(chunk: pd.DataFrame) -> float:
-    """High-low range as % of midpoint price."""
-    h = float(chunk["High"].max())
-    l = float(chunk["Low"].min())
-    mid = (h + l) / 2
-    return (h - l) / mid * 100 if mid > 0 else 0.0
-
-
-def _check_vcp(df: pd.DataFrame) -> dict | None:
-    """
-    Setup A — Volatility Contraction Pattern.
-    3 × 20-day windows; range AND volume must contract monotonically.
-
-    Improvements over original:
-    - tight_close tightened 10% → 7% (VN stocks need tighter coil)
-    - Requires uptrend context: price > MA50 > MA150
-    - Requires proximity to 52w high (VCP forms near highs, not mid-range)
-    - MA20 > MA50 (short-term momentum alignment)
-    - Score 0-100 integrated with new pattern table
-    """
-    if len(df) < 60:
-        return None
-
-    p1, p2, p3 = df.iloc[-60:-40], df.iloc[-40:-20], df.iloc[-20:]
-
-    r1, r2, r3 = _range_pct(p1), _range_pct(p2), _range_pct(p3)
-    v1 = float(p1["Volume"].mean())
-    v2 = float(p2["Volume"].mean())
-    v3 = float(p3["Volume"].mean())
-
-    price_contracting = r1 > r2 > r3
-    vol_drying        = v3 < v2 * 0.90 and v2 < v1 * 0.95
-    tight_close       = r3 < 7.0          # tightened: 10% → 7%
-
-    if not (price_contracting and vol_drying and tight_close):
-        return None
-
-    close     = df["Close"]
-    price     = float(close.iloc[-1])
-    ma20_v    = float(close.rolling(20).mean().iloc[-1])
-    ma50_v    = float(close.rolling(50).mean().iloc[-1])
-    ma150_v   = float(close.rolling(150).mean().iloc[-1]) if len(df) >= 150 else float("nan")
-
-    # uptrend context: price > MA50 > MA150 (don't fire VCP in downtrend)
-    if pd.isna(ma50_v) or price <= ma50_v:
-        return None
-    if not pd.isna(ma150_v) and ma50_v <= ma150_v:
-        return None
-
-    # MA20 above MA50 — short-term momentum confirms trend
-    if not pd.isna(ma20_v) and ma20_v < ma50_v:
-        return None
-
-    # proximity to 52-week high — VCP forms near highs, not mid-range
-    high52 = float(df["High"].iloc[-252:].max()) if len(df) >= 252 else float(df["High"].max())
-    near_high52 = price >= high52 * 0.85   # within 15% of 52w high
-
-    recent_high       = float(df["High"].iloc[-20:].max())
-    contraction_ratio = r1 / r3 if r3 > 0 else 0
-    vol_dry_ratio     = v3 / v1 if v1 > 0 else 1.0
-
-    # quality: contraction + vol dry-up + proximity to high
-    if contraction_ratio >= 5 and vol_dry_ratio < 0.50 and near_high52:
-        quality = "★★★"
-    elif contraction_ratio >= 3 and near_high52:
-        quality = "★★"
-    elif contraction_ratio >= 3:
-        quality = "★★"
-    else:
-        quality = "★"
-
-    pivot  = round(recent_high * 1.01, 1)
-    status, entry_candle = _check_entry_candle(df, pivot)
-    confirmed = (status == "🔥 BUY")
-
-    # score 0-100 (compatible with cp pattern score system)
-    score = 0
-    score += min(25, int(contraction_ratio / 5 * 25))          # contraction strength
-    score += min(25, int((1 - min(1.0, vol_dry_ratio)) * 25))  # vol dry-up
-    score += 20 if not pd.isna(ma150_v) and ma50_v > ma150_v else 10  # trend depth
-    score += 15 if near_high52 else 0                           # proximity to 52w high
-    score += 15 if r3 < 4 else 8 if r3 < 6 else 0             # coil tightness
-    score = min(100, score)
-
-    return {
-        "pattern":      "VCP",
-        "quality":      quality,
-        "score":        score,
-        "entry_ok":     near_high52 and r3 < 5,
-        "pivot":        pivot,
-        "stoploss":     round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
-        "confirmed":    confirmed,
-        "status":       status,
-        "entry_candle": entry_candle,
-        "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
-                         f"Contr {contraction_ratio:.1f}×  "
-                         f"Vol {vol_dry_ratio:.0%}  "
-                         f"{'near52H' if near_high52 else 'mid-range'}"),
-        "_window_bars": 60,
-    }
-
-
-def _check_flat_base(df: pd.DataFrame) -> dict | None:
-    """
-    Setup C variant — Flat Base (5–10 weeks of tight sideways action).
-
-    Backtest (3y, 8 US symbols, lookahead=15):
-      Original 12% threshold produced 157 signals (≈2/month/stock) — too loose.
-      Tightened to 10% AND now REQUIRE volume contraction, cutting signals
-      ~40% while keeping hit rate ~50%.  Quality criteria updated accordingly.
-    """
-    if len(df) < 50:
-        return None
-
-    base  = df.iloc[-40:]
-    prior = df.iloc[-80:-40] if len(df) >= 80 else df.iloc[:-40]
-
-    r = _range_pct(base)
-    if r >= 10.0:                             # tightened from 12% → 10%
-        return None
-
-    price   = float(df["Close"].iloc[-1])
-    ma50_v  = float(df["Close"].rolling(50).mean().iloc[-1])
-    if pd.isna(ma50_v) or price <= ma50_v:
-        return None
-
-    base_vol  = float(base["Volume"].mean())
-    prior_vol = float(prior["Volume"].mean()) if not prior.empty else base_vol
-    vol_ratio = base_vol / prior_vol if prior_vol > 0 else 1.0
-
-    base_high = float(base["High"].max())
-    price_near_top = price >= base_high * 0.93  # within 7% of base ceiling
-
-    # Require either near top OR vol contracted — not both (too few signals otherwise)
-    if not (price_near_top or vol_ratio < 0.85):
-        return None
-
-    # Quality: price near top (imminent breakout) drives quality more than range tightness
-    # Backtest shows price_near_top is a stronger predictor than tight range alone.
-    if price_near_top and vol_ratio < 0.70:
-        quality = "★★★"   # at top of base + dry volume = imminent breakout
-    elif price_near_top:
-        quality = "★★"    # at top of base, not yet fully dry
-    else:
-        quality = "★"     # base forming, not yet at top
-
-    fb_pivot = round(base_high * 1.01, 1)
-    status, entry_candle = _check_entry_candle(df, fb_pivot)
-    confirmed = (status == "🔥 BUY")
-
-    # score 0-100
-    score = 0
-    score += 30 if price_near_top and vol_ratio < 0.70 else 15 if price_near_top else 0
-    score += 25 if vol_ratio < 0.70 else 15 if vol_ratio < 0.85 else 0
-    score += 20 if r < 6 else 10 if r < 8 else 5    # base tightness
-    score += 15 if price >= ma50_v * 1.05 else 8     # how far above MA50
-    score += 10 if status == "🔥 BUY" else 3 if status == "👀 Monitoring" else 0
-    score = min(100, score)
-
-    return {
-        "pattern":      "Flat Base",
-        "quality":      quality,
-        "score":        score,
-        "entry_ok":     price_near_top and vol_ratio < 0.70,
-        "pivot":        fb_pivot,
-        "stoploss":     round(float(base["Low"].min()) * 0.99, 1),
-        "confirmed":    confirmed,
-        "status":       status,
-        "entry_candle": entry_candle,
-        "notes":        f"Range {r:.1f}% over 40 bars  Vol {vol_ratio:.0%} of prior",
-        "_window_bars": 40,
-    }
-
-
-def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
-    """
-    Setup B — Pullback to MA20 in Uptrend.
-
-    Improvements:
-    - MA20 must be RISING (slope > 0 over 5 bars) — pullback to declining
-      MA20 is a breakdown, not a setup
-    - Requires MA50 > MA150 (not just price > MA50) — stronger trend filter
-    - Tolerance widened 3% → 4% to catch valid pullbacks that slightly
-      overshoot MA20 before bouncing
-    - SL uses MA20 × 0.97 (near SL) instead of MA50 × 0.97 (too far)
-    - Score 0-100 integrated with new pattern table
-    - Quality: 3-factor (vol + MA20 slope + trend depth)
-    """
-    if len(df) < 60:
-        return None
-
-    close  = df["Close"]
-    volume = df["Volume"]
-
-    ma20 = close.rolling(20).mean()
-    ma50 = close.rolling(50).mean()
-    ma150 = close.rolling(150).mean()
-
-    price   = float(close.iloc[-1])
-    ma20_v  = float(ma20.iloc[-1])
-    ma50_v  = float(ma50.iloc[-1])
-    ma150_v = float(ma150.iloc[-1]) if len(df) >= 150 else float("nan")
-
-    if any(pd.isna(v) for v in [ma20_v, ma50_v]):
-        return None
-
-    # MA20 must be rising — pullback to declining MA20 = breakdown
-    ma20_5d_ago = float(ma20.iloc[-6]) if len(ma20.dropna()) >= 6 else float("nan")
-    ma20_rising = (not pd.isna(ma20_5d_ago)) and (ma20_v > ma20_5d_ago)
-    if not ma20_rising:
-        return None
-
-    # Trend depth: require price > MA50 AND (MA50 > MA150 if available)
-    if price <= ma50_v:
-        return None
-    trend_deep = (not pd.isna(ma150_v)) and (ma50_v > ma150_v)
-
-    # Pullback tolerance widened to 4% (catches valid overshoot + bounce)
-    near_ma20 = abs(price - ma20_v) / ma20_v < 0.04
-
-    # Was above MA20 recently (confirms pullback, not first touch)
-    was_above = any(float(close.iloc[i]) > float(ma20.iloc[i])
-                    for i in range(-10, -1))
-
-    if not (near_ma20 and was_above):
-        return None
-
-    # Volume declining in pullback (last 5 days vs 20-day avg)
-    vol_avg5  = float(volume.iloc[-5:].mean())
-    vol_ma20  = float(volume.rolling(20).mean().iloc[-1])
-    vol_declining = vol_avg5 < vol_ma20 * 0.80
-
-    # No panic sell in last 5 sessions
-    for i in range(-5, 0):
-        pct_chg  = (float(close.iloc[i]) / float(close.iloc[i - 1]) - 1) * 100
-        vol_mult = float(volume.iloc[i]) / vol_ma20
-        if pct_chg < -4.0 and vol_mult > 3.0:
-            return None   # panic sell detected → skip
-
-    # Quality: 3-factor
-    if vol_declining and trend_deep:
-        quality = "★★★"
-    elif vol_declining or trend_deep:
-        quality = "★★"
-    else:
-        quality = "★"
-
-    prev_high = float(close.iloc[-6:-1].max())
-    pb_pivot  = round(prev_high * 1.005, 1)
-    status, entry_candle = _check_entry_candle(df, pb_pivot)
-    confirmed = (status == "🔥 BUY")
-
-    # SL: below MA20 (tighter, more precise) rather than MA50
-    stoploss = round(ma20_v * 0.97, 1)
-
-    # score 0-100
-    score = 0
-    score += 25 if vol_declining else 0           # vol declining in pullback
-    score += 20 if ma20_rising else 0             # MA20 slope (critical filter)
-    score += 20 if trend_deep else 10             # MA50 > MA150 depth
-    score += 15 if abs(price - ma20_v) / ma20_v < 0.01 else \
-             10 if abs(price - ma20_v) / ma20_v < 0.02 else 5  # precision of touch
-    score += 15 if not pd.isna(ma150_v) and price > ma50_v > ma20_v > ma150_v else 0
-    score += 5 if entry_candle != "None" else 0  # bullish candle at MA20
-    score = min(100, score)
-
-    return {
-        "pattern":      "Pullback MA20",
-        "quality":      quality,
-        "score":        score,
-        "entry_ok":     vol_declining and abs(price - ma20_v) / ma20_v < 0.02,
-        "pivot":        pb_pivot,
-        "stoploss":     stoploss,
-        "confirmed":    confirmed,
-        "status":       status,
-        "entry_candle": entry_candle,
-        "notes":        (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
-                         f"Vol {vol_avg5/vol_ma20:.0%}  "
-                         f"{'MA20↑' if ma20_rising else 'MA20↓'}  "
-                         f"{'deep trend' if trend_deep else 'shallow'}"),
-        "_window_bars": 20,
-    }
-
-
-def _passes_trend_filter(df: pd.DataFrame) -> bool:
-    """
-    Require price > MA50 > MA150 > MA200.
-    Ensures patterns are only detected on stocks in a confirmed uptrend.
-    Needs ≥ 200 bars.
-    """
-    if df is None or df.empty or len(df) < 200:
+    if df is None or len(df) < lookback + 2:
+        return "NEUTRAL"
+    view = df.iloc[-lookback - 1:-1]
+    up_vol   = view.loc[view["Close"] >= view["Open"], "Volume"].sum()
+    down_vol = view.loc[view["Close"] <  view["Open"], "Volume"].sum()
+    if down_vol == 0:
+        return "ACCUM"
+    ratio = up_vol / down_vol
+    if ratio >= 1.3:   return "ACCUM"
+    if ratio <= 0.75:  return "DISTRIB"
+    return "NEUTRAL"
+
+
+def count_tight_days(df: pd.DataFrame, lookback: int = 20) -> int:
+    """Count candles in last `lookback` bars (excl. signal) where range < 0.5 × ATR10."""
+    if df is None or len(df) < lookback + 2:
+        return 0
+    atr = df["atr10"].iloc[-1]
+    if pd.isna(atr) or atr == 0:
+        return 0
+    view   = df.iloc[-lookback - 1:-1]
+    ranges = view["High"] - view["Low"]
+    return int((ranges < 0.5 * atr).sum())
+
+
+def check_weekly_trend(df: pd.DataFrame) -> bool:
+    """Returns True if weekly close > 20-week MA (resampled from daily data)."""
+    if df is None or len(df) < 105:   # ~21 weeks minimum
         return False
-    close = df["Close"]
-    price  = float(close.iloc[-1])
-    ma50   = float(close.rolling(50).mean().iloc[-1])
-    ma150  = float(close.rolling(150).mean().iloc[-1])
-    ma200  = float(close.rolling(200).mean().iloc[-1])
-    if any(pd.isna(v) for v in [ma50, ma150, ma200]):
+    try:
+        weekly = df["Close"].resample("W").last().dropna()
+        if len(weekly) < 21:
+            return False
+        return bool(weekly.iloc[-1] > weekly.rolling(20).mean().iloc[-1])
+    except Exception:
         return False
-    return price > ma50 > ma150 > ma200
 
 
-def _trend_grade(df: pd.DataFrame) -> str:
+def has_overhead_supply(df: pd.DataFrame, breakout_high: float, atr: float,
+                        lookback: int = 60) -> bool:
     """
-    Traffic-light grade for MA alignment.
-    🟢 Green  — price > MA50 > MA150 > MA200  (full uptrend, ready to trade)
-    🟡 Yellow — price > MA50  (short-term bullish, MAs not fully aligned)
-    🔴 Red    — price ≤ MA50  (bearish / downtrend)
+    Returns True if a prior swing high sits between breakout_high and
+    breakout_high + 2 × ATR (resistance zone that could stall the move).
+    Swing high: high[i] strictly greater than both neighbours.
     """
-    if df is None or df.empty or len(df) < 50:
-        return "🔴"
-    close  = df["Close"]
-    price  = float(close.iloc[-1])
-    ma50   = float(close.rolling(50).mean().iloc[-1])
-    if pd.isna(ma50):
-        return "🔴"
-    if price <= ma50:
-        return "🔴"
-    # price > MA50 — check longer MAs
-    ma150 = float(close.rolling(150).mean().iloc[-1]) if len(df) >= 150 else float("nan")
-    ma200 = float(close.rolling(200).mean().iloc[-1]) if len(df) >= 200 else float("nan")
-    if not pd.isna(ma150) and not pd.isna(ma200) and ma50 > ma150 > ma200:
-        return "🟢"
-    return "🟡"
-
-
-def _cp_vol_contraction(df: pd.DataFrame, idx: int,
-                        lookback_n: int, pole_lb: int) -> bool:
-    """
-    Volume contraction check (backtest-proven filter):
-    Avg volume in the consolidation window < pole window avg × 0.75.
-    Signals that pass this filter had 52% win rate vs 17% baseline
-    in the VN30 R:R backtest (5% risk / 15% reward).
-    """
-    tail_offset  = max(0, len(df) - 200)
-    pole_start   = tail_offset + max(0, idx - lookback_n - pole_lb)
-    pole_end     = tail_offset + max(0, idx - lookback_n)
-    cons_start   = tail_offset + max(0, idx - lookback_n)
-    cons_end     = tail_offset + idx + 1
-    if pole_start >= pole_end or cons_start >= cons_end:
+    if df is None or len(df) < lookback + 2 or atr <= 0:
         return False
-    pole_vol = float(df["Volume"].iloc[pole_start:pole_end].mean())
-    cons_vol = float(df["Volume"].iloc[cons_start:cons_end].mean())
-    return pole_vol > 0 and cons_vol < pole_vol * 0.75
-
-
-def _cp_trend_ok(df: pd.DataFrame, idx: int) -> bool:
-    """price > MA50 > MA150 at signal bar (mapped from tail-200 index)."""
-    tail_offset = max(0, len(df) - 200)
-    orig = tail_offset + idx
-    if orig < 150:
-        return False
-    close   = df["Close"]
-    price   = float(close.iloc[orig])
-    ma50_v  = float(close.iloc[max(0, orig - 50):orig + 1].mean())
-    ma150_v = float(close.iloc[max(0, orig - 150):orig + 1].mean())
-    return price > ma50_v > ma150_v
-
-
-def _cp_quality(pole_gain: float, vol_ok: bool, trend_ok: bool,
-                pattern_name: str) -> tuple[str, str]:
-    """
-    Per-pattern quality rating + expected win-rate label.
-    Calibrated from VN30+VNMID R:R backtest (5% risk / 15% reward).
-
-    Triangle (vol is already a hard requirement):
-      ★★★  trend_ok + pole≥4%  → ~55%+ expected
-      ★★   trend_ok OR pole≥3% → ~35-50%
-      ★    vol passed only      → ~20-30%
-
-    Flag (vol is soft, pole≥4% required as param):
-      ★★★  vol_ok + trend_ok + pole≥5% → ~50% (VNMID proven)
-      ★★   vol_ok + pole≥4%            → ~30%
-      ★    basic                        → ~19%
-
-    Pennant (no hard filters — trend filter hurts VNMID 33%→14%):
-      ★★★  trend_ok + pole≥5% → ~35%+
-      ★★   pole≥4%            → ~30%
-      ★    basic               → ~22-34%
-    """
-    if pattern_name == "Triangle Pullback":
-        # vol is already required as a hard filter
-        if trend_ok and pole_gain >= 0.04:
-            return "★★★", "~55%"
-        if trend_ok or pole_gain >= 0.03:
-            return "★★",  "~35%"
-        return "★", "~25%"
-
-    if pattern_name == "Flag Pullback":
-        if vol_ok and trend_ok and pole_gain >= 0.05:
-            return "★★★", "~50%"
-        if vol_ok and pole_gain >= 0.04:
-            return "★★",  "~30%"
-        return "★", "~19%"
-
-    # Pennant Pullback
-    if trend_ok and pole_gain >= 0.05:
-        return "★★★", "~35%"
-    if pole_gain >= 0.04:
-        return "★★",  "~30%"
-    return "★", "~25%"
-
-
-def _cp_score(pole_gain: float, vol_ok: bool, trend_ok: bool, entry_ok: bool) -> int:
-    """
-    Pattern score 0-100. Weights calibrated from backtest evidence:
-    vol_ok=25pts because Triangle vol_filter lifts win rate 16.8%→52.4%.
-    """
-    score = 0
-    if vol_ok:
-        score += 25
-    if trend_ok:
-        score += 20
-    if entry_ok:
-        score += 15
-    # pole_gain component: 25 pts max, scales linearly up to 8% pole gain
-    score += min(25, int(pole_gain / 0.08 * 25))
-    # combo bonuses
-    if vol_ok and trend_ok:
-        score += 10
-    if vol_ok and entry_ok:
-        score += 5
-    return min(100, score)
-
-
-def _entry_zone_ok(df: pd.DataFrame, idx: int,
-                   slmax: float, slmin: float,
-                   intercmax: float, intercmin: float) -> bool:
-    """
-    Returns True if current price is in the bottom 35% of the channel width
-    at the signal bar (backtest: bottom of channel = best entry zone).
-    """
-    tail_offset = max(0, len(df) - 200)
-    price = float(df["Close"].iloc[tail_offset + idx])
-    top    = slmax * idx + intercmax
-    bottom = slmin * idx + intercmin
-    width  = top - bottom
-    if width <= 0:
-        return False
-    return bottom <= price <= (bottom + 0.35 * width)
-
-
-def _pivot_sl_from_window(df: pd.DataFrame, idx: int, lookback_n: int) -> float | None:
-    """
-    Pivot-based stop loss: min Low in the consolidation window × 0.99.
-    More reliable than regression stoploss for actual trade placement.
-    """
-    tail_offset = max(0, len(df) - 200)
-    win_start   = tail_offset + max(0, idx - lookback_n)
-    try:
-        sl = round(float(df["Low"].iloc[win_start:tail_offset + idx + 1].min()) * 0.99, 2)
-        return sl
-    except Exception:
-        return None
-
-
-def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
-                     gain_col: str, slmax_col: str, slmin_col: str,
-                     intercmax_col: str, intercmin_col: str,
-                     pattern_name: str, params: dict,
-                     require_vol: bool = False) -> dict | None:
-    """
-    Adapter: run a chart_patterns pullback detector on the last N bars.
-
-    require_vol=True (Triangle): hard-filters signals without volume
-    contraction. Backtest evidence: VN30 Triangle vol_filter = 52.4%
-    vs 16.8% baseline (5%/15% R:R, 2y, 30 stocks).
-    """
-    if not HAS_CP or df is None or len(df) < 60:
-        return None
-    try:
-        df_w = df.tail(200).reset_index()
-        result = detector_fn(df_w.copy(), **params)
-        # freshness: only accept signals detected in the last 2 bars
-        # (stale patterns already resolved — up or down — are not actionable)
-        tail = result.tail(2)
-        hits = tail[tail[point_col] > 0]
-        if hits.empty:
-            return None
-        row = hits.iloc[-1]
-        idx       = int(row[point_col])
-        pole_gain = float(row[gain_col])
-        slmax     = float(row[slmax_col])
-        slmin     = float(row[slmin_col])
-        intercmax = float(row[intercmax_col])
-        intercmin = float(row[intercmin_col])
-        pivot    = round(slmax * idx + intercmax, 2)
-        stoploss = round(slmin * idx + intercmin, 2)
-        close_now = float(df["Close"].iloc[-1])
-
-        # quality filters (backtest-calibrated per pattern)
-        lookback_n = params.get("lookback", 20)
-        pole_lb    = params.get("pole_lookback", params.get("prior_lookback", 15))
-        vol_ok     = _cp_vol_contraction(df, idx, lookback_n, pole_lb)
-        trend_ok   = _cp_trend_ok(df, idx)
-
-        # hard vol filter for Triangle (proven 52.4% win rate vs 16.8% without)
-        if require_vol and not vol_ok:
-            return None
-
-        entry_ok  = _entry_zone_ok(df, idx, slmax, slmin, intercmax, intercmin)
-        pivot_sl  = _pivot_sl_from_window(df, idx, lookback_n)
-        score     = _cp_score(pole_gain, vol_ok, trend_ok, entry_ok)
-
-        # use pivot-based SL if available (more reliable for trade placement)
-        if pivot_sl is not None:
-            stoploss = pivot_sl
-
-        quality, exp_wr = _cp_quality(pole_gain, vol_ok, trend_ok, pattern_name)
-
-        # trendline endpoints in datetime coords (for Plotly shapes)
-        tail_idx = df.tail(200).index
-        win_s    = max(0, idx - lookback_n)
-        win_e    = min(len(tail_idx) - 1, idx)
-        last_i   = len(tail_idx) - 1
-        _tl = {
-            "x0":      tail_idx[win_s],
-            "x1":      tail_idx[last_i],
-            "high_y0": slmax * win_s  + intercmax,
-            "high_y1": slmax * last_i + intercmax,
-            "low_y0":  slmin * win_s  + intercmin,
-            "low_y1":  slmin * last_i + intercmin,
-            "zone_x1": tail_idx[win_e],
-        }
-
-        vol_lbl   = "vol✓" if vol_ok   else "vol✗"
-        trend_lbl = "trend✓" if trend_ok else "trend✗"
-
-        return {
-            "pattern":      pattern_name,
-            "pivot":        pivot,
-            "stoploss":     stoploss,
-            "quality":      quality,
-            "score":        score,
-            "entry_ok":     entry_ok,
-            "notes":        (f"Pole: {pole_gain*100:.1f}%  "
-                             f"{vol_lbl}  {trend_lbl}  exp:{exp_wr}"),
-            "entry_candle": "—",
-            "status":       "🔥 BUY" if close_now >= pivot else "⏳ Setup",
-            "_tl":          _tl,
-            "_window_bars": lookback_n,
-        }
-    except Exception:
-        return None
-
-
-def _check_cp_flag(df: pd.DataFrame) -> dict | None:
-    """
-    Flag Pullback — tightened pole gain to 4% (backtest: VNMID combined
-    with pole≥5% gives 51.7%; 4% is a practical middle ground).
-    Vol contraction is soft (quality) not hard (filter) since vol_filter
-    alone only gives 21.5% on VNMID and 9.1% on VN30.
-    """
-    if not HAS_CP:
-        return None
-    return _run_cp_detector(
-        df, find_pullback_flag,
-        "pullback_flag_point", "pullback_flag_pole_gain",
-        "pullback_flag_slmax", "pullback_flag_slmin",
-        "pullback_flag_intercmax", "pullback_flag_intercmin",
-        "Flag Pullback",
-        dict(lookback=20, min_points=2, pole_lookback=15,
-             min_pole_gain=0.04, r_max=0.90, r_min=0.90),
-        require_vol=False,
-    )
-
-
-def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
-    """
-    Pennant Pullback — no hard filters. VNMID baseline=33.6% win rate;
-    trend filter drops VNMID to 14.4% so it must stay soft (quality only).
-    """
-    if not HAS_CP:
-        return None
-    return _run_cp_detector(
-        df, find_pullback_pennant,
-        "pullback_pennant_point", "pullback_pennant_pole_gain",
-        "pullback_pennant_slmax", "pullback_pennant_slmin",
-        "pullback_pennant_intercmax", "pullback_pennant_intercmin",
-        "Pennant Pullback",
-        dict(lookback=20, min_points=2, pole_lookback=15,
-             min_pole_gain=0.03, r_max=0.90, r_min=0.90),
-        require_vol=False,
-    )
-
-
-def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
-    if not HAS_CP:
-        return None
-    return _run_cp_detector(
-        df, find_pullback_triangle,
-        "pullback_triangle_point", "pullback_triangle_prior_gain",
-        "pullback_triangle_slmax", "pullback_triangle_slmin",
-        "pullback_triangle_intercmax", "pullback_triangle_intercmin",
-        "Triangle Pullback",
-        dict(lookback=25, min_points=2, prior_lookback=15,
-             min_prior_gain=0.04, rlimit=0.90,
-             triangle_type="symmetrical"),
-        require_vol=True,   # hard filter: VN30 vol_filter=52.4% vs 16.8% baseline
-    )
-
-
-def _check_vcp_reversal(df: pd.DataFrame) -> dict | None:
-    """
-    VCP Reversal — volatility contraction after a downtrend (selling exhaustion).
-
-    Same mechanics as VCP (3-window range + vol contraction) but applied at
-    a potential BOTTOM rather than in an uptrend:
-    - Prior downtrend required: stock was meaningfully higher 60–80 bars ago
-    - Forms near 52-week LOW (not high)
-    - No uptrend MA requirement (stock is in recovery phase)
-    - Slightly looser tightness (8% vs 7%) — bottoms are messier than tops
-
-    Logic: when sellers exhaust themselves at a low, the range and volume
-    both dry up — same coiling mechanism as VCP but reversed direction.
-    """
-    if len(df) < 80:
-        return None
-
-    p1, p2, p3 = df.iloc[-60:-40], df.iloc[-40:-20], df.iloc[-20:]
-    r1, r2, r3 = _range_pct(p1), _range_pct(p2), _range_pct(p3)
-    v1 = float(p1["Volume"].mean())
-    v2 = float(p2["Volume"].mean())
-    v3 = float(p3["Volume"].mean())
-
-    # Relaxed conditions — bottoms are messier than continuation VCPs:
-    # Final window much tighter than first (not necessarily monotonic step-by-step)
-    range_narrowed    = r3 < r1 * 0.65      # final coil is 35%+ tighter than start
-    tight_close       = r3 < 10.0           # wider than continuation (10% vs 7%)
-    # Overall vol dry-up (compare end to start, not step-by-step)
-    vol_drying_overall = v3 < v1 * 0.75
-
-    if not (range_narrowed and tight_close and vol_drying_overall):
-        return None
-
-    # Prior downtrend: stock was significantly higher 60–80 bars ago
-    prior = df.iloc[-80:-60]
-    prior_mid = float(prior["Close"].mean())
-    p1_mid    = float(p1["Close"].mean())
-    if prior_mid <= p1_mid * 1.08:   # need at least 8% prior decline
-        return None
-
-    # Must be near 52-week low (reversal, not continuation)
-    price  = float(df["Close"].iloc[-1])
-    low52  = float(df["Low"].iloc[-252:].min()) if len(df) >= 252 else float(df["Low"].min())
-    high52 = float(df["High"].iloc[-252:].max()) if len(df) >= 252 else float(df["High"].max())
-    near_low52 = price <= low52 * 1.25
-    if not near_low52:
-        return None
-
-    contraction_ratio = r1 / r3 if r3 > 0 else 0
-    vol_dry_ratio     = v3 / v1 if v1 > 0 else 1.0
-    prior_decline     = (prior_mid - price) / prior_mid   # how deep the decline was
-
-    if contraction_ratio >= 4 and vol_dry_ratio < 0.50:
-        quality = "★★★"
-    elif contraction_ratio >= 3:
-        quality = "★★"
-    else:
-        quality = "★"
-
-    recent_high  = float(df["High"].iloc[-20:].max())
-    pivot        = round(recent_high * 1.01, 1)
-    status, entry_candle = _check_entry_candle(df, pivot)
-
-    # score 0-100
-    score  = min(25, int(contraction_ratio / 4 * 25))          # contraction
-    score += min(25, int((1 - min(1.0, vol_dry_ratio)) * 25))  # vol dry-up
-    score += 20 if price <= low52 * 1.10 else 10               # proximity to 52w low
-    score += min(20, int(prior_decline / 0.30 * 20))           # prior decline depth
-    score += 10 if r3 < 5 else 5                               # coil tightness
-    score  = min(100, score)
-
-    return {
-        "pattern":      "VCP Reversal",
-        "subtype":      "reversal",
-        "quality":      quality,
-        "score":        score,
-        "entry_ok":     near_low52 and r3 < 6,
-        "pivot":        pivot,
-        "stoploss":     round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
-        "confirmed":    (status == "🔥 BUY"),
-        "status":       status,
-        "entry_candle": entry_candle,
-        "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
-                         f"Contr {contraction_ratio:.1f}×  "
-                         f"Vol {vol_dry_ratio:.0%}  "
-                         f"Decline {prior_decline:.0%}  near52L"),
-        "_window_bars": 60,
-    }
-
-
-def _check_triangle_reversal(df: pd.DataFrame) -> dict | None:
-    """
-    Triangle Reversal — ascending triangle after a downtrend.
-
-    An ascending triangle has FLAT resistance (sellers running out at the
-    same level) and RISING lows (buyers stepping in at higher prices each
-    time). When this forms after a meaningful decline, it signals a base
-    being built and a likely reversal up through the resistance level.
-
-    Key differences from Triangle Pullback (continuation):
-    - Prior downtrend required
-    - Uses ascending triangle type (flat top, rising bottom)
-    - No vol contraction required (vol expansion at breakout is the signal)
-    - Relaxed prior_gain (only small local bounce needed before triangle)
-    """
-    if not HAS_CP or df is None or len(df) < 80:
-        return None
-
-    # Prior downtrend: average price 60–80 bars ago > current by ≥5%
-    prior_mid   = float(df["Close"].iloc[-80:-60].mean())
-    current_mid = float(df["Close"].iloc[-20:].mean())
-    if prior_mid <= current_mid * 1.05:
-        return None
-
-    result = _run_cp_detector(
-        df, find_pullback_triangle,
-        "pullback_triangle_point", "pullback_triangle_prior_gain",
-        "pullback_triangle_slmax", "pullback_triangle_slmin",
-        "pullback_triangle_intercmax", "pullback_triangle_intercmin",
-        "Triangle Reversal",
-        dict(lookback=25, min_points=2, prior_lookback=10,
-             min_prior_gain=0.005, rlimit=0.82,  # relaxed: small local bounce is enough
-             triangle_type="ascending"),
-        require_vol=False,   # no vol contraction needed for reversal
-    )
-    if result:
-        result["subtype"] = "reversal"
-    return result
-
-
-def _compute_breadth() -> dict:
-    """
-    Market breadth across VN30 + VNMID. Uses cached load_price_data.
-    Not decorated with @st.cache_data since it calls cached functions internally.
-    Fail-open: returns empty dict on any error.
-    """
-    try:
-        all_syms = list(VN30_STOCKS.keys()) + list(VNMID_STOCKS.keys())
-        above_ma20 = 0
-        above_ma50 = 0
-        new_highs  = 0
-        new_lows   = 0
-        total      = 0
-        for sym in all_syms:
-            try:
-                df = load_price_data(sym, use_cache=True)
-                if df is None or len(df) < 52:
-                    continue
-                close = df["Close"]
-                price = float(close.iloc[-1])
-                ma20  = float(close.rolling(20).mean().iloc[-1])
-                ma50  = float(close.rolling(50).mean().iloc[-1])
-                high52 = float(close.iloc[-min(252, len(close)):].max())
-                low52  = float(close.iloc[-min(252, len(close)):].min())
-                total += 1
-                if not pd.isna(ma20) and price > ma20:
-                    above_ma20 += 1
-                if not pd.isna(ma50) and price > ma50:
-                    above_ma50 += 1
-                if high52 > 0 and price >= high52 * 0.98:
-                    new_highs += 1
-                if low52 > 0 and price <= low52 * 1.02:
-                    new_lows += 1
-            except Exception:
-                continue
-        if total == 0:
-            return {}
-        return {
-            "pct_above_ma20": round(above_ma20 / total * 100, 1),
-            "pct_above_ma50": round(above_ma50 / total * 100, 1),
-            "new_highs":      new_highs,
-            "new_lows":       new_lows,
-            "total":          total,
-        }
-    except Exception:
-        return {}
-
-
-def _post_webhook(url: str, rows: list[dict]) -> None:
-    """
-    POST top signals (score >= 65) as JSON to a Slack/Discord webhook URL.
-    Fail-open: any error is silently ignored so scanner still works.
-    """
-    try:
-        top = [r for r in rows if r.get("score", 0) >= 65]
-        if not top:
-            return
-        payload = {
-            "text": f"VN Pattern Scan — {len(top)} signals",
-            "patterns": [
-                {
-                    "sym":     r.get("sym", ""),
-                    "pattern": r.get("pattern", ""),
-                    "score":   r.get("score", 0),
-                    "status":  r.get("status", ""),
-                    "pivot":   r.get("pivot", ""),
-                }
-                for r in top
-            ],
-        }
-        data = json.dumps(payload).encode("utf-8")
-        req  = urllib.request.Request(
-            url, data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
-
-
-def _market_regime_ok() -> bool:
-    """
-    Market regime filter: VN-Index must be above its MA20 (short-term bull).
-    Eliminates pattern signals generated during broad market downtrends,
-    which account for a large share of false positives.
-    Returns True when VN-Index data is unavailable (fail open).
-    """
-    try:
-        vndf = get_vnindex_data()
-        if vndf is None or len(vndf) < 20:
-            return True          # fail open — show patterns if no data
-        close = vndf["Close"] if "Close" in vndf.columns else vndf.iloc[:, 0]
-        ma20  = float(close.rolling(20).mean().iloc[-1])
-        price = float(close.iloc[-1])
-        return price > ma20
-    except Exception:
-        return True              # fail open
-
-
-def _stock_rs_ok(df: pd.DataFrame, min_rs: int = 60) -> bool:
-    """
-    RS relative-strength check at pattern level.
-    Compares 12-month price performance vs median of VN30 universe.
-    Stocks with RS < min_rs are likely laggards — avoid.
-    Returns True (pass) when RS cannot be computed.
-    """
-    try:
-        if df is None or len(df) < 252:
-            return True          # not enough history — fail open
-        perf_12m = float(df["Close"].iloc[-1]) / float(df["Close"].iloc[-252]) - 1
-        # lightweight RS: compare against a fixed reference (S&P500 proxy via VNM ETF cached)
-        ref = get_vnindex_data()
-        if ref is None or len(ref) < 252:
+    view    = df.iloc[-lookback - 1:-1]
+    ceiling = breakout_high + 2.0 * atr
+    highs   = view["High"].values
+    for i in range(1, len(highs) - 1):
+        h = highs[i]
+        if breakout_high < h <= ceiling and h > highs[i - 1] and h > highs[i + 1]:
             return True
-        ref_close = ref["Close"] if "Close" in ref.columns else ref.iloc[:, 0]
-        ref_12m = float(ref_close.iloc[-1]) / float(ref_close.iloc[-252]) - 1
-        # RS percentile approximation: stock - index relative performance
-        # If stock outperforms index by any margin it clears 60th percentile
-        # heuristic: top 40% if outperforms index + 5pp
-        return perf_12m >= (ref_12m - 0.10)   # stock within 10pp of index or better
-    except Exception:
-        return True              # fail open
+    return False
 
 
-def detect_patterns(df: pd.DataFrame, require_trend: bool = True,
-                    apply_market_filter: bool = True,
-                    apply_rs_filter: bool = True) -> list[dict]:
+def _assign_rs_pct(items: list[dict]) -> None:
     """
-    Run all pattern checks — continuation AND reversal.
-
-    Continuation patterns (VCP, Flat Base, Pullback MA20, Pennant, Triangle):
-      - Respect market_filter (skip in bear market) and RS filter
-      - Require uptrend context
-
-    Reversal patterns (VCP Reversal, Triangle Reversal):
-      - Run regardless of market regime — bear markets are when bottoms form
-      - No RS filter (laggards are exactly what reversals trade)
-      - Have their own built-in prior-downtrend check
+    Rank items by rs4w within the list and add rs_pct (0–100 percentile) in-place.
+    Mutates dicts directly.
     """
-    if df is None or df.empty or len(df) < 60:
-        return []
-
-    grade   = _trend_grade(df)
-    results = []
-
-    # ── continuation patterns (respect all filters) ───────────────────────
-    run_continuation = True
-    if require_trend and not _passes_trend_filter(df):
-        run_continuation = False
-    if apply_market_filter and not _market_regime_ok():
-        run_continuation = False
-    if apply_rs_filter and not _stock_rs_ok(df):
-        run_continuation = False
-
-    if run_continuation:
-        for check in [_check_vcp, _check_flat_base, _check_pullback_ma20,
-                      _check_cp_pennant, _check_cp_triangle]:
-            p = check(df)
-            if p:
-                p["trend_grade"] = grade
-                p.setdefault("subtype", "continuation")
-                results.append(p)
-
-    # ── reversal patterns (always run — bear markets are when bottoms form) ─
-    for check in [_check_vcp_reversal, _check_triangle_reversal]:
-        p = check(df)
-        if p:
-            p["trend_grade"] = grade
-            p.setdefault("subtype", "reversal")
-            results.append(p)
-
-    return results
-
-
-# ============================================================
-# INLINE CHART HELPER
-# ============================================================
-def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
-                       scan_rows: list | None = None) -> None:
-    """
-    Load data for sym_ticker (with or without .VN suffix) and render
-    a candlestick-style line chart with MA lines + pattern criteria expander.
-    """
-    sym = sym_ticker if sym_ticker.endswith(".VN") else sym_ticker + ".VN"
-    df_c = load_price_data(sym, use_cache=use_cache)
-    if df_c is None or df_c.empty:
-        st.warning(f"Không có dữ liệu cho {sym_ticker}")
+    ranked = [(i, r["rs4w"]) for i, r in enumerate(items) if r.get("rs4w") is not None]
+    if len(ranked) < 2:
         return
+    ranked.sort(key=lambda x: x[1])
+    for pos, (i, _) in enumerate(ranked):
+        items[i]["rs_pct"] = round((pos + 1) / len(ranked) * 100)
 
-    df_c = df_c.copy()
-    df_c["MA20"]  = df_c["Close"].rolling(20).mean()
-    df_c["MA50"]  = df_c["Close"].rolling(50).mean()
-    df_c["MA150"] = df_c["Close"].rolling(150).mean()
 
-    df_chart = df_c.iloc[-252:].copy()
+# ============================================================
+# SCAN — Breakout Momentum (Phương Án 1)
+# ============================================================
+def scan_breakout(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Signal candle = df.iloc[-1].
+    Returns BREAKOUT_STRONG (high > HIGH20) or BREAKOUT_EARLY (high > HIGH10 only).
+    SIZE relaxed to 1.0× ATR. Body filter replaced with close > high_prev1.
+    """
+    if df is None or len(df) < 60:
+        return None
+    row = df.iloc[-1]
 
-    # detect patterns first so we can overlay them on the chart
-    live_p = detect_patterns(df_c, require_trend=False)
+    required = ["atr10", "avg_vol20", "high10", "high20", "ma50", "ma50_prev5", "high_prev1"]
+    if any(pd.isna(row[c]) for c in required):
+        return None
 
-    fig = go.Figure()
-    fig.add_trace(go.Candlestick(
-        x=df_chart.index,
-        open=df_chart["Open"],
-        high=df_chart["High"],
-        low=df_chart["Low"],
-        close=df_chart["Close"],
-        name="Price",
-        increasing_line_color="#26a69a",
-        decreasing_line_color="#ef5350",
-    ))
-    for col, color in [("MA20", "#60a5fa"), ("MA50", "#34d399"), ("MA150", "#f59e0b")]:
-        if col in df_chart.columns and not df_chart[col].isna().all():
-            fig.add_trace(go.Scatter(
-                x=df_chart.index, y=df_chart[col],
-                mode="lines", name=col, line=dict(color=color, width=1.2),
-            ))
+    atr10      = row["atr10"]
+    avg_vol20  = row["avg_vol20"]
+    high10     = row["high10"]
+    high20     = row["high20"]
+    ma50       = row["ma50"]
+    ma50_prev5 = row["ma50_prev5"]
+    close = row["Close"]; open_ = row["Open"]
+    high  = row["High"];  low   = row["Low"]
+    vol   = row["Volume"]
 
-    # ── overlay detected patterns ────────────────────────────────────
-    for p in live_p:
-        pivot    = p.get("pivot")
-        stoploss = p.get("stoploss")
-        tl       = p.get("_tl")
-        wb       = p.get("_window_bars", 30)
+    # [1] TREND
+    if not (close > ma50 and ma50 > ma50_prev5):
+        return None
+    # [2] Bull candle
+    if not (close > open_):
+        return None
+    # [3] Close near high (≤0.2% below own candle high)
+    if not (close >= high * 0.998):
+        return None
+    # [3b] Close above previous candle's high — confirms clean break
+    if not (close > row["high_prev1"]):
+        return None
+    # [4] Candle range > 1.0× ATR10 (relaxed from 1.5×)
+    if not ((high - low) > 1.0 * atr10):
+        return None
+    # [5] Breakout — must clear at least the 10-day high
+    if not (high > high10):
+        return None
+    # Filter: not over-extended (>8% above MA50)
+    if close > ma50 * 1.08:
+        return None
 
-        # shaded pattern zone (only over the consolidation window)
-        x0_zone = tl["x0"]        if tl else df_chart.index[-min(wb, len(df_chart))]
-        x1_zone = tl["zone_x1"]   if tl else df_chart.index[-1]
-        fig.add_vrect(
-            x0=x0_zone, x1=x1_zone,
-            fillcolor="rgba(108,156,255,0.09)", layer="below", line_width=0,
+    signal_type = "BREAKOUT_STRONG" if high > high20 else "BREAKOUT_EARLY"
+    vol_tier    = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
+    rs4w        = compute_rs4w(df, vnindex_df)
+    sl          = round(low, 2)
+    entry       = round(close, 2)
+    tp          = round(entry + 2.0 * atr10, 2)
+    rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+
+    return {
+        "signal":          signal_type,
+        "date":            df.index[-1],
+        "close":           round(close, 2),
+        "high10":          round(high10, 2),
+        "high20":          round(high20, 2),
+        "atr10":           round(atr10, 2),
+        "ma50":            round(ma50, 2),
+        "ma200":           round(row.get("ma200", float("nan")), 2),
+        "sl":              sl,
+        "tp":              tp,
+        "rr":              rr,
+        "vol_tier":        vol_tier,
+        "rs4w":            rs4w,
+        "volume":          int(vol),
+        "avg_vol20":       int(avg_vol20),
+        # quality metrics
+        "vol_char":        compute_vol_character(df),
+        "tight_days":      count_tight_days(df),
+        "weekly_ok":       check_weekly_trend(df),
+        "supply_overhead": has_overhead_supply(df, high, atr10),
+    }
+
+
+# ============================================================
+# SCAN — NR7 Breakout (narrow coil → break)
+# ============================================================
+def scan_nr7(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    NR7: signal candle has the smallest range of the last 7 days,
+    yet closes above the 10-day high. Low-risk entry — tight SL, good R:R.
+    """
+    if df is None or len(df) < 60:
+        return None
+    row = df.iloc[-1]
+
+    required = ["atr10", "avg_vol20", "high10", "ma50", "ma50_prev5", "nr7", "candle_range"]
+    if any(pd.isna(row[c]) for c in required):
+        return None
+
+    atr10      = row["atr10"]
+    avg_vol20  = row["avg_vol20"]
+    high10     = row["high10"]
+    high20     = row.get("high20", float("nan"))
+    ma50       = row["ma50"]
+    ma50_prev5 = row["ma50_prev5"]
+    close = row["Close"]; open_ = row["Open"]
+    high  = row["High"];  low   = row["Low"]
+    vol   = row["Volume"]
+
+    # [1] Uptrend
+    if not (close > ma50 and ma50 > ma50_prev5):
+        return None
+    # [2] NR7 — narrowest candle of last 7 days (coiling)
+    if not row["nr7"]:
+        return None
+    # [3] Bull candle
+    if not (close > open_):
+        return None
+    # [4] Close breaks above 10-day high
+    if not (high > high10):
+        return None
+    # [5] Close in upper half of candle (buyers in control)
+    if not (close >= (high + low) / 2):
+        return None
+    # Filter: not over-extended
+    if close > ma50 * 1.08:
+        return None
+
+    signal_type = "NR7_STRONG" if (not pd.isna(high20) and high > high20) else "NR7_EARLY"
+    vol_tier    = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
+    rs4w        = compute_rs4w(df, vnindex_df)
+    sl          = round(low, 2)
+    entry       = round(close, 2)
+    tp          = round(entry + 2.0 * atr10, 2)
+    rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+
+    return {
+        "signal":          signal_type,
+        "date":            df.index[-1],
+        "close":           round(close, 2),
+        "high10":          round(high10, 2),
+        "high20":          round(high20, 2) if not pd.isna(high20) else None,
+        "atr10":           round(atr10, 2),
+        "ma50":            round(ma50, 2),
+        "ma200":           round(row.get("ma200", float("nan")), 2),
+        "sl":              sl,
+        "tp":              tp,
+        "rr":              rr,
+        "vol_tier":        vol_tier,
+        "vol_char":        compute_vol_character(df),
+        "tight_days":      count_tight_days(df),
+        "weekly_ok":       check_weekly_trend(df),
+        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "rs4w":      rs4w,
+        "volume":    int(vol),
+        "avg_vol20": int(avg_vol20),
+    }
+
+
+# ============================================================
+# SCAN — Gap-Up Breakout (institutional conviction)
+# ============================================================
+def scan_gap(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Gap-up ≥ 0.5% above prior close, holds the gap (no fade),
+    and closes above the 10-day high. Gaps on volume = institutional demand.
+    """
+    if df is None or len(df) < 60:
+        return None
+    row  = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    required = ["atr10", "avg_vol20", "high10", "ma50", "ma50_prev5", "gap_pct"]
+    if any(pd.isna(row[c]) for c in required):
+        return None
+
+    atr10      = row["atr10"]
+    avg_vol20  = row["avg_vol20"]
+    high10     = row["high10"]
+    high20     = row.get("high20", float("nan"))
+    ma50       = row["ma50"]
+    ma50_prev5 = row["ma50_prev5"]
+    close = row["Close"]; open_ = row["Open"]
+    high  = row["High"];  low   = row["Low"]
+    vol   = row["Volume"]
+    gap_pct = row["gap_pct"]
+
+    # [1] Uptrend
+    if not (close > ma50 and ma50 > ma50_prev5):
+        return None
+    # [2] Gap up ≥ 0.5% vs prior close
+    if not (gap_pct >= 0.005):
+        return None
+    # [3] Gap holds — close above prior close (no full fade)
+    if not (close > prev["Close"]):
+        return None
+    # [4] Bull candle
+    if not (close > open_):
+        return None
+    # [5] Breakout above 10-day high
+    if not (high > high10):
+        return None
+    # Filter: not over-extended
+    if close > ma50 * 1.08:
+        return None
+
+    signal_type = "GAP_STRONG" if (not pd.isna(high20) and high > high20) else "GAP_EARLY"
+    vol_tier    = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
+    rs4w        = compute_rs4w(df, vnindex_df)
+    sl          = round(low, 2)
+    entry       = round(close, 2)
+    tp          = round(entry + 2.0 * atr10, 2)
+    rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+
+    return {
+        "signal":          signal_type,
+        "date":            df.index[-1],
+        "close":           round(close, 2),
+        "gap_pct":         round(gap_pct * 100, 2),
+        "high10":          round(high10, 2),
+        "high20":          round(high20, 2) if not pd.isna(high20) else None,
+        "atr10":           round(atr10, 2),
+        "ma50":            round(ma50, 2),
+        "ma200":           round(row.get("ma200", float("nan")), 2),
+        "sl":              sl,
+        "tp":              tp,
+        "rr":              rr,
+        "vol_char":        compute_vol_character(df),
+        "tight_days":      count_tight_days(df),
+        "weekly_ok":       check_weekly_trend(df),
+        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "vol_tier":  vol_tier,
+        "rs4w":      rs4w,
+        "volume":    int(vol),
+        "avg_vol20": int(avg_vol20),
+    }
+
+
+# ============================================================
+# SCAN — Reversal Hunter (Phương Án 2)
+# ============================================================
+def scan_reversal(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Signal candle = df.iloc[-1].
+    Status is always PENDING (confirm requires next candle closing above high[-1]).
+    SIZE relaxed to 1.2× ATR. Body filter removed.
+    """
+    if df is None or len(df) < 210:
+        return None
+    row  = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    required = ["atr10", "avg_vol20", "ma50", "ma200"]
+    if any(pd.isna(row[c]) for c in required):
+        return None
+
+    atr10     = row["atr10"]
+    avg_vol20 = row["avg_vol20"]
+    ma50      = row["ma50"]
+    ma200     = row["ma200"]
+    close = row["Close"]; open_ = row["Open"]
+    high  = row["High"];  low   = row["Low"]
+    vol   = row["Volume"]
+
+    # [1] Price below MA50 (downtrend)
+    if not (close < ma50):
+        return None
+    # [2] Near MA200 support (within 1× ATR10)
+    if not (abs(close - ma200) <= 1.0 * atr10):
+        return None
+    # [3] Rejection — tested lower than prev low
+    if not (low < prev["Low"]):
+        return None
+    # [4] Bull candle
+    if not (close > open_):
+        return None
+    # [5] Close near high
+    if not (close >= high * 0.998):
+        return None
+    # [6] Candle range > 1.2× ATR10 (relaxed from 1.5×, body filter removed)
+    if not ((high - low) > 1.2 * atr10):
+        return None
+    # Filter: not more than 8% below MA200
+    if close < ma200 * 0.92:
+        return None
+
+    vol_tier = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
+    rs4w     = compute_rs4w(df, vnindex_df)
+    sl       = round(low, 2)
+    tp1      = round(ma50, 2)
+    tp2      = round(close + 2.0 * atr10, 2)
+
+    return {
+        "signal":     "REVERSAL",
+        "status":     "PENDING",
+        "date":       df.index[-1],
+        "close":      round(close, 2),
+        "ma50":       round(ma50, 2),
+        "ma200":      round(ma200, 2),
+        "atr10":      round(atr10, 2),
+        "sl":         sl,
+        "tp1":        tp1,
+        "tp2":        tp2,
+        "vol_tier":   vol_tier,
+        "rs4w":       rs4w,
+        "volume":     int(vol),
+        "vol_char":   compute_vol_character(df),
+        "tight_days": count_tight_days(df),
+        "weekly_ok":  check_weekly_trend(df),
+        "avg_vol20": int(avg_vol20),
+    }
+
+
+# ============================================================
+# DEVELOPING SETUP SCORER (watchlist — not yet triggered)
+# ============================================================
+def score_developing(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Score how close a stock is to triggering a signal.
+    Covers two scenarios:
+      - BREAKOUT developing: uptrend, approaching HIGH10/HIGH20
+      - REVERSAL developing: downtrend, near MA200 or approaching MA50 reclaim
+    Returns a scored dict (0–100) or None if not interesting.
+    """
+    if df is None or len(df) < 60:
+        return None
+    row = df.iloc[-1]
+
+    required = ["atr10", "avg_vol20", "high10", "high20", "ma50", "ma50_prev5", "avg_vol_pre5"]
+    if any(pd.isna(row[c]) for c in required):
+        return None
+
+    close        = row["Close"]
+    ma50         = row["ma50"]
+    ma50_prev5   = row["ma50_prev5"]
+    high10       = row["high10"]
+    high20       = row["high20"]
+    atr10        = row["atr10"]
+    avg_vol20    = row["avg_vol20"]
+    avg_vol_pre5 = row["avg_vol_pre5"]
+    ma200        = row.get("ma200", float("nan"))
+    vol          = row["Volume"]
+    rs4w         = compute_rs4w(df, vnindex_df)
+
+    vol_ratio = avg_vol_pre5 / avg_vol20 if avg_vol20 > 0 else 1.0
+    vol_tier  = _vol_tier(vol, avg_vol20, avg_vol_pre5)
+
+    # ── Scenario A: BREAKOUT developing (uptrend, approaching high) ──
+    if close > ma50 and not (close > high10) and close <= ma50 * 1.08:
+        pct_from_high10 = (high10 - close) / close * 100
+        pct_from_high20 = (high20 - close) / close * 100
+        if pct_from_high10 > 8.0:
+            return None
+
+        score = 0
+        notes = []
+        score += 20 if ma50 > ma50_prev5 else 5
+        if ma50 > ma50_prev5: notes.append("MA50↑")
+
+        if pct_from_high10 <= 2.0:   score += 40; notes.append(f"{pct_from_high10:.1f}% to H10")
+        elif pct_from_high10 <= 4.0: score += 28; notes.append(f"{pct_from_high10:.1f}% to H10")
+        elif pct_from_high10 <= 6.0: score += 15; notes.append(f"{pct_from_high10:.1f}% to H10")
+        else:                        score += 5;  notes.append(f"{pct_from_high10:.1f}% to H10")
+
+        if vol_ratio < 0.70:   score += 25; notes.append("vol coil")
+        elif vol_ratio < 0.80: score += 15; notes.append("vol↓")
+        elif vol_ratio < 0.90: score += 8
+
+        if rs4w and rs4w >= 1.10:  score += 15; notes.append(f"RS {rs4w:.2f}")
+        elif rs4w and rs4w >= 1.05: score += 10; notes.append(f"RS {rs4w:.2f}")
+
+        if score < 35:
+            return None
+        dev_type = "→ STRONG" if pct_from_high20 <= 3.0 else "→ EARLY"
+
+        explain_parts = [
+            f"✅ Uptrend: giá ({close:,.0f}) trên MA50 ({ma50:,.0f})" +
+            (" — MA50 đang dốc lên." if ma50 > ma50_prev5 else "."),
+            f"📍 Cách đỉnh {10 if pct_from_high10 <= 8 else 20} ngày {pct_from_high10:.1f}% "
+            f"(HIGH10={high10:,.0f}). Chưa phá — chờ nến breakout.",
+        ]
+        if vol_ratio < 0.80:
+            explain_parts.append(
+                f"🔇 Volume 5 ngày gần nhất ({vol_ratio*100:.0f}% baseline) — "
+                "thị trường đang tích lũy lặng lẽ, bên bán yếu dần."
+            )
+        if rs4w and rs4w >= 1.05:
+            explain_parts.append(
+                f"💪 RS4W = {rs4w:.2f} — cổ phiếu mạnh hơn thị trường 4 tuần qua."
+            )
+        explain_parts.append(
+            "⏳ Trigger khi: nến ngày đóng > đỉnh 10/20 ngày + volume tăng."
         )
 
-        # pivot horizontal line
-        if pivot:
-            fig.add_hline(
-                y=pivot, line_dash="dash", line_color="#ff4d94",
-                line_width=1.2, opacity=0.8,
-                annotation_text=f"Pivot {pivot:.1f}",
-                annotation_font_color="#ff4d94", annotation_font_size=10,
-                annotation_position="right",
+        return {
+            "signal": "WATCH", "dev_type": dev_type, "score": score,
+            "notes": ", ".join(notes), "explain": "\n".join(explain_parts),
+            "date": df.index[-1],
+            "close": round(close, 2), "high10": round(high10, 2),
+            "high20": round(high20, 2), "pct_from_high10": round(pct_from_high10, 1),
+            "pct_from_high20": round(pct_from_high20, 1),
+            "atr10": round(atr10, 2), "ma50": round(ma50, 2),
+            "vol_tier": vol_tier, "rs4w": rs4w, "volume": int(vol), "avg_vol20": int(avg_vol20),
+        }
+
+    # ── Scenario B: REVERSAL developing (downtrend, near support) ──
+    if close < ma50 and not pd.isna(ma200) and close >= ma200 * 0.88:
+        pct_from_ma50  = (ma50  - close) / close * 100
+        pct_from_ma200 = (ma200 - close) / close * 100   # negative = price above MA200
+        atr_dist_ma200 = abs(close - ma200) / atr10 if atr10 > 0 else 99
+
+        score = 0
+        notes = []
+
+        # Proximity to MA50 reclaim (max 35) — closer = higher score
+        if pct_from_ma50 <= 1.0:   score += 35; notes.append(f"{pct_from_ma50:.1f}% to MA50")
+        elif pct_from_ma50 <= 3.0: score += 25; notes.append(f"{pct_from_ma50:.1f}% to MA50")
+        elif pct_from_ma50 <= 5.0: score += 15; notes.append(f"{pct_from_ma50:.1f}% to MA50")
+        elif pct_from_ma50 <= 8.0: score += 8;  notes.append(f"{pct_from_ma50:.1f}% to MA50")
+        else:                      score += 0
+
+        # Near MA200 support (max 30)
+        if atr_dist_ma200 <= 1.0:   score += 30; notes.append("at MA200")
+        elif atr_dist_ma200 <= 2.0: score += 20; notes.append(f"{atr_dist_ma200:.1f}ATR to MA200")
+        elif atr_dist_ma200 <= 3.0: score += 10; notes.append(f"{atr_dist_ma200:.1f}ATR to MA200")
+        # Price already above MA200 is also interesting (support held)
+        if pct_from_ma200 < 0:
+            score += 10; notes.append("above MA200")
+
+        # Volume declining = sellers exhausting (max 20)
+        if vol_ratio < 0.70:   score += 20; notes.append("vol↓↓")
+        elif vol_ratio < 0.85: score += 12; notes.append("vol↓")
+
+        # RS4W improving even if < 1.0 (max 15)
+        if rs4w and rs4w >= 1.05:  score += 15; notes.append(f"RS {rs4w:.2f}")
+        elif rs4w and rs4w >= 0.95: score += 8; notes.append(f"RS {rs4w:.2f}")
+
+        if score < 30:
+            return None
+
+        dev_type = "→ REVERSAL"
+
+        explain_parts = [
+            f"📉 Downtrend: giá ({close:,.0f}) dưới MA50 ({ma50:,.0f}), "
+            f"cách MA50 {pct_from_ma50:.1f}%.",
+        ]
+        if atr_dist_ma200 <= 2.0:
+            if pct_from_ma200 < 0:
+                explain_parts.append(
+                    f"🛡️ Giá đang trên MA200 ({ma200:,.0f}) — vùng hỗ trợ dài hạn đang giữ."
+                )
+            else:
+                explain_parts.append(
+                    f"🛡️ Giá cách MA200 ({ma200:,.0f}) chỉ {atr_dist_ma200:.1f}× ATR — "
+                    "đang tiếp cận vùng hỗ trợ dài hạn."
+                )
+        if pct_from_ma50 <= 3.0:
+            explain_parts.append(
+                f"🔑 Chỉ cần tăng {pct_from_ma50:.1f}% là reclaim MA50 — "
+                "tín hiệu chuyển trend tiềm năng."
             )
-
-        # stoploss horizontal line
-        if stoploss:
-            fig.add_hline(
-                y=stoploss, line_dash="dot", line_color="#ff9900",
-                line_width=1.1, opacity=0.75,
-                annotation_text=f"SL {stoploss:.1f}",
-                annotation_font_color="#ff9900", annotation_font_size=10,
-                annotation_position="right",
+        if vol_ratio < 0.85:
+            explain_parts.append(
+                f"🔇 Volume 5 ngày giảm còn {vol_ratio*100:.0f}% baseline — "
+                "áp lực bán đang kiệt dần."
             )
+        if rs4w and rs4w >= 0.95:
+            explain_parts.append(f"📊 RS4W = {rs4w:.2f} vs thị trường.")
+        explain_parts.append(
+            "⏳ Trigger khi: nến tăng mạnh từ vùng MA200, đóng gần đỉnh, "
+            "volume bùng nổ → scan_reversal bắt tín hiệu."
+        )
 
-        # diagonal trendlines — solid, bright, extended to current bar
-        if tl:
-            high_vals = [tl["high_y0"], tl["high_y1"]]
-            low_vals  = [tl["low_y0"],  tl["low_y1"]]
-            if not any(v != v for v in high_vals):   # NaN check (v != v iff NaN)
-                fig.add_shape(
-                    type="line",
-                    x0=tl["x0"], y0=tl["high_y0"],
-                    x1=tl["x1"], y1=tl["high_y1"],
-                    line=dict(color="#00e5ff", width=1.4),   # electric cyan
-                    layer="above",
-                )
-            if not any(v != v for v in low_vals):
-                fig.add_shape(
-                    type="line",
-                    x0=tl["x0"], y0=tl["low_y0"],
-                    x1=tl["x1"], y1=tl["low_y1"],
-                    line=dict(color="#ff6b35", width=1.4),   # bright orange
-                    layer="above",
-                )
+        return {
+            "signal": "WATCH", "dev_type": dev_type, "score": score,
+            "notes": ", ".join(notes), "explain": "\n".join(explain_parts),
+            "date": df.index[-1],
+            "close": round(close, 2), "high10": round(high10, 2),
+            "high20": round(high20, 2), "pct_from_high10": round(pct_from_ma50, 1),
+            "pct_from_high20": round(pct_from_ma200, 1),
+            "atr10": round(atr10, 2), "ma50": round(ma50, 2), "ma200": round(ma200, 2),
+            "vol_tier": vol_tier, "rs4w": rs4w, "volume": int(vol), "avg_vol20": int(avg_vol20),
+        }
 
-    fig.update_layout(
-        xaxis_rangeslider_visible=False,
-        height=420,
-        margin=dict(l=0, r=60, t=0, b=0),
-        paper_bgcolor="#0a0e17",
-        plot_bgcolor="#0a0e17",
-        font_color="#e2e8f0",
-        xaxis=dict(gridcolor="#1e2535"),
-        yaxis=dict(gridcolor="#1e2535"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # criteria expander (uses scan_rows if provided)
-    if scan_rows:
-        sel_row = next((r for r in scan_rows if r["sym"] == sym), None)
-        if sel_row and sel_row.get("tt_d"):
-            d    = sel_row["tt_d"]
-            rs_p = sel_row.get("rs_pct")
-            with st.expander(f"📋 Tiêu chí — {sym_ticker}"):
-                crit = [
-                    ("1. Giá > MA50",                    d.get("c1")),
-                    ("2. Giá > MA150",                   d.get("c2")),
-                    ("3. MA50 > MA150",                  d.get("c3")),
-                    ("4. MA150 tăng 4 tuần liên tiếp",   d.get("c4")),
-                    ("5. Giá ≥ 25% trên đáy 52 tuần",    d.get("c5")),
-                    ("6. Giá trong 30% so đỉnh 52 tuần", d.get("c6")),
-                    ("7. Vol(20) ≥ 200,000 cổ",          d.get("c7")),
-                    ("8. Giá ≥ 15,000 VNĐ",              d.get("c8")),
-                    ("9. RS ≥ 80 percentile",
-                     rs_p is not None and rs_p >= RS_MIN),
-                    ("10. Không có phân phối",            d.get("c10")),
-                ]
-                for lbl, ok in crit:
-                    st.markdown(f"{'✅' if ok else '❌'} {lbl}")
-    if live_p:
-        with st.expander(f"🔍 Patterns — {sym_ticker}"):
-            for lp in live_p:
-                status_str = lp.get("status", "⏳ Setup")
-                st.markdown(
-                    f"**{lp['pattern']}** {lp.get('quality','')}  "
-                    f"{lp.get('trend_grade','')}  {status_str}  "
-                    f"— Pivot: `{lp['pivot']}`  SL: `{lp['stoploss']}`  "
-                    f"Candle: {lp.get('entry_candle','—')}"
-                )
-                st.caption(lp.get("notes", ""))
+    return None
 
 
 # ============================================================
-# UI HELPERS
+# SCAN RUNNER
 # ============================================================
-LIGHT_CFG = {
-    "green":   ("🟢", "ĐÈN XANH — Uptrend",    "Tích cực giao dịch. Mở vị thế đầy đủ."),
-    "yellow":  ("🟡", "ĐÈN VÀNG — Trung tính", "Giảm exposure 50%. Chỉ mua CP có RS ≥ 85."),
-    "red":     ("🔴", "ĐÈN ĐỎ — Downtrend",    "KHÔNG mở vị thế mới. Bảo vệ vốn."),
-    "unknown": ("⚪", "KHÔNG RÕ",               "Không đủ dữ liệu thị trường."),
+_SIGNAL_PRIORITY = {
+    "BREAKOUT_STRONG": 0,
+    "GAP_STRONG":      1,
+    "NR7_STRONG":      2,
+    "BREAKOUT_EARLY":  3,
+    "GAP_EARLY":       4,
+    "NR7_EARLY":       5,
+    "REVERSAL":        6,
 }
 
+def run_scan(
+    symbols: dict[str, str],
+    use_cache: bool = True,
+    vnindex_df=None,
+    progress_cb=None,
+    watchlist_top: int = 5,
+) -> tuple[list[dict], list[dict]]:
+    """
+    Scan all symbols in parallel.
+    Returns (signals, watchlist) where watchlist = top developing setups
+    for stocks that didn't trigger any signal.
+    """
+    signals:   list[dict] = []
+    watchlist: list[dict] = []
+    total = len(symbols)
+    done  = 0
 
-def rs_stars(pct: float | None) -> str:
-    if pct is None:
-        return ""
-    if pct >= 90:
-        return "★★★"
-    if pct >= 80:
-        return "★★"
-    if pct >= 70:
-        return "★"
-    return ""
-
-
-# ============================================================
-# MAIN APP
-# ============================================================
-st.set_page_config(layout="wide", page_title="VN HOSE Scanner")
-st.title("📊 VN HOSE Stock Scanner")
-st.caption("Trend Following System — lọc toàn sàn HOSE theo Trend Template 10 tiêu chí + RS")
-
-# ── Sidebar options ──────────────────────────────────────────
-with st.sidebar:
-    st.header("⚙️ Tuỳ chọn")
-    scan_mode = st.radio(
-        "Danh sách mã",
-        ["HOSE (toàn sàn)", "VN30"],
-        help="HOSE: toàn bộ ~400 mã (chậm hơn lần đầu). VN30: 30 mã blue-chip."
-    )
-    use_cache = st.checkbox("Dùng cache giá", value=True,
-                            help="Bỏ chọn để tải lại toàn bộ từ đầu (bỏ qua cache).")
-    st.markdown("---")
-    st.markdown("**Cache**")
-    _n, _mb = cache_stats()
-    st.caption(f"{_n} files · {_mb:.1f} MB")
-    if st.button("🗑️ Xoá cache", help="Xoá toàn bộ file giá đã cache. Scan tiếp theo sẽ tải lại từ đầu."):
-        _deleted = clear_cache()
-        st.cache_data.clear()
-        st.success(f"Đã xoá {_deleted} file cache.")
-    st.markdown("---")
-    st.markdown("**Ngưỡng lọc**")
-    st.caption(f"Vol trung bình 20 phiên ≥ {MIN_VOL_20:,}")
-    st.caption(f"Giá ≥ {MIN_PRICE},000 VNĐ")
-    st.caption(f"RS percentile ≥ {RS_MIN}")
-    st.markdown("---")
-    st.markdown("**Quản trị rủi ro**")
-    sl_pct  = st.slider("Stop Loss %",  min_value=3,  max_value=15, value=5,  step=1)
-    tgt_pct = st.slider("Target %",     min_value=5,  max_value=50, value=10, step=5)
-    st.markdown("---")
-    st.markdown("**Webhook Alert**")
-    _text_input = getattr(st, "text_input", None) or (lambda *a, **kw: "")
-    webhook_url = _text_input(
-        "Webhook URL (Slack/Discord)", value="",
-        placeholder="https://hooks.slack.com/...",
-        key="webhook_url",
-    )
-    webhook_url = webhook_url if isinstance(webhook_url, str) else ""
-
-# ── Scan buttons ─────────────────────────────────────────────
-btn_col1, btn_col2, btn_col3 = st.columns(3)
-with btn_col1:
-    do_scan = st.button("🔍 Scan Now", type="primary", use_container_width=True,
-                        help="Tải dữ liệu, lọc Trend Template + RS toàn sàn.")
-with btn_col2:
-    do_pattern = st.button("📐 Pattern Scan VN30", use_container_width=True,
-                           help="Scan 30 mã VN30 tìm pattern VCP / Flat Base / Pullback / Flag / Pennant / Triangle.")
-with btn_col3:
-    do_pattern_vn100 = st.button("📐 Pattern Scan VN100", use_container_width=True,
-                                 help="Scan ~70 mã VNMID (ngoài VN30) tìm pattern pullback có xác nhận volume.")
-
-# ── Pattern Scan helper ────────────────────────────────────────────────
-def _run_pattern_scan(syms: list, state_key: str, meta_key: str,
-                      progress_label: str,
-                      webhook_url: str = "") -> None:
-    prog = st.progress(0, text=progress_label)
-    n = len(syms)
-
-    # Pre-compute market regime ONCE (not per symbol)
-    market_ok = _market_regime_ok()
-
-    # Phase 1: fetch all data concurrently (0% → 50%)
-    data_map: dict[str, object] = {}
-    futures_map = {}
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        for sym in syms:
-            futures_map[executor.submit(load_price_data, sym, True)] = sym
-        done_count = 0
-        for future in as_completed(futures_map):
-            sym = futures_map[future]
-            done_count += 1
-            prog.progress(done_count / n * 0.5,
-                          text=f"Fetching [{done_count}/{n}] {sym}")
-            try:
-                data_map[sym] = future.result()
-            except Exception:
-                data_map[sym] = None
-
-    # Phase 2: detect patterns sequentially (50% → 100%)
-    rows = []
-    for i, sym in enumerate(syms):
-        prog.progress(0.5 + (i + 1) / n * 0.5,
-                      text=f"Detecting [{i+1}/{n}] {sym}")
-        df = data_map.get(sym)
-        if df is None or (hasattr(df, "empty") and df.empty):
-            continue
-        for p in detect_patterns(df, require_trend=False,
-                                  apply_market_filter=False):
-            rows.append({"sym": sym, "market_ok": market_ok, **p})
-
-    prog.empty()
-    st.session_state[state_key] = rows
-    st.session_state[meta_key]  = {
-        "scanned":   n,
-        "found":     len(rows),
-        "time":      datetime.now().strftime("%H:%M:%S"),
-        "market_ok": market_ok,
-    }
-    # send webhook if URL provided
-    if webhook_url:
-        _post_webhook(webhook_url, rows)
-    st.rerun()
-
-# ── VN30 Pattern Scan ──────────────────────────────────────────────────
-if do_pattern:
-    _run_pattern_scan(
-        list(VN30_STOCKS.keys()),
-        "pattern_rows", "pattern_scan_meta",
-        "Scanning VN30 patterns...",
-        webhook_url=webhook_url,
-    )
-
-# ── VN100 Pattern Scan (VNMID stocks outside VN30) ────────────────────
-if do_pattern_vn100:
-    _run_pattern_scan(
-        list(VNMID_STOCKS.keys()),
-        "pattern_rows_vn100", "pattern_scan_meta_vn100",
-        "Scanning VN100 patterns...",
-        webhook_url=webhook_url,
-    )
-
-if do_scan:
-
-    with st.spinner("Lấy danh sách mã HOSE..."):
-        symbols = list(VN30_STOCKS.keys()) if scan_mode == "VN30" else get_hose_symbols()
-
-    if not symbols:
-        st.error("Không lấy được danh sách mã. Thử lại sau.")
-        st.stop()
-
-    st.info(f"Đang scan **{len(symbols)}** mã...")
-
-    # ── Fetch VNINDEX ─────────────────────────────────────────
-    with st.spinner("Lấy dữ liệu VN-Index..."):
-        vnindex_df = get_vnindex_data()
-
-    # ── Scan loop with progress bar ───────────────────────────
-    progress = st.progress(0, text="Đang tải dữ liệu...")
-    scan_rows = []      # lightweight results (no raw DFs)
-    rs_raw_map = {}     # symbol → rs_raw (for percentile ranking)
-    above_ma50_count = 0
-    total_valid = 0
-    n_symbols = len(symbols)
-
-    for i, sym in enumerate(symbols):
-        progress.progress((i + 1) / n_symbols,
-                          text=f"[{i + 1}/{n_symbols}] {sym}")
-
+    def _scan_one(sym: str) -> tuple[str, dict] | None:
         df = load_price_data(sym, use_cache=use_cache)
-        if df is None or df.empty or len(df) < 160:
-            continue
-
-        total_valid += 1
-        tt_pass, tt_score, tt_d = check_trend_template(df, sl_pct=sl_pct, tgt_pct=tgt_pct)
-        rs_raw = compute_rs_raw(df)
-        rs_raw_map[sym] = rs_raw
-
-        # Count for breadth calculation (criterion 1: price > MA50)
-        if tt_d.get("c1", False):
-            above_ma50_count += 1
-
-        scan_rows.append({
-            "sym": sym,
-            "tt_pass": tt_pass,
-            "tt_score": tt_score,
-            "tt_d": tt_d,
-            "rs_raw": rs_raw,
-        })
-
-    progress.empty()
-
-    # ── Market breadth & traffic light ───────────────────────
-    breadth_pct = (above_ma50_count / total_valid * 100) if total_valid > 0 else 50
-    market_signal, market_details = compute_market_filter(vnindex_df, breadth_pct)
-
-    # ── RS percentile ranking ─────────────────────────────────
-    rs_pct_map = rank_rs(rs_raw_map)
-    for row in scan_rows:
-        row["rs_pct"] = rs_pct_map.get(row["sym"])
-
-    # ── Save to session_state for chart selector ──────────────
-    st.session_state["scan_rows"] = scan_rows
-    st.session_state["market_signal"] = market_signal
-    st.session_state["market_details"] = market_details
-    st.session_state["use_cache"] = use_cache
-    st.rerun()  # clean rerender — clears "Đang scan..." info
-
-# ── Display results (persists across interactions via session_state) ──
-if "scan_rows" in st.session_state:
-    scan_rows     = st.session_state["scan_rows"]
-    market_signal = st.session_state["market_signal"]
-    market_details = st.session_state["market_details"]
-    use_cache      = st.session_state.get("use_cache", True)
-
-    # ============================================================
-    # TRAFFIC LIGHT
-    # ============================================================
-    emoji, label, action = LIGHT_CFG[market_signal]
-    st.markdown("---")
-    st.subheader(f"{emoji} Tín hiệu thị trường: {label}")
-
-    if market_details:
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("VN-Index", market_details.get("price", "?"))
-        c2.metric("MA50", market_details.get("ma50", "?"),
-                  delta=f"{'▲ trên' if market_details.get('price', 0) > market_details.get('ma50', 0) else '▼ dưới'} MA50")
-        c3.metric("MA20 vs MA50",
-                  f"{market_details.get('ma20','?')} / {market_details.get('ma50','?')}")
-        c4.metric("Market Breadth (% > MA50)", f"{market_details.get('breadth','?')}%")
-
-    st.info(f"**Hành động:** {action}")
-
-    # ============================================================
-    # TOP 5
-    # ============================================================
-    rs_threshold = 85 if market_signal == "yellow" else RS_MIN
-    qualifying = [
-        r for r in scan_rows
-        if r["tt_pass"] and (r["rs_pct"] or 0) >= rs_threshold
-    ]
-    qualifying.sort(key=lambda r: r["rs_pct"] or 0, reverse=True)
-    top5 = qualifying[:TOP_N]
-
-    st.markdown("---")
-    st.subheader(f"🏆 Top {TOP_N} cổ phiếu thoả mãn đủ điều kiện")
-
-    if top5:
-        cols = st.columns(len(top5))
-        for idx, row in enumerate(top5):
-            sym   = row["sym"]
-            d     = row["tt_d"]
-            rs_p  = row["rs_pct"]
-            stars = rs_stars(rs_p)
-            ticker = sym.replace(".VN", "")
-            with cols[idx]:
-                st.metric(
-                    label=ticker,
-                    value=f"{d.get('price','?')}",
-                    delta=f"RS {rs_p:.0f} {stars}" if rs_p else "RS ?",
-                )
-                st.caption(f"MA50: {d.get('ma50','?')} | MA150: {d.get('ma150','?')}")
-                st.caption(f"Vol(20): {d.get('vol20',0):,}")
-                st.caption(f"Score: {d.get('score9',0)}/9 criteria")
-                st.caption(
-                    f"🛑 SL: {d.get('stoploss_price','?')}"
-                    f" (-{d.get('stoploss_pct',5):.0f}%)"
-                    f"  🎯 TGT: {d.get('target_price','?')}"
-                    f" (+{d.get('target_pct',10):.0f}%)"
-                )
-    else:
-        if market_signal == "red":
-            st.error("🔴 Đèn đỏ — không trade mới.")
-        else:
-            st.warning("Chưa có cổ phiếu nào thoả mãn đủ 10 tiêu chí.")
-
-    # ============================================================
-    # FULL RESULTS TABLE
-    # ============================================================
-    st.markdown("---")
-    st.subheader("📋 Bảng kết quả đầy đủ")
-
-    table_rows = []
-    for row in scan_rows:
-        sym  = row["sym"]
-        d    = row["tt_d"]
-        rs_p = row["rs_pct"]
-        if not d:
-            continue
-
-        score = d.get("score9", 0)
-        rs_ok = rs_p is not None and rs_p >= RS_MIN
-        if row["tt_pass"] and rs_ok:
-            status = "✅ Pass"
-        elif score >= 7:
-            status = "🔶 Gần"
-        else:
-            status = "❌"
-
-        sl_price = d.get("stoploss_price", "-")
-        sl_p     = d.get("stoploss_pct", 5)
-        tgt_price = d.get("target_price", "-")
-        tgt_p     = d.get("target_pct", 10)
-
-        table_rows.append({
-            "Mã": sym.replace(".VN", ""),
-            "Giá": d.get("price", "-"),
-            "Stoploss": f"{sl_price} (-{sl_p:.0f}%)",
-            "Target":   f"{tgt_price} (+{tgt_p:.0f}%)",
-            "MA50": d.get("ma50", "-"),
-            "MA150": d.get("ma150", "-"),
-            "Đỉnh52T": d.get("high52", "-"),
-            "Đáy52T":  d.get("low52", "-"),
-            "Vol(20)k": f"{d.get('vol20', 0) // 1000}k",
-            "Score(/9)": score,
-            "RS%": f"{rs_p:.0f} {rs_stars(rs_p)}".strip() if rs_p else "-",
-            "Trạng thái": status,
-            # booleans for criteria detail
-            ">MA50": "✓" if d.get("c1") else "✗",
-            ">MA150": "✓" if d.get("c2") else "✗",
-            "MA50>150": "✓" if d.get("c3") else "✗",
-            "MA150↑4W": "✓" if d.get("c4") else "✗",
-            "+25%Low": "✓" if d.get("c5") else "✗",
-            "<30%High": "✓" if d.get("c6") else "✗",
-            "Vol✓": "✓" if d.get("c7") else "✗",
-            "Price✓": "✓" if d.get("c8") else "✗",
-            "NoDistrib": "✓" if d.get("c10") else "✗",
-        })
-
-    if table_rows:
-        result_df = pd.DataFrame(table_rows)
-
-        # Filter controls
-        fc1, fc2 = st.columns(2)
-        with fc1:
-            show_filter = st.selectbox(
-                "Hiển thị",
-                ["✅ Chỉ Pass", "✅+🔶 Gần pass (score ≥ 7)", "Tất cả"],
-                index=0,
-            )
-        with fc2:
-            min_score = st.slider("Score tối thiểu", 0, 9, 0)
-
-        filtered = result_df.copy()
-        if show_filter == "✅ Chỉ Pass":
-            filtered = filtered[filtered["Trạng thái"] == "✅ Pass"]
-        elif show_filter == "✅+🔶 Gần pass (score ≥ 7)":
-            filtered = filtered[filtered["Trạng thái"].isin(["✅ Pass", "🔶 Gần"])]
-        filtered = filtered[filtered["Score(/9)"] >= min_score]
-
-        filtered_reset = filtered.reset_index(drop=True)
-        tbl_event = st.dataframe(
-            filtered_reset, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row",
-            key="filter_tbl",
+        if df is None or df.empty or len(df) < 60:
+            return None
+        df = compute_indicators(df)
+        sig = (
+            scan_breakout(df, vnindex_df) or
+            scan_gap(df, vnindex_df)      or
+            scan_nr7(df, vnindex_df)      or
+            scan_reversal(df, vnindex_df)
         )
-        st.caption(
-            f"{len(filtered)} mã hiển thị / {len(result_df)} mã scan được  "
-            "· **Click một hàng để xem chart**"
-        )
-        # inline chart for selected row
-        sel_rows = tbl_event.selection.rows if tbl_event else []
-        if sel_rows:
-            sel_ticker = str(filtered_reset.iloc[sel_rows[0]]["Mã"])
-            st.markdown(f"##### 📈 {sel_ticker}")
-            _show_inline_chart(sel_ticker, use_cache=use_cache, scan_rows=scan_rows)
+        if sig:
+            sig["symbol"] = sym.replace(".VN", "")
+            sig["sector"] = symbols.get(sym, "")
+            return ("signal", sig)
+        # No trigger — score for watchlist
+        cand = score_developing(df, vnindex_df)
+        if cand:
+            cand["symbol"] = sym.replace(".VN", "")
+            cand["sector"] = symbols.get(sym, "")
+            return ("watch", cand)
+        return None
 
-        # Export
-        buf = BytesIO()
-        filtered.to_excel(buf, index=False, engine="openpyxl")
-        st.download_button(
-            "📥 Export Excel",
-            data=buf.getvalue(),
-            file_name=f"scan_hose_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_scan_one, sym): sym for sym in symbols}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    kind, data = res
+                    if kind == "signal":
+                        signals.append(data)
+                    else:
+                        watchlist.append(data)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
 
-    # ── Any-stock chart (fallback for stocks not in the filtered table) ──
-    all_syms = [r["sym"] for r in scan_rows]
-    if all_syms:
-        st.markdown("---")
-        sc1, _ = st.columns([2, 5])
-        with sc1:
-            other_sel = st.selectbox(
-                "📈 Xem chart bất kỳ mã",
-                ["— chọn mã —"] + all_syms,
-                format_func=lambda s: s.replace(".VN", "") if s != "— chọn mã —" else s,
-                key="any_chart_sel",
-            )
-        if other_sel and other_sel != "— chọn mã —":
-            _show_inline_chart(other_sel.replace(".VN", ""),
-                               use_cache=use_cache, scan_rows=scan_rows)
-
-else:
-    st.info("Nhấn **Scan Now** để bắt đầu quét.")
-
-# ── Pattern Monitor — independent of main scan ───────────────────────
-if "pattern_scan_meta" in st.session_state:
-    st.markdown("---")
-    meta = st.session_state["pattern_scan_meta"]
-    st.subheader(
-        f"📐 Pattern Monitor — {meta['found']} pattern(s) found "
-        f"in {meta['scanned']} symbols  ·  {meta['time']}"
-    )
-
-    p_rows = st.session_state.get("pattern_rows", [])
-
-    if not p_rows:
-        st.info(
-            f"Scanned **{meta['scanned']}** mã — không có pattern nào thoả mãn điều kiện.  \n"
-            "Lý do thường gặp: thị trường đang downtrend (price < MA50/MA150/MA200), "
-            "hoặc chưa có đủ dữ liệu cache (chạy lại để tải thêm)."
-        )
-    else:
-        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
-        p_rows_sorted = sorted(p_rows, key=lambda r: (_q_ord.get(r["quality"], 3),
-                                                       r["pattern"]))
-
-        all_patterns = sorted({r["pattern"] for r in p_rows_sorted})
-        pf_col, _ = st.columns([2, 4])
-        with pf_col:
-            pf = st.multiselect("Lọc pattern", all_patterns, default=all_patterns,
-                                key="pattern_filter")
-
-        filtered_p = [r for r in p_rows_sorted if r["pattern"] in pf]
-
-        # Market breadth panel above pattern table
+    # Market regime gate — suppress breakout signals in downtrend market
+    _BREAKOUT_TYPES = {
+        "BREAKOUT_STRONG", "BREAKOUT_EARLY",
+        "GAP_STRONG", "GAP_EARLY",
+        "NR7_STRONG", "NR7_EARLY",
+    }
+    market_downtrend = False
+    if vnindex_df is not None:
         try:
-            breadth = _compute_breadth()
-            if breadth:
-                bc1, bc2, bc3, bc4 = st.columns(4)
-                bc1.metric("MA20", f"{breadth.get('pct_above_ma20', 0):.0f}%",
-                           help="% stocks above MA20")
-                bc2.metric("MA50", f"{breadth.get('pct_above_ma50', 0):.0f}%",
-                           help="% stocks above MA50")
-                bc3.metric("52w Highs", str(breadth.get("new_highs", 0)),
-                           help="Stocks within 2% of 52-week high")
-                bc4.metric("52w Lows", str(breadth.get("new_lows", 0)),
-                           help="Stocks within 2% of 52-week low")
+            idx_col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+            vn_series = vnindex_df[idx_col].dropna()
+            if len(vn_series) >= 51:
+                market_downtrend = bool(vn_series.iloc[-1] < vn_series.rolling(50).mean().iloc[-1])
         except Exception:
             pass
+    if market_downtrend:
+        signals = [s for s in signals if s["signal"] not in _BREAKOUT_TYPES]
 
-        if filtered_p:
-            _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
-            _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
-            _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
-            # Sort: Score desc (primary), Status (secondary), Quality (tertiary)
-            filtered_p  = sorted(filtered_p, key=lambda r: (
-                -r.get("score", 0),
-                _status_ord.get(r.get("status",      "⏳ Setup"), 3),
-                _q_ord2.get(    r.get("quality",     "★"),        3),
-            ))
-            p_table = []
-            for r in filtered_p:
-                p_table.append({
-                    "Mã":           r["sym"].replace(".VN", ""),
-                    "Score":        r.get("score", 0),
-                    "Type":         "🔄 Reversal" if r.get("subtype") == "reversal" else "📈 Cont.",
-                    "Trend":        r.get("trend_grade", "🔴"),
-                    "Pattern":      r["pattern"],
-                    "Status":       r.get("status", "⏳ Setup"),
-                    "Entry✓":       "✓" if r.get("entry_ok") else "✗",
-                    "Entry Candle": r.get("entry_candle", "—"),
-                    "Quality":      r["quality"],
-                    "Pivot":        r["pivot"],
-                    "Stoploss":     r["stoploss"],
-                    "Sector":       VN30_STOCKS.get(r["sym"], VNMID_STOCKS.get(r["sym"], "")),
-                    "Notes":        r["notes"],
-                })
-            result_pdf    = pd.DataFrame(p_table)
-            buy_count     = sum(1 for r in filtered_p if r.get("status") == "🔥 BUY")
-            monitor_count = sum(1 for r in filtered_p if r.get("status") == "👀 Monitoring")
-            setup_count   = len(filtered_p) - buy_count - monitor_count
-            pat_event = st.dataframe(
-                result_pdf, use_container_width=True, hide_index=True,
-                on_select="rerun", selection_mode="single-row",
-                key="pattern_tbl",
-            )
-            # inline chart for selected pattern row
-            pat_sel = pat_event.selection.rows if pat_event else []
-            if pat_sel:
-                pat_ticker = str(result_pdf.iloc[pat_sel[0]]["Mã"])
-                st.markdown(f"##### 📈 {pat_ticker}")
-                _show_inline_chart(pat_ticker, use_cache=True)
-            green_count  = sum(1 for r in filtered_p if r.get("trend_grade") == "🟢")
-            yellow_count = sum(1 for r in filtered_p if r.get("trend_grade") == "🟡")
-            red_count    = sum(1 for r in filtered_p if r.get("trend_grade") == "🔴")
-            st.caption(
-                f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
-                f"| 🔥 {buy_count} BUY  | 👀 {monitor_count} Monitoring  | ⏳ {setup_count} Setup  "
-                f"| 🟢 {green_count} uptrend  | 🟡 {yellow_count} partial  | 🔴 {red_count} weak"
-            )
-        else:
-            st.info("Không có pattern nào khớp bộ lọc.")
+    def _sig_sort(r: dict):
+        sig_order = _SIGNAL_PRIORITY.get(r["signal"], 9)
+        vol_order = {"TIER1": 0, "TIER2": 1, "TIER3": 2}.get(r.get("vol_tier", ""), 3)
+        rs_order  = 0 if (r.get("rs4w") or 0) >= 1.05 else 1
+        supply_pen = 1 if r.get("supply_overhead") else 0
+        return (sig_order, supply_pen, vol_order, rs_order, r["symbol"])
 
-# ── VN100 Pattern Monitor (VNMID) ────────────────────────────────────
-if "pattern_scan_meta_vn100" in st.session_state:
-    st.markdown("---")
-    meta100 = st.session_state["pattern_scan_meta_vn100"]
-    st.subheader(
-        f"📐 VN100 Pattern Monitor — {meta100['found']} pattern(s) found "
-        f"in {meta100['scanned']} symbols  ·  {meta100['time']}"
+    watchlist_sorted = sorted(watchlist, key=lambda x: -x["score"])[:watchlist_top]
+
+    # RS percentile ranking within the combined signal + watchlist universe
+    _assign_rs_pct(signals + watchlist_sorted)
+
+    return sorted(signals, key=_sig_sort), watchlist_sorted, market_downtrend
+
+
+# ============================================================
+# PLOTLY CHART
+# ============================================================
+def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> None:
+    df = load_price_data(symbol + ".VN", use_cache=use_cache)
+    if df is None or df.empty:
+        st.warning(f"Không có dữ liệu cho {symbol}")
+        return
+
+    df   = compute_indicators(df)
+    view = df.iloc[-120:]
+
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True,
+        vertical_spacing=0.03, row_heights=[0.75, 0.25],
     )
-    p_rows_100 = st.session_state.get("pattern_rows_vn100", [])
 
-    if not p_rows_100:
-        st.info(
-            f"Scanned **{meta100['scanned']}** mã VNMID — không có pattern nào thoả mãn điều kiện."
-        )
-    else:
-        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
-        p100_sorted = sorted(p_rows_100, key=lambda r: (_q_ord.get(r["quality"], 3),
-                                                         r["pattern"]))
-        all_patterns_100 = sorted({r["pattern"] for r in p100_sorted})
-        pf100_col, _ = st.columns([2, 4])
-        with pf100_col:
-            pf100 = st.multiselect("Lọc pattern", all_patterns_100,
-                                   default=all_patterns_100, key="pattern_filter_vn100")
+    # Candlestick
+    fig.add_trace(go.Candlestick(
+        x=view.index, open=view["Open"], high=view["High"],
+        low=view["Low"],  close=view["Close"],
+        name=symbol,
+        increasing_line_color="#26a69a",
+        decreasing_line_color="#ef5350",
+    ), row=1, col=1)
 
-        filtered_100 = [r for r in p100_sorted if r["pattern"] in pf100]
+    # Moving averages
+    ma_specs = [("ma50", "#f59e0b", "MA50"), ("ma200", "#818cf8", "MA200")]
+    for col_name, color, label in ma_specs:
+        if col_name in view.columns and not view[col_name].isna().all():
+            fig.add_trace(go.Scatter(
+                x=view.index, y=view[col_name], name=label,
+                line=dict(color=color, width=1.2),
+            ), row=1, col=1)
 
-        if filtered_100:
-            _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
-            _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
-            _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
-            # Sort: Score desc (primary), Status (secondary), Quality (tertiary)
-            filtered_100 = sorted(filtered_100, key=lambda r: (
-                -r.get("score", 0),
-                _status_ord.get(r.get("status",      "⏳ Setup"), 3),
-                _q_ord2.get(    r.get("quality",     "★"),        3),
-            ))
-            p100_table = []
-            for r in filtered_100:
-                p100_table.append({
-                    "Mã":           r["sym"].replace(".VN", ""),
-                    "Score":        r.get("score", 0),
-                    "Sector":       VNMID_STOCKS.get(r["sym"], VN30_STOCKS.get(r["sym"], "")),
-                    "Trend":        r.get("trend_grade", "🔴"),
-                    "Pattern":      r["pattern"],
-                    "Status":       r.get("status", "⏳ Setup"),
-                    "Entry✓":       "✓" if r.get("entry_ok") else "✗",
-                    "Entry Candle": r.get("entry_candle", "—"),
-                    "Quality":      r["quality"],
-                    "Pivot":        r["pivot"],
-                    "Stoploss":     r["stoploss"],
-                    "Notes":        r["notes"],
-                })
-            result_100_pdf = pd.DataFrame(p100_table)
-            buy100     = sum(1 for r in filtered_100 if r.get("status") == "🔥 BUY")
-            monitor100 = sum(1 for r in filtered_100 if r.get("status") == "👀 Monitoring")
-            setup100   = len(filtered_100) - buy100 - monitor100
-            pat100_event = st.dataframe(
-                result_100_pdf, use_container_width=True, hide_index=True,
-                on_select="rerun", selection_mode="single-row",
-                key="pattern_tbl_vn100",
-            )
-            pat100_sel = pat100_event.selection.rows if pat100_event else []
-            if pat100_sel:
-                pat100_ticker = str(result_100_pdf.iloc[pat100_sel[0]]["Mã"])
-                st.markdown(f"##### 📈 {pat100_ticker}")
-                _show_inline_chart(pat100_ticker, use_cache=True)
-            green100  = sum(1 for r in filtered_100 if r.get("trend_grade") == "🟢")
-            yellow100 = sum(1 for r in filtered_100 if r.get("trend_grade") == "🟡")
-            red100    = sum(1 for r in filtered_100 if r.get("trend_grade") == "🔴")
-            st.caption(
-                f"{len(filtered_100)} pattern(s) across {len({r['sym'] for r in filtered_100})} stocks  "
-                f"| 🔥 {buy100} BUY  | 👀 {monitor100} Monitoring  | ⏳ {setup100} Setup  "
-                f"| 🟢 {green100} uptrend  | 🟡 {yellow100} partial  | 🔴 {red100} weak"
-            )
+    # Signal reference lines
+    if sig:
+        if "sl" in sig and not pd.isna(sig["sl"]):
+            fig.add_hline(y=sig["sl"], line=dict(color="#ef5350", dash="dash", width=1.5),
+                          annotation_text="SL", annotation_position="right",
+                          row=1, col=1)
+        for tp_key in ["tp", "tp2"]:
+            if tp_key in sig and not pd.isna(sig[tp_key]):
+                fig.add_hline(y=sig[tp_key], line=dict(color="#26a69a", dash="dash", width=1.5),
+                              annotation_text="TP", annotation_position="right",
+                              row=1, col=1)
+        if "tp1" in sig and not pd.isna(sig["tp1"]):
+            fig.add_hline(y=sig["tp1"], line=dict(color="#34d399", dash="dot", width=1.2),
+                          annotation_text="TP1", annotation_position="right",
+                          row=1, col=1)
+        if "high20" in sig and not pd.isna(sig["high20"]):
+            fig.add_hline(y=sig["high20"], line=dict(color="#fbbf24", dash="dot", width=1),
+                          annotation_text="HIGH20", annotation_position="right",
+                          row=1, col=1)
+
+    # Volume bars
+    vol_colors = [
+        "#26a69a" if c >= o else "#ef5350"
+        for c, o in zip(view["Close"], view["Open"])
+    ]
+    fig.add_trace(go.Bar(x=view.index, y=view["Volume"], name="Volume",
+                         marker_color=vol_colors, opacity=0.7), row=2, col=1)
+    if "avg_vol20" in view.columns:
+        fig.add_trace(go.Scatter(x=view.index, y=view["avg_vol20"],
+                                 name="AvgVol20", line=dict(color="#fbbf24", width=1)),
+                      row=2, col=1)
+
+    signal_label = f" — {sig['signal']}" if sig else ""
+    status_label = f" ({sig.get('status', '')})" if sig and sig.get("status") else ""
+    fig.update_layout(
+        title=f"{symbol}{signal_label}{status_label}",
+        xaxis_rangeslider_visible=False,
+        legend=dict(orientation="h", y=1.08),
+        height=600,
+        margin=dict(l=50, r=80, t=60, b=30),
+    )
+    fig.update_xaxes(gridcolor="#e5e7eb")
+    fig.update_yaxes(gridcolor="#e5e7eb")
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    if sig:
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close", sig["close"])
+        c1.metric("SL", sig["sl"])
+        if "tp" in sig:
+            c2.metric("TP", sig["tp"])
+            c2.metric("R:R", sig.get("rr", ""))
+        if "tp1" in sig:
+            c2.metric("TP1", sig["tp1"])
+            c2.metric("TP2", sig.get("tp2", ""))
+        c3.metric("ATR10", sig["atr10"])
+        rs4w = sig.get("rs4w")
+        rs_pct = sig.get("rs_pct")
+        c3.metric("RS4W", (f"{rs4w:.2f}" + (f" ({rs_pct:.0f}%)" if rs_pct else "")) if rs4w else "—")
+        c4.metric("Volume", sig.get("vol_tier", ""))
+        qf = []
+        vc = sig.get("vol_char", "")
+        if vc: qf.append(vc)
+        td = sig.get("tight_days", 0)
+        if td: qf.append(f"{td} tight days")
+        if sig.get("weekly_ok"):       qf.append("Weekly OK")
+        if sig.get("supply_overhead"): qf.append("⚠ Supply overhead")
+        c4.metric("Quality", " · ".join(qf) if qf else "—")
+        # Position sizing
+        capital  = st.session_state.get("capital", 100_000_000)
+        risk_pct = st.session_state.get("risk_pct", 0.01)
+        entry    = sig["close"]
+        sl_price = sig.get("sl", 0)
+        risk_per = entry - sl_price
+        if risk_per > 0:
+            shares = (capital * risk_pct) / risk_per
+            c5.metric("Pos size", f"{shares:,.0f} cp")
+            c5.metric("Pos value", f"{shares * entry / 1e6:.1f}M")
         else:
-            st.info("Không có pattern nào khớp bộ lọc.")
+            c5.metric("Pos size", "—")
+        if "ma200" in sig:
+            c5.metric("MA200", sig["ma200"])
 
-# ── Watchlist ──────────────────────────────────────────────────────────
-st.markdown("---")
-st.subheader("📋 Watchlist")
 
-if "watchlist" not in st.session_state:
-    st.session_state["watchlist"] = []
+# ============================================================
+# WATCHLIST TABLE
+# ============================================================
+def _render_watchlist(rows: list[dict], use_cache: bool) -> None:
+    if not rows:
+        st.info("Không có cổ phiếu đang phát triển pattern.")
+        return
 
-# Determine if any pattern row is currently selected (from either table)
-_wl_candidate = None
-for _tbl_key, _rows_key in [
-    ("pattern_tbl",       "pattern_rows"),
-    ("pattern_tbl_vn100", "pattern_rows_vn100"),
-]:
+    st.caption("Chưa trigger — đang tiếp cận vùng breakout. Sắp xếp theo điểm tiềm năng.")
+
+    table_rows = []
+    for r in rows:
+        rs4w    = r.get("rs4w")
+        rs_str  = f"{rs4w:.2f}" if rs4w is not None else "—"
+        rs_icon = "🟢" if rs4w and rs4w >= 1.05 else ""
+        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
+        dev_type = r.get("dev_type", "")
+        if "REVERSAL" in dev_type:
+            key_pct = f"{r.get('pct_from_high10', '')}% to MA50"
+        else:
+            key_pct = f"{r.get('pct_from_high10', '')}% to H10"
+        table_rows.append({
+            "Mã":       r["symbol"],
+            "Điểm":     r["score"],
+            "Loại":     dev_type,
+            "Giá":      r["close"],
+            "Key %":    key_pct,
+            "MA50":     r.get("ma50", ""),
+            "MA200":    r.get("ma200", ""),
+            "Vol":      f"{vol_icon} {r.get('vol_tier', '')}",
+            "RS4W":     f"{rs_icon} {rs_str}",
+            "Ghi chú":  r.get("notes", ""),
+            "Ngành":    r.get("sector", ""),
+        })
+
+    df_display = pd.DataFrame(table_rows)
     try:
-        _tbl_state = st.session_state.get(_tbl_key)
-        if _tbl_state and hasattr(_tbl_state, "selection"):
-            _sel = _tbl_state.selection.rows
-            if _sel:
-                _rows_data = st.session_state.get(_rows_key, [])
-                if _rows_data and _sel[0] < len(_rows_data):
-                    _wl_candidate = _rows_data[_sel[0]]
-                    break
-    except Exception:
-        pass
-
-if _wl_candidate:
-    if st.button("➕ Add to Watchlist"):
-        entry = {
-            "Sym":        _wl_candidate.get("sym", "").replace(".VN", ""),
-            "Pattern":    _wl_candidate.get("pattern", ""),
-            "Score":      _wl_candidate.get("score", 0),
-            "Pivot":      _wl_candidate.get("pivot", ""),
-            "SL":         _wl_candidate.get("stoploss", ""),
-            "Date Added": datetime.now().strftime("%Y-%m-%d"),
-        }
-        existing = [(r["Sym"], r["Pattern"]) for r in st.session_state["watchlist"]]
-        if (entry["Sym"], entry["Pattern"]) not in existing:
-            st.session_state["watchlist"].append(entry)
-            st.success(f"Added {entry['Sym']} {entry['Pattern']} to watchlist.")
-        else:
-            st.info(f"{entry['Sym']} {entry['Pattern']} already in watchlist.")
-
-if st.session_state["watchlist"]:
-    wl_df = pd.DataFrame(st.session_state["watchlist"])
-    st.dataframe(wl_df, use_container_width=True, hide_index=True)
-    if st.button("🗑️ Clear Watchlist"):
-        st.session_state["watchlist"] = []
-        st.rerun()
-else:
-    st.caption("Watchlist trống. Chọn một pattern từ bảng kết quả và nhấn ➕ Add to Watchlist.")
+        selected = st.dataframe(
+            df_display,
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["wl_sel"] = rows[sel_rows[0]]
+            st.session_state.pop("sig_sel", None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
-# ── Inline Backtest ───────────────────────────────────────────────────
-def _run_inline_backtest(syms: list[str], risk_pct: float,
-                         reward_pct: float, max_hold: int) -> pd.DataFrame:
-    """
-    Simplified walk-forward backtest on all detected signals.
-    WIN if High touches entry*(1+reward_pct/100) before Low touches entry*(1-risk_pct/100).
-    """
-    if not HAS_CP:
-        return pd.DataFrame()
-    records = []
-    for sym in syms:
-        try:
-            df = load_price_data(sym, use_cache=True)
-            if df is None or len(df) < 60:
-                continue
-            for (detector_fn, point_col, gain_col, slmax_col, slmin_col,
-                 intercmax_col, intercmin_col, pname, params, req_vol) in [
-                (find_pullback_pennant,
-                 "pullback_pennant_point", "pullback_pennant_pole_gain",
-                 "pullback_pennant_slmax", "pullback_pennant_slmin",
-                 "pullback_pennant_intercmax", "pullback_pennant_intercmin",
-                 "Pennant Pullback",
-                 dict(lookback=20, min_points=2, pole_lookback=15,
-                      min_pole_gain=0.03, r_max=0.90, r_min=0.90),
-                 False),
-                (find_pullback_triangle,
-                 "pullback_triangle_point", "pullback_triangle_prior_gain",
-                 "pullback_triangle_slmax", "pullback_triangle_slmin",
-                 "pullback_triangle_intercmax", "pullback_triangle_intercmin",
-                 "Triangle Pullback",
-                 dict(lookback=25, min_points=2, prior_lookback=15,
-                      min_prior_gain=0.04, rlimit=0.90,
-                      triangle_type="symmetrical"),
-                 True),
-            ]:
-                try:
-                    df_w = df.tail(200).reset_index()
-                    result_df = detector_fn(df_w.copy(), **params)
-                    hits = result_df[result_df[point_col] > 0]
-                    for _, row in hits.iterrows():
-                        idx        = int(row[point_col])
-                        pole_gain  = float(row[gain_col])
-                        slmax      = float(row[slmax_col])
-                        slmin      = float(row[slmin_col])
-                        intercmax  = float(row[intercmax_col])
-                        intercmin  = float(row[intercmin_col])
-                        pivot      = round(slmax * idx + intercmax, 2)
-                        lookback_n = params.get("lookback", 20)
-                        pole_lb    = params.get("pole_lookback", params.get("prior_lookback", 15))
-                        vol_ok     = _cp_vol_contraction(df, idx, lookback_n, pole_lb)
-                        trend_ok   = _cp_trend_ok(df, idx)
-                        entry_ok   = _entry_zone_ok(df, idx, slmax, slmin, intercmax, intercmin)
-                        if req_vol and not vol_ok:
-                            continue
-                        score = _cp_score(pole_gain, vol_ok, trend_ok, entry_ok)
-                        tail_offset = max(0, len(df) - 200)
-                        bar_i = tail_offset + idx
-                        if bar_i >= len(df) - 1:
-                            continue
-                        entry_px = float(df["Close"].iloc[bar_i])
-                        if entry_px <= 0:
-                            continue
-                        target_px = entry_px * (1 + reward_pct / 100)
-                        stop_px   = entry_px * (1 - risk_pct / 100)
-                        outcome   = "OPEN"
-                        days_held = 0
-                        ret_pct   = 0.0
-                        for j in range(bar_i + 1, min(bar_i + max_hold + 1, len(df))):
-                            hi = float(df["High"].iloc[j])
-                            lo = float(df["Low"].iloc[j])
-                            days_held += 1
-                            if hi >= target_px:
-                                outcome = "WIN"
-                                ret_pct = reward_pct
-                                break
-                            if lo <= stop_px:
-                                outcome = "LOSS"
-                                ret_pct = -risk_pct
-                                break
-                        if outcome == "OPEN":
-                            last_px = float(df["Close"].iloc[
-                                min(bar_i + max_hold, len(df) - 1)])
-                            ret_pct = round((last_px / entry_px - 1) * 100, 2)
-                        sig_date = df.index[bar_i] if bar_i < len(df) else None
-                        records.append({
-                            "symbol":  sym.replace(".VN", ""),
-                            "date":    sig_date,
-                            "pattern": pname,
-                            "score":   score,
-                            "outcome": outcome,
-                            "days":    days_held,
-                            "ret_pct": round(ret_pct, 2),
-                        })
-                except Exception:
-                    continue
-        except Exception:
-            continue
-    return pd.DataFrame(records) if records else pd.DataFrame(
-        columns=["symbol", "date", "pattern", "score", "outcome", "days", "ret_pct"]
+# ============================================================
+# RESULTS TABLE
+# ============================================================
+def _render_results(rows: list[dict], use_cache: bool) -> None:
+    if not rows:
+        st.info("Không có tín hiệu")
+        return
+
+    table_rows = []
+    for r in rows:
+        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
+        sig_icon = {
+            "BREAKOUT_STRONG": "🚀", "BREAKOUT_EARLY": "📊",
+            "NR7_STRONG": "🔩",     "NR7_EARLY": "🔧",
+            "GAP_STRONG": "⚡",     "GAP_EARLY": "🌩",
+            "REVERSAL": "🔄",
+        }.get(r["signal"], "")
+        rs4w     = r.get("rs4w")
+        rs_pct   = r.get("rs_pct")
+        rs_str   = f"{rs4w:.2f}" + (f" ({rs_pct:.0f}%)" if rs_pct else "") if rs4w is not None else "—"
+        rs_icon  = "🟢" if rs4w and rs4w >= 1.05 else ("🔴" if rs4w and rs4w < 0.95 else "")
+        gap_str  = f" gap {r['gap_pct']:+.1f}%" if r.get("gap_pct") is not None else ""
+        # Quality flags: A/D · tight days · weekly · supply overhead
+        qf = []
+        vc = r.get("vol_char", "")
+        if vc == "ACCUM":   qf.append("A")
+        elif vc == "DISTRIB": qf.append("D")
+        td = r.get("tight_days", 0)
+        if td >= 3: qf.append(f"{td}T")
+        if r.get("weekly_ok"):       qf.append("W")
+        if r.get("supply_overhead"): qf.append("⚠S")
+        quality = "·".join(qf) if qf else "—"
+        table_rows.append({
+            "Mã":      r["symbol"],
+            "Loại":    f"{sig_icon} {r['signal']}{gap_str}",
+            "Giá":     r["close"],
+            "SL":      r["sl"],
+            "TP":      r.get("tp", r.get("tp2", "")),
+            "R:R":     r.get("rr", ""),
+            "RS4W":    f"{rs_icon} {rs_str}",
+            "Volume":  f"{vol_icon} {r.get('vol_tier', '')}",
+            "Quality": quality,
+            "Ngành":   r.get("sector", ""),
+        })
+
+    df_display = pd.DataFrame(table_rows)
+
+    try:
+        selected = st.dataframe(
+            df_display,
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["sig_sel"] = rows[sel_rows[0]]
+            st.session_state.pop("wl_sel", None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# STREAMLIT APP
+# ============================================================
+def main() -> None:
+    st.set_page_config(
+        page_title="VN Stock Screener — Swing D1",
+        page_icon="📈",
+        layout="wide",
     )
 
+    # ── Header
+    st.title("📈 VN Stock Screener — Swing D1")
+    st.caption("Breakout Momentum & Reversal Hunter | Scan sau khi nến ngày đóng cửa")
 
-st.markdown("---")
-with st.expander("🔬 Pattern Backtest (inline)", expanded=False):
-    bt_universe = st.selectbox("Universe", ["VN30", "VN100 (VNMID)"],
-                               key="bt_universe")
-    bt_col1, bt_col2, bt_col3 = st.columns(3)
-    with bt_col1:
-        bt_risk   = st.slider("Risk %",   3, 10, 5, key="bt_risk")
-    with bt_col2:
-        bt_reward = st.slider("Reward %", 10, 30, 15, key="bt_reward")
-    with bt_col3:
-        bt_hold   = st.slider("Max hold (bars)", 10, 60, 30, key="bt_hold")
-
-    if st.button("▶ Run", key="bt_run"):
-        bt_syms = (list(VN30_STOCKS.keys())
-                   if bt_universe == "VN30"
-                   else list(VNMID_STOCKS.keys()))
-        with st.spinner(f"Running backtest on {len(bt_syms)} symbols..."):
-            bt_df = _run_inline_backtest(bt_syms, bt_risk, bt_reward, bt_hold)
-
-        if bt_df.empty:
-            st.warning("No signals found. Ensure data cache is populated.")
-        else:
-            rr = bt_reward / bt_risk
-            breakeven_pct = round(100 / (1 + rr))
+    # ── Sidebar
+    with st.sidebar:
+        st.header("Thị trường")
+        vnindex_df = get_vnindex_data()
+        mkt_label, mkt_info = compute_market_filter(vnindex_df)
+        st.markdown(f"**{mkt_label}**")
+        if mkt_info:
             st.caption(
-                f"Breakeven at {rr:.1f}:1 R:R = {breakeven_pct}%  "
-                "(rule of thumb: need >25% win rate at 3:1 R:R)"
+                f"VNINDEX {mkt_info['VNINDEX']} | "
+                f"MA20 {mkt_info['MA20']} | "
+                f"MA50 {mkt_info['MA50']}"
             )
 
-            closed = bt_df[bt_df["outcome"].isin(["WIN", "LOSS"])]
-            if not closed.empty:
-                summary = (
-                    closed.groupby("pattern")
-                    .apply(lambda g: pd.Series({
-                        "signals": len(g),
-                        "win%":    round(g["outcome"].eq("WIN").mean() * 100, 1),
-                        "avg_ret": round(g["ret_pct"].mean(), 2),
-                    }))
-                    .reset_index()
-                )
-                st.subheader("Summary by Pattern")
-                st.dataframe(summary, use_container_width=True, hide_index=True)
+        st.divider()
+        st.header("Cache")
+        n_files, size_mb = cache_stats()
+        st.caption(f"{n_files} files · {size_mb:.1f} MB")
+        if st.button("Xóa cache"):
+            n = clear_cache()
+            st.success(f"Đã xóa {n} files")
+        use_cache = st.checkbox("Dùng cache", value=True)
 
-            st.subheader("Top 10 Signals by Score")
-            top10 = bt_df.sort_values("score", ascending=False).head(10)
-            st.dataframe(top10, use_container_width=True, hide_index=True)
+        st.divider()
+        st.header("Quản lý vốn")
+        capital = st.number_input(
+            "Vốn (triệu VND)", min_value=10, max_value=10000, value=100, step=10
+        ) * 1_000_000
+        risk_pct = st.slider("Risk/lệnh (%)", 0.5, 3.0, 1.0, 0.5) / 100
+        st.session_state["capital"]  = capital
+        st.session_state["risk_pct"] = risk_pct
+
+        st.divider()
+        st.header("Chiến lược")
+        st.markdown("""
+**🚀 Breakout** *(Size ≥ 1.0× ATR)*
+- Uptrend: giá > MA50 đang dốc lên
+- Đóng > high nến hôm qua + đỉnh 10/20 ngày
+- Strong = phá HIGH20 · Early = phá HIGH10
+
+**🔩 NR7** *(Narrow Range — coil)*
+- Nến hôm nay hẹp nhất 7 ngày
+- Đóng phá HIGH10 → bùng nổ nhỏ = R:R tốt
+
+**⚡ Gap** *(Institutional demand)*
+- Gap ≥ 0.5% so với close hôm qua
+- Gap không bị lấp, đóng phá HIGH10
+
+**🔄 Reversal**
+- Giá < MA50, gần MA200 (±1× ATR)
+- Test đáy thấp hơn rồi từ chối
+- Cần confirm nến sau đóng > đỉnh tín hiệu
+
+**🟢 RS4W** — RS > 1.05 = cổ phiếu mạnh hơn thị trường
+
+**Volume**: 🔥 TIER1 (2×+contract) · 📈 TIER2 (2×) · TIER3
+        """)
+
+    # ── Scan buttons
+    col_vn30, col_vn100 = st.columns(2)
+    with col_vn30:
+        do_vn30 = st.button("Scan VN30 — 30 mã", use_container_width=True)
+    with col_vn100:
+        do_vn100 = st.button("Scan VN100 — 100 mã", use_container_width=True)
+
+    if do_vn30:
+        prog = st.progress(0, text="Scanning VN30… 0 / 30")
+        def _cb30(done, total):
+            prog.progress(done / total, text=f"Scanning VN30… {done} / {total}")
+        sigs, watch, mkt_down = run_scan(VN30_STOCKS,  use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb30)
+        st.session_state["scan_results"]       = sigs
+        st.session_state["scan_watchlist"]     = watch
+        st.session_state["scan_universe"]      = "VN30"
+        st.session_state["market_downtrend"]   = mkt_down
+        prog.empty()
+
+    if do_vn100:
+        prog = st.progress(0, text="Scanning VN100… 0 / 100")
+        def _cb100(done, total):
+            prog.progress(done / total, text=f"Scanning VN100… {done} / {total}")
+        sigs, watch, mkt_down = run_scan(VN100_STOCKS, use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb100)
+        st.session_state["scan_results"]       = sigs
+        st.session_state["scan_watchlist"]     = watch
+        st.session_state["scan_universe"]      = "VN100"
+        st.session_state["market_downtrend"]   = mkt_down
+        prog.empty()
+
+    # ── Market downtrend banner
+    if st.session_state.get("market_downtrend"):
+        st.warning(
+            "⚠️ Thị trường downtrend (VNIndex < MA50) — "
+            "Breakout signals đã bị tắt. Chỉ hiển thị Reversal & Watchlist."
+        )
+
+    # ── Results
+    results   = st.session_state.get("scan_results", [])
+    watchlist = st.session_state.get("scan_watchlist", [])
+    universe  = st.session_state.get("scan_universe", "")
+
+    if results or watchlist:
+        n_bo  = sum(1 for r in results if r["signal"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY"))
+        n_nr7 = sum(1 for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY"))
+        n_gap = sum(1 for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY"))
+        n_rev = sum(1 for r in results if r["signal"] == "REVERSAL")
+        n_rs  = sum(1 for r in results if (r.get("rs4w") or 0) >= 1.05)
+        st.subheader(
+            f"Kết quả {universe} — {len(results)} tín hiệu "
+            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 🔄{n_rev} · 🟢RS{n_rs})"
+        )
+
+        tab_all, tab_bo, tab_nr7, tab_gap, tab_rev, tab_watch = st.tabs([
+            f"Tất cả ({len(results)})",
+            f"🚀 Breakout ({n_bo})",
+            f"🔩 NR7 ({n_nr7})",
+            f"⚡ Gap ({n_gap})",
+            f"🔄 Reversal ({n_rev})",
+            f"👀 Watchlist ({len(watchlist)})",
+        ])
+        with tab_all:
+            _render_results(results, use_cache)
+        with tab_bo:
+            _render_results([r for r in results if r["signal"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY")], use_cache)
+        with tab_nr7:
+            _render_results([r for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY")], use_cache)
+        with tab_gap:
+            _render_results([r for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY")], use_cache)
+        with tab_rev:
+            _render_results([r for r in results if r["signal"] == "REVERSAL"], use_cache)
+        with tab_watch:
+            _render_watchlist(watchlist, use_cache)
+
+    # ── Chart panel — rendered OUTSIDE tabs so rerun never hides it ──
+    wl_sel  = st.session_state.get("wl_sel")
+    sig_sel = st.session_state.get("sig_sel")
+
+    if wl_sel:
+        st.divider()
+        st.subheader(f"{wl_sel['symbol']} — {wl_sel.get('dev_type', '')}  (Score: {wl_sel['score']})")
+        for line in wl_sel.get("explain", "").split("\n"):
+            st.markdown(line)
+        st.divider()
+        show_chart(wl_sel["symbol"], sig=None, use_cache=use_cache)
+    elif sig_sel:
+        st.divider()
+        st.subheader(f"Chart — {sig_sel['symbol']}")
+        show_chart(sig_sel["symbol"], sig=sig_sel, use_cache=use_cache)
+
+    if not results and not watchlist and not do_vn30 and not do_vn100 and not wl_sel and not sig_sel:
+        st.info("Nhấn Scan VN30 hoặc Scan VN100 để bắt đầu.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,2 +1,2 @@
-# Generated chart images
-data/charts/*.png
+# All local data (cache, backtest results, charts) — do not commit
+data/

@@ -2,11 +2,9 @@ streamlit
 yfinance
 pandas
 numpy
-sqlalchemy
-vnstock3
-ipython
-openpyxl
+matplotlib
 pyarrow
 plotly
-scipy
+vnstock3
+openpyxl
 tqdm

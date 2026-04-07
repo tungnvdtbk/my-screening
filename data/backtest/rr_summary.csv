@@ -1,7 +1,7 @@
 pattern,config,signals,decided,win_rate,avg_days,avg_ret,avg_mae
-Flag Pullback,baseline,364,275,16.4,12.5,-1.73,5.55
+Flag Pullback,baseline,362,274,16.4,12.5,-1.72,5.54
 Flag Pullback,trend_filter,111,105,19.0,11.0,-1.19,5.32
-Flag Pullback,vol_filter,122,88,9.1,11.0,-3.18,5.71
+Flag Pullback,vol_filter,121,87,9.2,10.8,-3.16,5.71
 Flag Pullback,combined,35,34,17.6,10.9,-1.47,5.05
 Pennant Pullback,baseline,183,145,21.4,14.2,-0.72,5.47
 Pennant Pullback,trend_filter,94,86,17.4,10.8,-1.51,5.89
