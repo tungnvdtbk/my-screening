@@ -16,6 +16,19 @@ try:
 except ImportError:
     HAS_VNSTOCK = False
 
+# chart_patterns library (flag/pennant/triangle pullback detectors)
+import sys as _sys
+for _cp in ["/"]:          # /chart_patterns/__init__.py makes "/" the right parent
+    if _cp not in _sys.path and os.path.isdir(os.path.join(_cp, "chart_patterns")):
+        _sys.path.insert(0, _cp)
+try:
+    from chart_patterns.chart_patterns.pullback_flag     import find_pullback_flag
+    from chart_patterns.chart_patterns.pullback_pennant  import find_pullback_pennant
+    from chart_patterns.chart_patterns.pullback_triangle import find_pullback_triangle
+    HAS_CP = True
+except ImportError:
+    HAS_CP = False
+
 # ============================================================
 # CONFIG
 # ============================================================
@@ -761,6 +774,84 @@ def _trend_grade(df: pd.DataFrame) -> str:
     return "🟡"
 
 
+def _cp_quality(pole_gain: float) -> str:
+    if pole_gain >= 0.08: return "★★★"
+    if pole_gain >= 0.04: return "★★"
+    return "★"
+
+
+def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
+                     gain_col: str, slmax_col: str, slmin_col: str,
+                     intercmax_col: str, intercmin_col: str,
+                     pattern_name: str, params: dict) -> dict | None:
+    """Adapter: run a chart_patterns pullback detector on the last N bars."""
+    if not HAS_CP or df is None or len(df) < 60:
+        return None
+    try:
+        df_w = df.tail(200).reset_index()
+        result = detector_fn(df_w.copy(), **params)
+        # look for a signal in the last 5 bars
+        tail = result.tail(5)
+        hits = tail[tail[point_col] > 0]
+        if hits.empty:
+            return None
+        row = hits.iloc[-1]
+        idx       = int(row[point_col])
+        pole_gain = float(row[gain_col])
+        slmax     = float(row[slmax_col])
+        slmin     = float(row[slmin_col])
+        intercmax = float(row[intercmax_col])
+        intercmin = float(row[intercmin_col])
+        pivot    = round(slmax * idx + intercmax, 2)
+        stoploss = round(slmin * idx + intercmin, 2)
+        close_now = float(df["Close"].iloc[-1])
+        return {
+            "pattern":      pattern_name,
+            "pivot":        pivot,
+            "stoploss":     stoploss,
+            "quality":      _cp_quality(pole_gain),
+            "notes":        f"Pole/prior gain: {pole_gain*100:.1f}%",
+            "entry_candle": "—",
+            "status":       "🔥 BUY" if close_now >= pivot else "⏳ Setup",
+        }
+    except Exception:
+        return None
+
+
+def _check_cp_flag(df: pd.DataFrame) -> dict | None:
+    return _run_cp_detector(
+        df, find_pullback_flag,
+        "pullback_flag_point", "pullback_flag_pole_gain",
+        "pullback_flag_slmax", "pullback_flag_slmin",
+        "pullback_flag_intercmax", "pullback_flag_intercmin",
+        "Flag Pullback",
+        dict(lookback=20, min_points=2, pole_lookback=15, min_pole_gain=0.03),
+    )
+
+
+def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
+    return _run_cp_detector(
+        df, find_pullback_pennant,
+        "pullback_pennant_point", "pullback_pennant_pole_gain",
+        "pullback_pennant_slmax", "pullback_pennant_slmin",
+        "pullback_pennant_intercmax", "pullback_pennant_intercmin",
+        "Pennant Pullback",
+        dict(lookback=20, min_points=2, pole_lookback=15, min_pole_gain=0.03),
+    )
+
+
+def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
+    return _run_cp_detector(
+        df, find_pullback_triangle,
+        "pullback_triangle_point", "pullback_triangle_prior_gain",
+        "pullback_triangle_slmax", "pullback_triangle_slmin",
+        "pullback_triangle_intercmax", "pullback_triangle_intercmin",
+        "Triangle Pullback",
+        dict(lookback=25, min_points=2, prior_lookback=15, min_prior_gain=0.03,
+             triangle_type="symmetrical"),
+    )
+
+
 def detect_patterns(df: pd.DataFrame, require_trend: bool = True) -> list[dict]:
     """
     Run all pattern checks.
@@ -778,7 +869,8 @@ def detect_patterns(df: pd.DataFrame, require_trend: bool = True) -> list[dict]:
 
     grade   = _trend_grade(df)
     results = []
-    for check in [_check_vcp, _check_flat_base, _check_pullback_ma20]:
+    for check in [_check_vcp, _check_flat_base, _check_pullback_ma20,
+                  _check_cp_flag, _check_cp_pennant, _check_cp_triangle]:
         p = check(df)
         if p:
             p["trend_grade"] = grade
