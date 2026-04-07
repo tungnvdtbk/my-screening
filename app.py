@@ -55,6 +55,46 @@ VN30_STOCKS = {
     "VJC.VN": "Aviation",
 }
 
+# VNMID — 70 liquid mid-cap stocks outside VN30 (VN100 = VN30 + VNMID)
+VNMID_STOCKS = {
+    # Banking / Finance
+    "MSB.VN": "Banking",     "OCB.VN": "Banking",     "EIB.VN": "Banking",
+    "VIX.VN": "Securities",  "VCI.VN": "Securities",  "HCM.VN": "Securities",
+    "MBS.VN": "Securities",  "FTS.VN": "Securities",  "BSI.VN": "Securities",
+    # Real Estate
+    "NLG.VN": "Real Estate", "DIG.VN": "Real Estate", "NVL.VN": "Real Estate",
+    "PDR.VN": "Real Estate", "KBC.VN": "Real Estate", "HDG.VN": "Real Estate",
+    "IDC.VN": "Real Estate", "DXG.VN": "Real Estate", "AGG.VN": "Real Estate",
+    "CEO.VN": "Real Estate", "SJS.VN": "Real Estate", "CII.VN": "Real Estate",
+    "HDC.VN": "Real Estate", "TDH.VN": "Real Estate",
+    # Logistics / Industrial
+    "GMD.VN": "Logistics",   "HAH.VN": "Logistics",   "PVT.VN": "Logistics",
+    "DRC.VN": "Industrial",  "VGC.VN": "Industrial",  "PHR.VN": "Industrial",
+    "HSG.VN": "Steel",       "NKG.VN": "Steel",       "CSV.VN": "Industrial",
+    # Energy / Oil & Gas
+    "BSR.VN": "Energy",  "OIL.VN": "Energy",  "PVD.VN": "Energy",
+    "PVS.VN": "Energy",  "NT2.VN": "Energy",  "VSH.VN": "Energy",
+    "PC1.VN": "Energy",  "REE.VN": "Energy",  "TBC.VN": "Energy",
+    # Consumer / Retail
+    "PNJ.VN": "Retail",       "DGW.VN": "Technology",  "FRT.VN": "Retail",
+    "VHC.VN": "Seafood",      "ANV.VN": "Seafood",     "IDI.VN": "Seafood",
+    "HVN.VN": "Aviation",     "MML.VN": "Consumer",
+    # Food / Beverage / Agriculture
+    "KDC.VN": "FMCG",  "SBT.VN": "FMCG",  "QNS.VN": "FMCG",
+    "MCH.VN": "FMCG",  "DBC.VN": "Agriculture",
+    # Technology
+    "CMG.VN": "Technology",  "ELC.VN": "Technology",  "SGT.VN": "Technology",
+    # Healthcare / Pharma
+    "DHG.VN": "Pharma",  "IMP.VN": "Pharma",  "TRA.VN": "Pharma",  "DMC.VN": "Pharma",
+    # Construction
+    "CTD.VN": "Construction",  "HBC.VN": "Construction",
+    "VCG.VN": "Construction",  "FCN.VN": "Construction",
+    # Textile
+    "MSH.VN": "Textile",  "TNG.VN": "Textile",
+    # Other
+    "VTP.VN": "Logistics",  "PAN.VN": "Agriculture",  "BAF.VN": "Agriculture",
+}
+
 # ============================================================
 # HOSE SYMBOL LIST
 # ============================================================
@@ -1163,41 +1203,54 @@ with st.sidebar:
     tgt_pct = st.slider("Target %",     min_value=5,  max_value=50, value=10, step=5)
 
 # ── Scan buttons ─────────────────────────────────────────────
-btn_col1, btn_col2 = st.columns(2)
+btn_col1, btn_col2, btn_col3 = st.columns(3)
 with btn_col1:
     do_scan = st.button("🔍 Scan Now", type="primary", use_container_width=True,
                         help="Tải dữ liệu, lọc Trend Template + RS toàn sàn.")
 with btn_col2:
-    do_pattern = st.button("📐 Pattern Scan", use_container_width=True,
-                           help="Scan toàn sàn HOSE tìm VCP / Flat Base / Pullback MA20. Tải dữ liệu nếu chưa có cache.")
+    do_pattern = st.button("📐 Pattern Scan VN30", use_container_width=True,
+                           help="Scan 30 mã VN30 tìm pattern VCP / Flat Base / Pullback / Flag / Pennant / Triangle.")
+with btn_col3:
+    do_pattern_vn100 = st.button("📐 Pattern Scan VN100", use_container_width=True,
+                                 help="Scan ~70 mã VNMID (ngoài VN30) tìm pattern pullback có xác nhận volume.")
 
-# ── Pattern Scan — always scans full HOSE independently ───────────────
+# ── Pattern Scan helper ────────────────────────────────────────────────
+def _run_pattern_scan(syms: list, state_key: str, meta_key: str,
+                      progress_label: str) -> None:
+    prog = st.progress(0, text=progress_label)
+    rows = []
+    n = len(syms)
+    for i, sym in enumerate(syms):
+        prog.progress((i + 1) / n, text=f"[{i+1}/{n}] {sym}")
+        df = load_price_data(sym, use_cache=True)
+        if df is None or df.empty:
+            continue
+        for p in detect_patterns(df, require_trend=False):
+            rows.append({"sym": sym, **p})
+    prog.empty()
+    st.session_state[state_key] = rows
+    st.session_state[meta_key]  = {
+        "scanned": n,
+        "found":   len(rows),
+        "time":    datetime.now().strftime("%H:%M:%S"),
+    }
+    st.rerun()
+
+# ── VN30 Pattern Scan ──────────────────────────────────────────────────
 if do_pattern:
-    with st.spinner("Lấy danh sách mã HOSE..."):
-        pattern_syms = list(VN30_STOCKS.keys()) if scan_mode == "VN30" else get_hose_symbols()
+    _run_pattern_scan(
+        list(VN30_STOCKS.keys()),
+        "pattern_rows", "pattern_scan_meta",
+        "Scanning VN30 patterns...",
+    )
 
-    if not pattern_syms:
-        st.error("Không lấy được danh sách mã.")
-    else:
-        prog2 = st.progress(0, text="Scanning patterns...")
-        pattern_rows = []
-        n2 = len(pattern_syms)
-        for i, sym in enumerate(pattern_syms):
-            prog2.progress((i + 1) / n2, text=f"[{i+1}/{n2}] {sym}")
-            df = load_price_data(sym, use_cache=True)   # fetches from network if not cached
-            if df is None or df.empty:
-                continue
-            patterns = detect_patterns(df, require_trend=False)
-            for p in patterns:
-                pattern_rows.append({"sym": sym, **p})
-        prog2.empty()
-        st.session_state["pattern_rows"] = pattern_rows
-        st.session_state["pattern_scan_meta"] = {
-            "scanned": n2,
-            "found":   len(pattern_rows),
-            "time":    datetime.now().strftime("%H:%M:%S"),
-        }
-        st.rerun()
+# ── VN100 Pattern Scan (VNMID stocks outside VN30) ────────────────────
+if do_pattern_vn100:
+    _run_pattern_scan(
+        list(VNMID_STOCKS.keys()),
+        "pattern_rows_vn100", "pattern_scan_meta_vn100",
+        "Scanning VN100 patterns...",
+    )
 
 if do_scan:
 
@@ -1527,6 +1580,80 @@ if "pattern_scan_meta" in st.session_state:
                 f"{len(filtered_p)} pattern(s) across {len({r['sym'] for r in filtered_p})} stocks  "
                 f"| 🔥 {buy_count} BUY  | 👀 {monitor_count} Monitoring  | ⏳ {setup_count} Setup  "
                 f"| 🟢 {green_count} uptrend  | 🟡 {yellow_count} partial  | 🔴 {red_count} weak"
+            )
+        else:
+            st.info("Không có pattern nào khớp bộ lọc.")
+
+# ── VN100 Pattern Monitor (VNMID) ────────────────────────────────────
+if "pattern_scan_meta_vn100" in st.session_state:
+    st.markdown("---")
+    meta100 = st.session_state["pattern_scan_meta_vn100"]
+    st.subheader(
+        f"📐 VN100 Pattern Monitor — {meta100['found']} pattern(s) found "
+        f"in {meta100['scanned']} symbols  ·  {meta100['time']}"
+    )
+    p_rows_100 = st.session_state.get("pattern_rows_vn100", [])
+
+    if not p_rows_100:
+        st.info(
+            f"Scanned **{meta100['scanned']}** mã VNMID — không có pattern nào thoả mãn điều kiện."
+        )
+    else:
+        _q_ord = {"★★★": 0, "★★": 1, "★": 2}
+        p100_sorted = sorted(p_rows_100, key=lambda r: (_q_ord.get(r["quality"], 3),
+                                                         r["pattern"]))
+        all_patterns_100 = sorted({r["pattern"] for r in p100_sorted})
+        pf100_col, _ = st.columns([2, 4])
+        with pf100_col:
+            pf100 = st.multiselect("Lọc pattern", all_patterns_100,
+                                   default=all_patterns_100, key="pattern_filter_vn100")
+
+        filtered_100 = [r for r in p100_sorted if r["pattern"] in pf100]
+
+        if filtered_100:
+            _status_ord = {"🔥 BUY": 0, "👀 Monitoring": 1, "⏳ Setup": 2}
+            _grade_ord  = {"🟢": 0, "🟡": 1, "🔴": 2}
+            _q_ord2     = {"★★★": 0, "★★": 1, "★": 2}
+            filtered_100 = sorted(filtered_100, key=lambda r: (
+                _status_ord.get(r.get("status",      "⏳ Setup"), 3),
+                _grade_ord.get( r.get("trend_grade", "🔴"),       3),
+                _q_ord2.get(    r.get("quality",     "★"),        3),
+            ))
+            p100_table = []
+            for r in filtered_100:
+                p100_table.append({
+                    "Mã":           r["sym"].replace(".VN", ""),
+                    "Sector":       VNMID_STOCKS.get(r["sym"], ""),
+                    "Trend":        r.get("trend_grade", "🔴"),
+                    "Pattern":      r["pattern"],
+                    "Status":       r.get("status", "⏳ Setup"),
+                    "Entry Candle": r.get("entry_candle", "—"),
+                    "Quality":      r["quality"],
+                    "Pivot":        r["pivot"],
+                    "Stoploss":     r["stoploss"],
+                    "Notes":        r["notes"],
+                })
+            result_100_pdf = pd.DataFrame(p100_table)
+            buy100     = sum(1 for r in filtered_100 if r.get("status") == "🔥 BUY")
+            monitor100 = sum(1 for r in filtered_100 if r.get("status") == "👀 Monitoring")
+            setup100   = len(filtered_100) - buy100 - monitor100
+            pat100_event = st.dataframe(
+                result_100_pdf, use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row",
+                key="pattern_tbl_vn100",
+            )
+            pat100_sel = pat100_event.selection.rows if pat100_event else []
+            if pat100_sel:
+                pat100_ticker = str(result_100_pdf.iloc[pat100_sel[0]]["Mã"])
+                st.markdown(f"##### 📈 {pat100_ticker}")
+                _show_inline_chart(pat100_ticker, use_cache=True)
+            green100  = sum(1 for r in filtered_100 if r.get("trend_grade") == "🟢")
+            yellow100 = sum(1 for r in filtered_100 if r.get("trend_grade") == "🟡")
+            red100    = sum(1 for r in filtered_100 if r.get("trend_grade") == "🔴")
+            st.caption(
+                f"{len(filtered_100)} pattern(s) across {len({r['sym'] for r in filtered_100})} stocks  "
+                f"| 🔥 {buy100} BUY  | 👀 {monitor100} Monitoring  | ⏳ {setup100} Setup  "
+                f"| 🟢 {green100} uptrend  | 🟡 {yellow100} partial  | 🔴 {red100} weak"
             )
         else:
             st.info("Không có pattern nào khớp bộ lọc.")
