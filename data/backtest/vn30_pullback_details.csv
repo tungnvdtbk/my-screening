@@ -1,0 +1,817 @@
+symbol,sector,pattern,date,entry,pole_gain,ret_5,ret_10,ret_20,max_ret_20,win_20
+ACB,Banking,Flag Pullback,2024-07-02,20137.84,5.85,0.0,1.03,1.24,3.51,True
+ACB,Banking,Flag Pullback,2024-07-03,20054.79,3.79,0.0,2.69,-0.83,3.93,False
+ACB,Banking,Flag Pullback,2024-07-04,20179.36,4.86,-1.23,3.29,-1.44,3.29,False
+ACB,Banking,Flag Pullback,2024-07-07,20137.84,4.01,-1.24,2.06,-4.33,3.51,False
+ACB,Banking,Flag Pullback,2024-07-08,20179.36,3.12,-0.82,-1.23,-3.29,3.29,False
+ACB,Banking,Flag Pullback,2024-07-09,20137.84,5.77,1.03,-0.21,-3.51,3.51,False
+ACB,Banking,Flag Pullback,2024-08-14,19515.02,3.55,3.83,4.89,2.77,5.53,True
+ACB,Banking,Flag Pullback,2024-08-15,19930.23,5.46,1.87,3.33,2.08,3.33,True
+ACB,Banking,Flag Pullback,2024-11-03,20553.05,5.38,0.4,-1.01,1.62,1.82,True
+ACB,Banking,Flag Pullback,2024-11-04,20553.05,4.08,0.4,-1.82,1.01,1.82,True
+ACB,Banking,Flag Pullback,2024-11-05,20843.7,6.49,-0.8,-2.39,-0.2,0.4,False
+ACB,Banking,Flag Pullback,2024-11-06,20843.7,5.65,-2.19,-1.0,2.39,2.39,True
+ACB,Banking,Flag Pullback,2026-02-09,23000.0,4.18,4.35,2.17,3.26,6.74,True
+ACB,Banking,Pennant Pullback,2025-03-23,21881.73,4.18,-1.33,-15.94,-8.54,-0.19,False
+ACB,Banking,Triangle Pullback,2024-07-17,20594.57,4.97,-3.02,-3.43,-5.24,1.21,False
+ACB,Banking,Triangle Pullback,2024-10-07,21175.87,5.08,1.37,-0.39,-2.94,2.94,False
+ACB,Banking,Triangle Pullback,2024-10-08,21798.69,3.57,-1.9,-3.24,-4.38,-0.19,False
+ACB,Banking,Triangle Pullback,2025-03-30,21591.08,4.18,-14.81,-7.31,-7.5,0.19,False
+ACB,Banking,Triangle Pullback,2025-11-12,25100.0,5.48,-1.2,-2.99,-4.58,0.2,False
+ACB,Banking,Triangle Pullback,2025-11-13,24950.0,6.31,-1.0,-2.81,-5.81,0.8,False
+ACB,Banking,Triangle Pullback,2025-11-17,25100.0,3.75,-3.59,-4.58,-4.38,-0.8,False
+BID,Banking,Flag Pullback,2025-03-25,39114.86,4.04,-2.15,-12.26,-10.37,-1.14,False
+BID,Banking,Flag Pullback,2026-02-24,48500.0,36.6,-5.98,-14.02,-18.56,-0.1,False
+BID,Banking,Flag Pullback,2026-02-25,48450.0,31.98,-8.36,-15.89,-19.71,-1.14,False
+BID,Banking,Flag Pullback,2026-02-26,47900.0,30.59,-9.08,-15.14,-16.81,-4.8,False
+BID,Banking,Flag Pullback,2026-03-01,45200.0,36.54,-10.29,-10.84,-12.72,0.88,False
+BID,Banking,Flag Pullback,2026-03-02,43550.0,35.22,-4.02,-7.12,-9.53,4.71,False
+BID,Banking,Flag Pullback,2026-03-09,41800.0,6.08,-3.23,-6.46,,-0.24,
+BID,Banking,Pennant Pullback,2024-08-11,38252.14,3.44,2.35,7.26,3.21,8.12,True
+BID,Banking,Pennant Pullback,2024-08-12,38129.54,6.67,5.36,6.32,3.64,8.47,True
+BID,Banking,Pennant Pullback,2024-08-13,38456.48,7.87,7.55,5.42,2.44,7.55,True
+BID,Banking,Pennant Pullback,2025-05-29,35603.91,3.13,-2.08,-1.25,0.28,0.28,True
+BID,Banking,Pennant Pullback,2025-06-01,35307.21,7.4,-1.26,0.42,1.68,1.68,True
+BID,Banking,Triangle Pullback,2024-08-18,39151.23,3.44,4.8,2.19,2.4,5.64,True
+BID,Banking,Triangle Pullback,2024-08-19,40172.92,6.67,0.92,-0.92,0.2,2.95,True
+BID,Banking,Triangle Pullback,2024-08-20,41358.08,7.87,-1.98,-2.57,-3.06,-0.2,False
+BID,Banking,Triangle Pullback,2025-06-05,34862.16,3.13,0.85,2.13,3.69,3.83,True
+BID,Banking,Triangle Pullback,2025-06-08,34862.16,7.4,1.7,1.7,5.53,5.53,True
+BID,Banking,Triangle Pullback,2025-11-13,38350.0,3.52,-1.96,-3.26,-3.52,0.13,False
+CTG,Banking,Flag Pullback,2024-08-13,21730.08,5.43,7.55,9.75,9.75,11.64,True
+CTG,Banking,Flag Pullback,2024-08-14,21764.25,6.87,8.63,9.89,8.79,11.46,True
+CTG,Banking,Flag Pullback,2024-08-15,22208.42,7.74,7.54,7.85,7.54,9.23,True
+CTG,Banking,Flag Pullback,2024-08-18,22310.92,5.16,5.97,8.12,9.34,9.34,True
+CTG,Banking,Flag Pullback,2024-10-23,23814.26,4.0,2.44,2.15,0.43,3.01,True
+CTG,Banking,Flag Pullback,2024-11-03,24395.09,3.32,-2.1,-6.72,0.42,0.56,True
+CTG,Banking,Flag Pullback,2025-01-22,26035.1,8.22,3.67,7.22,8.92,9.97,True
+CTG,Banking,Flag Pullback,2025-01-23,25966.77,4.95,7.37,6.71,9.21,10.26,True
+CTG,Banking,Flag Pullback,2025-02-02,26000.94,7.03,5.91,5.52,8.41,10.12,True
+CTG,Banking,Flag Pullback,2025-02-03,26923.44,6.72,3.3,2.28,5.58,6.35,True
+CTG,Banking,Flag Pullback,2026-02-09,37100.0,19.88,2.96,-3.23,-7.28,4.31,False
+CTG,Banking,Flag Pullback,2026-02-10,37900.0,17.92,1.58,-3.96,-7.65,2.11,False
+CTG,Banking,Flag Pullback,2026-02-11,38000.0,14.29,1.32,-4.74,-8.82,1.84,False
+CTG,Banking,Flag Pullback,2026-02-12,38600.0,12.18,-0.91,-7.64,-12.95,0.26,False
+CTG,Banking,Flag Pullback,2026-02-22,38700.0,14.29,-4.78,-14.21,-16.02,-0.52,False
+CTG,Banking,Flag Pullback,2026-02-23,38200.0,12.64,-6.02,-8.25,-12.17,0.79,False
+CTG,Banking,Flag Pullback,2026-02-24,38500.0,13.88,-5.45,-8.83,-11.56,0.0,False
+CTG,Banking,Flag Pullback,2026-02-25,38500.0,11.92,-5.97,-10.91,-12.21,-0.65,False
+CTG,Banking,Flag Pullback,2026-02-26,38250.0,9.09,-6.8,-11.11,-9.02,-3.66,False
+CTG,Banking,Flag Pullback,2026-03-01,36850.0,7.61,-9.91,-7.33,-7.6,-1.22,False
+CTG,Banking,Flag Pullback,2026-03-02,35900.0,5.66,-2.37,-4.18,-3.62,1.39,False
+CTG,Banking,Pennant Pullback,2025-09-15,35875.14,7.46,-4.76,-3.24,4.84,6.67,True
+CTG,Banking,Pennant Pullback,2025-09-16,35123.47,6.36,-1.75,0.19,7.87,8.95,True
+CTG,Banking,Pennant Pullback,2025-09-17,34986.8,13.24,-1.76,0.59,6.31,9.37,True
+CTG,Banking,Pennant Pullback,2025-09-18,34986.8,9.52,-0.98,-0.78,3.15,9.37,True
+CTG,Banking,Pennant Pullback,2025-09-21,33688.46,12.85,3.45,6.29,0.36,13.59,True
+CTG,Banking,Pennant Pullback,2025-09-22,34166.8,14.9,1.6,3.2,1.07,12.0,True
+CTG,Banking,Triangle Pullback,2025-04-01,28665.95,5.08,-13.83,-11.2,-10.37,-6.91,False
+CTG,Banking,Triangle Pullback,2025-04-02,26684.27,5.06,-1.66,-4.1,-4.1,-0.9,False
+CTG,Banking,Triangle Pullback,2025-09-22,34166.8,7.46,1.6,3.2,1.07,12.0,True
+CTG,Banking,Triangle Pullback,2025-09-23,34508.46,6.36,1.98,4.75,1.18,10.89,True
+CTG,Banking,Triangle Pullback,2025-09-24,34371.8,13.24,2.39,9.34,-0.03,11.33,False
+CTG,Banking,Triangle Pullback,2025-09-25,34645.13,9.52,0.2,8.88,-0.62,10.45,False
+CTG,Banking,Triangle Pullback,2025-09-28,34850.14,12.85,2.75,9.8,-3.59,9.8,False
+CTG,Banking,Triangle Pullback,2025-09-29,34713.46,14.9,1.57,8.35,-2.41,10.24,False
+HDB,Banking,Flag Pullback,2025-01-20,17464.72,10.55,-0.22,-0.44,2.43,3.53,True
+HDB,Banking,Flag Pullback,2025-01-21,16963.53,7.79,2.73,2.5,4.77,6.59,True
+HDB,Banking,Flag Pullback,2025-06-19,17079.19,3.03,-1.58,1.81,10.16,10.38,True
+HDB,Banking,Flag Pullback,2025-09-24,23903.15,15.77,-0.48,2.1,6.45,7.74,True
+HDB,Banking,Flag Pullback,2025-09-25,23247.74,14.87,0.17,5.64,8.46,10.78,True
+HDB,Banking,Flag Pullback,2025-09-28,23826.05,14.04,1.94,5.66,0.65,8.09,True
+HDB,Banking,Flag Pullback,2025-09-29,23903.15,19.25,0.97,5.32,3.87,7.74,True
+HDB,Banking,Pennant Pullback,2025-01-22,17271.96,10.73,2.46,1.34,3.57,4.69,True
+HDB,Banking,Pennant Pullback,2025-01-23,17464.72,8.54,1.1,0.88,1.77,3.53,True
+HDB,Banking,Pennant Pullback,2025-02-02,17271.96,11.51,0.89,1.12,2.68,4.69,True
+HDB,Banking,Pennant Pullback,2025-02-03,17426.17,18.44,-0.22,0.44,1.55,3.76,True
+HDB,Banking,Pennant Pullback,2025-02-09,17426.17,3.38,0.22,3.76,4.87,4.87,True
+HDB,Banking,Triangle Pullback,2024-10-09,17638.21,3.85,-3.1,-2.0,-4.37,-0.36,False
+HDB,Banking,Triangle Pullback,2024-10-10,17573.96,3.28,-1.28,-1.65,-4.02,-0.18,False
+HDB,Banking,Triangle Pullback,2025-02-05,17696.04,10.73,-1.09,-0.44,0.44,2.18,True
+HDB,Banking,Triangle Pullback,2025-02-06,17657.49,8.54,-0.22,0.66,2.18,2.4,True
+HDB,Banking,Triangle Pullback,2025-02-09,17426.17,11.51,0.22,3.76,4.87,4.87,True
+HDB,Banking,Triangle Pullback,2025-02-10,17387.62,18.44,0.67,2.88,5.54,5.54,True
+HDB,Banking,Triangle Pullback,2025-02-11,17387.62,9.29,1.11,2.22,4.88,5.54,True
+HDB,Banking,Triangle Pullback,2025-02-12,17503.28,6.36,0.66,2.2,1.98,4.85,True
+HDB,Banking,Triangle Pullback,2025-02-16,17464.72,3.38,3.53,1.55,3.31,5.08,True
+HDB,Banking,Triangle Pullback,2025-08-19,24558.56,11.24,1.88,1.41,-5.18,5.02,False
+HDB,Banking,Triangle Pullback,2025-09-11,24288.69,16.49,-4.13,-4.29,1.11,1.11,True
+HDB,Banking,Triangle Pullback,2025-09-14,24095.92,17.04,-7.2,-1.12,4.48,4.48,True
+HDB,Banking,Triangle Pullback,2025-09-15,24134.47,14.96,-8.31,-0.96,4.31,4.31,True
+HDB,Banking,Triangle Pullback,2025-09-16,23826.05,13.88,-0.65,0.0,7.12,7.12,True
+HDB,Banking,Triangle Pullback,2025-12-02,24866.99,6.2,-0.31,-0.47,19.44,19.44,True
+HDB,Banking,Triangle Pullback,2025-12-03,25406.74,5.53,-3.64,0.76,13.95,16.9,True
+LPB,Banking,Flag Pullback,2024-09-18,24483.96,5.76,4.56,2.12,4.56,9.45,True
+LPB,Banking,Flag Pullback,2024-09-19,24882.72,8.23,3.21,0.96,3.69,7.69,True
+LPB,Banking,Flag Pullback,2024-09-22,25042.22,9.31,1.75,1.11,2.55,7.01,True
+LPB,Banking,Flag Pullback,2024-09-23,25281.48,10.53,0.0,5.05,0.0,5.99,False
+LPB,Banking,Flag Pullback,2025-03-03,33068.49,14.33,-2.39,-0.28,-5.92,1.27,False
+LPB,Banking,Flag Pullback,2025-03-04,33347.95,16.18,-1.4,0.42,-7.54,0.42,False
+LPB,Banking,Flag Pullback,2025-03-05,33115.07,19.28,-0.7,0.0,-13.36,1.13,False
+LPB,Banking,Flag Pullback,2025-03-06,32975.34,20.86,-1.27,-1.69,-6.92,1.55,False
+LPB,Banking,Flag Pullback,2025-03-09,32416.44,19.06,-0.29,-1.87,-10.34,3.3,False
+LPB,Banking,Flag Pullback,2025-03-10,32276.71,19.94,2.16,-1.88,-9.09,3.75,False
+LPB,Banking,Flag Pullback,2025-03-11,32882.19,20.48,1.84,-5.24,-4.53,1.84,False
+LPB,Banking,Flag Pullback,2025-03-12,32882.19,19.87,0.71,-6.52,-3.12,1.84,False
+LPB,Banking,Flag Pullback,2025-03-13,32556.17,17.55,-0.43,-4.29,-3.15,2.86,False
+LPB,Banking,Flag Pullback,2025-09-10,44000.0,5.99,3.18,8.98,16.36,19.55,True
+LPB,Banking,Flag Pullback,2025-09-11,44100.0,11.21,5.44,8.96,17.01,19.27,True
+LPB,Banking,Flag Pullback,2025-09-14,44550.0,13.24,4.38,7.3,17.85,18.07,True
+LPB,Banking,Flag Pullback,2025-09-15,44900.0,10.64,3.67,10.24,14.7,17.15,True
+LPB,Banking,Flag Pullback,2025-09-16,45300.0,9.71,4.75,12.58,13.91,16.11,True
+LPB,Banking,Flag Pullback,2025-09-17,45400.0,24.78,5.62,13.66,13.0,15.86,True
+LPB,Banking,Flag Pullback,2025-09-18,46500.0,33.77,3.33,12.9,6.45,13.12,True
+LPB,Banking,Flag Pullback,2025-09-21,46500.0,41.52,2.8,11.4,2.15,13.12,True
+LPB,Banking,Flag Pullback,2025-10-19,47500.0,3.68,9.26,6.74,5.68,13.47,True
+LPB,Banking,Flag Pullback,2025-10-20,49000.0,3.44,7.76,5.51,1.12,10.0,True
+LPB,Banking,Flag Pullback,2025-10-21,49900.0,6.15,8.02,3.21,-0.8,8.02,False
+LPB,Banking,Flag Pullback,2025-10-22,51300.0,5.04,1.36,0.39,-3.9,5.07,False
+LPB,Banking,Flag Pullback,2025-10-23,52200.0,8.1,-2.87,-5.56,-6.99,3.26,False
+LPB,Banking,Flag Pullback,2025-10-26,51900.0,11.68,-2.31,-6.94,-6.45,3.85,False
+LPB,Banking,Flag Pullback,2025-10-27,52800.0,17.02,-2.08,-10.04,-7.2,2.08,False
+LPB,Banking,Triangle Pullback,2025-06-03,31750.0,4.87,-0.94,0.63,1.89,2.05,True
+LPB,Banking,Triangle Pullback,2025-06-05,31200.0,4.33,1.28,2.24,4.97,4.97,True
+LPB,Banking,Triangle Pullback,2025-10-13,51500.0,8.46,-4.85,2.52,-7.77,4.66,False
+LPB,Banking,Triangle Pullback,2025-10-14,51600.0,4.61,-3.29,4.46,-5.72,4.46,False
+MBB,Banking,Flag Pullback,2024-08-12,15356.76,4.2,2.75,3.39,1.69,5.3,True
+MBB,Banking,Flag Pullback,2024-08-13,15226.61,8.89,5.77,5.34,2.14,6.2,True
+MBB,Banking,Flag Pullback,2026-03-22,25000.0,8.62,3.0,2.6,,6.0,
+MBB,Banking,Flag Pullback,2026-03-23,25600.0,6.6,3.32,,,3.52,
+MBB,Banking,Pennant Pullback,2025-03-25,17959.6,3.11,1.46,-8.12,-3.12,2.5,False
+MBB,Banking,Pennant Pullback,2025-06-02,18483.42,6.8,-2.02,1.21,5.26,5.26,True
+MBB,Banking,Pennant Pullback,2025-06-08,18146.68,3.93,3.51,6.8,8.87,8.87,True
+MBB,Banking,Pennant Pullback,2025-09-10,26700.0,19.34,0.37,-0.56,2.43,3.0,True
+MBB,Banking,Pennant Pullback,2025-09-11,26600.0,25.83,0.19,-1.32,3.2,3.38,True
+MBB,Banking,Pennant Pullback,2025-09-14,26850.0,29.87,-2.61,-2.61,1.86,2.42,True
+MBB,Banking,Pennant Pullback,2025-12-30,25300.0,3.59,7.91,6.92,7.51,11.46,True
+MBB,Banking,Triangle Pullback,2025-06-05,18071.84,12.68,2.9,6.83,7.66,7.87,True
+MBB,Banking,Triangle Pullback,2025-06-08,18146.68,14.04,3.51,6.8,8.87,8.87,True
+MBB,Banking,Triangle Pullback,2025-06-09,18109.26,6.8,3.31,7.02,9.09,9.09,True
+MBB,Banking,Triangle Pullback,2025-09-02,28450.0,8.9,-5.27,-5.1,-7.21,-0.7,False
+MBB,Banking,Triangle Pullback,2025-09-10,26700.0,11.65,0.37,-0.56,2.43,3.0,True
+MBB,Banking,Triangle Pullback,2025-09-11,26600.0,14.61,0.19,-1.32,3.2,3.38,True
+MBB,Banking,Triangle Pullback,2025-09-14,26850.0,14.95,-2.61,-2.61,1.86,2.42,True
+MBB,Banking,Triangle Pullback,2025-09-15,27500.0,12.32,-4.18,-4.73,-1.64,-0.18,False
+MBB,Banking,Triangle Pullback,2025-09-16,27000.0,18.0,-0.74,-2.22,0.93,1.67,True
+MBB,Banking,Triangle Pullback,2025-09-17,26800.0,19.34,-0.93,0.0,1.49,2.43,True
+MBB,Banking,Triangle Pullback,2025-09-18,26650.0,25.83,-1.5,-0.38,1.69,3.0,True
+MBB,Banking,Triangle Pullback,2025-09-21,26150.0,29.87,0.0,4.59,-3.44,4.97,False
+MBB,Banking,Triangle Pullback,2025-09-22,26350.0,32.69,-0.57,1.9,-3.98,4.17,False
+SHB,Banking,Flag Pullback,2024-06-10,8433.71,4.5,-0.43,-2.15,1.29,3.0,True
+SHB,Banking,Flag Pullback,2024-06-11,8542.3,4.04,-1.69,-3.81,0.42,1.69,True
+SHB,Banking,Flag Pullback,2024-10-27,7987.75,6.28,0.0,0.48,-1.44,1.91,False
+SHB,Banking,Flag Pullback,2024-10-28,8025.97,7.28,0.48,-0.48,-1.43,1.43,False
+SHB,Banking,Flag Pullback,2024-10-29,8025.97,5.83,1.43,-0.48,-1.9,1.43,False
+SHB,Banking,Flag Pullback,2024-10-30,8102.41,5.8,0.0,-2.36,-3.3,0.47,False
+SHB,Banking,Flag Pullback,2024-10-31,8064.19,5.34,0.0,-3.32,-2.37,0.95,False
+SHB,Banking,Flag Pullback,2024-11-03,7987.75,5.85,0.48,-2.39,-1.44,1.91,False
+SHB,Banking,Flag Pullback,2024-11-04,8064.19,3.37,-0.95,-4.27,-2.37,0.95,False
+SHB,Banking,Flag Pullback,2024-11-05,8140.62,4.35,-1.88,-4.23,-4.23,-0.47,False
+SHB,Banking,Flag Pullback,2024-11-06,8102.41,3.86,-2.36,-3.3,-0.94,-0.47,False
+SHB,Banking,Flag Pullback,2024-11-07,8064.19,3.35,-3.32,-2.84,-1.9,-0.47,False
+SHB,Banking,Flag Pullback,2024-11-10,8025.97,4.35,-2.86,-1.9,-1.43,0.0,False
+SHB,Banking,Flag Pullback,2024-11-11,7987.75,3.35,-3.35,-0.96,-0.96,0.48,False
+SHB,Banking,Flag Pullback,2025-09-25,17200.0,6.37,-2.91,4.65,-5.23,5.81,False
+SHB,Banking,Flag Pullback,2025-09-28,16800.0,10.3,3.57,7.74,-3.87,8.33,False
+SHB,Banking,Flag Pullback,2025-09-29,16900.0,13.91,2.07,6.51,-3.25,7.69,False
+SHB,Banking,Flag Pullback,2025-09-30,16950.0,12.7,2.06,7.37,-0.88,7.37,False
+SHB,Banking,Flag Pullback,2025-10-01,17000.0,12.7,5.29,6.76,-0.59,7.06,False
+SHB,Banking,Flag Pullback,2025-10-02,16700.0,5.12,7.78,8.38,-1.5,8.98,False
+SHB,Banking,Flag Pullback,2025-11-09,15300.0,4.02,8.5,8.17,8.5,13.4,True
+SHB,Banking,Flag Pullback,2025-11-10,15800.0,5.88,4.43,3.8,4.43,9.81,True
+SHB,Banking,Flag Pullback,2025-11-11,16300.0,4.9,0.92,2.45,0.92,6.44,True
+SHB,Banking,Flag Pullback,2026-02-03,15800.0,3.77,-1.9,2.53,-6.65,2.53,False
+SHB,Banking,Flag Pullback,2026-02-04,15650.0,4.4,-1.92,3.19,-4.47,3.51,False
+SHB,Banking,Flag Pullback,2026-02-05,15350.0,5.1,0.65,3.91,-2.61,5.54,False
+SHB,Banking,Flag Pullback,2026-02-08,15250.0,5.59,3.61,2.62,-0.33,6.23,False
+SHB,Banking,Flag Pullback,2026-02-09,15250.0,3.41,1.97,1.64,-1.31,6.23,False
+SHB,Banking,Pennant Pullback,2025-01-08,7834.87,3.92,-0.98,0.0,4.88,4.88,True
+SHB,Banking,Pennant Pullback,2025-03-10,8476.11,6.44,16.12,24.12,9.61,27.13,True
+SHB,Banking,Pennant Pullback,2025-03-11,8467.62,4.93,16.73,22.75,17.23,27.25,True
+SHB,Banking,Pennant Pullback,2025-03-12,8484.59,5.91,17.5,27.0,21.5,27.0,True
+SHB,Banking,Pennant Pullback,2025-03-13,9078.52,5.88,9.81,18.69,13.55,18.69,True
+SHB,Banking,Pennant Pullback,2025-03-16,9545.17,7.84,10.22,10.67,5.78,12.89,True
+SHB,Banking,Pennant Pullback,2025-03-17,9842.13,7.35,6.9,7.33,3.45,9.48,True
+SHB,Banking,Pennant Pullback,2025-03-18,9884.55,8.37,5.15,7.73,3.43,9.01,True
+SHB,Banking,Pennant Pullback,2025-03-19,9969.4,6.83,8.09,-0.43,9.36,9.36,True
+SHB,Banking,Pennant Pullback,2025-03-20,9969.4,6.8,8.09,2.55,12.34,12.34,True
+SHB,Banking,Pennant Pullback,2025-03-23,10520.9,6.7,0.4,-9.27,6.45,6.45,True
+SHB,Banking,Pennant Pullback,2025-03-24,10520.9,5.69,0.4,-11.69,4.84,6.45,True
+SHB,Banking,Pennant Pullback,2025-03-25,10393.63,7.28,2.45,-4.49,5.31,7.76,True
+SHB,Banking,Pennant Pullback,2025-09-15,18200.0,38.54,-6.59,-7.14,-1.1,-0.55,False
+SHB,Banking,Pennant Pullback,2025-09-16,18050.0,32.3,-3.88,-6.09,0.83,0.83,True
+SHB,Banking,Pennant Pullback,2025-09-17,17850.0,38.9,-2.8,-4.76,1.68,1.96,True
+SHB,Banking,Pennant Pullback,2025-09-18,17750.0,28.44,-3.1,-5.92,1.97,2.54,True
+SHB,Banking,Pennant Pullback,2025-09-21,17400.0,21.54,-3.45,0.0,-3.16,4.6,False
+SHB,Banking,Pennant Pullback,2025-09-22,17000.0,12.03,-0.59,1.47,0.0,7.06,False
+SHB,Banking,Pennant Pullback,2025-12-25,16350.0,9.8,-0.92,2.14,-1.83,3.98,False
+SHB,Banking,Pennant Pullback,2025-12-28,16200.0,11.11,1.85,3.09,-1.23,4.94,False
+SHB,Banking,Pennant Pullback,2025-12-29,16350.0,7.59,1.53,0.92,-2.45,3.98,False
+SHB,Banking,Pennant Pullback,2025-12-30,16350.0,6.44,0.92,0.0,-2.14,3.98,False
+SHB,Banking,Pennant Pullback,2026-01-04,16100.0,5.81,5.59,2.48,-2.17,5.59,False
+SHB,Banking,Triangle Pullback,2025-03-13,9078.52,3.94,9.81,18.69,13.55,18.69,True
+SHB,Banking,Triangle Pullback,2025-03-16,9545.17,3.94,10.22,10.67,5.78,12.89,True
+SHB,Banking,Triangle Pullback,2025-03-17,9842.13,6.44,6.9,7.33,3.45,9.48,True
+SHB,Banking,Triangle Pullback,2025-03-18,9884.55,4.93,5.15,7.73,3.43,9.01,True
+SHB,Banking,Triangle Pullback,2025-03-19,9969.4,5.91,8.09,-0.43,9.36,9.36,True
+SHB,Banking,Triangle Pullback,2025-03-20,9969.4,5.88,8.09,2.55,12.34,12.34,True
+SHB,Banking,Triangle Pullback,2025-03-23,10520.9,7.84,0.4,-9.27,6.45,6.45,True
+SHB,Banking,Triangle Pullback,2025-03-24,10520.9,7.35,0.4,-11.69,4.84,6.45,True
+SHB,Banking,Triangle Pullback,2025-03-25,10393.63,8.37,2.45,-4.49,5.31,7.76,True
+SHB,Banking,Triangle Pullback,2025-03-26,10775.43,6.83,-7.87,-4.33,0.79,3.94,True
+SHB,Banking,Triangle Pullback,2025-09-11,17550.0,31.58,1.14,-1.99,2.56,3.7,True
+SHB,Banking,Triangle Pullback,2025-09-14,17800.0,31.82,-2.25,-5.62,1.69,2.25,True
+SHB,Banking,Triangle Pullback,2025-09-15,18200.0,31.34,-6.59,-7.14,-1.1,-0.55,False
+SHB,Banking,Triangle Pullback,2025-09-16,18050.0,30.82,-3.88,-6.09,0.83,0.83,True
+SHB,Banking,Triangle Pullback,2025-09-17,17850.0,29.45,-2.8,-4.76,1.68,1.96,True
+SHB,Banking,Triangle Pullback,2025-09-18,17750.0,32.08,-3.1,-5.92,1.97,2.54,True
+SHB,Banking,Triangle Pullback,2025-09-21,17400.0,35.55,-3.45,0.0,-3.16,4.6,False
+SHB,Banking,Triangle Pullback,2025-09-22,17000.0,38.54,-0.59,1.47,0.0,7.06,False
+SHB,Banking,Triangle Pullback,2026-01-04,16100.0,5.68,5.59,2.48,-2.17,5.59,False
+SSB,Banking,Flag Pullback,2024-09-16,15450.0,11.78,6.8,12.94,12.62,15.21,True
+SSB,Banking,Flag Pullback,2026-02-22,17100.0,3.75,-1.75,-4.68,-1.75,-0.58,False
+SSB,Banking,Pennant Pullback,2025-02-13,19500.0,5.45,0.26,-0.51,1.54,1.79,True
+SSB,Banking,Pennant Pullback,2025-03-05,19450.0,9.38,1.8,2.06,-3.86,2.06,False
+SSB,Banking,Pennant Pullback,2025-03-06,19650.0,7.47,0.76,1.02,-2.29,1.02,False
+SSB,Banking,Pennant Pullback,2025-03-09,19800.0,6.86,0.0,-0.25,-4.04,0.25,False
+SSB,Banking,Triangle Pullback,2024-07-21,18618.73,3.46,3.78,3.55,2.13,16.01,True
+SSB,Banking,Triangle Pullback,2024-07-22,18882.82,4.85,2.1,2.56,0.7,14.39,True
+SSB,Banking,Triangle Pullback,2024-09-10,16000.0,5.29,-2.5,4.06,9.38,11.25,True
+SSB,Banking,Triangle Pullback,2025-05-19,18850.0,4.29,-2.12,-2.92,-4.77,-0.8,False
+STB,Banking,Flag Pullback,2026-02-25,67000.0,5.83,-3.13,-1.94,-9.55,1.19,False
+STB,Banking,Pennant Pullback,2024-07-14,29750.0,6.27,0.84,-2.18,-1.85,2.86,False
+STB,Banking,Pennant Pullback,2024-07-15,29900.0,5.89,-3.01,-3.34,-2.51,2.34,False
+STB,Banking,Pennant Pullback,2024-12-03,32400.0,4.72,3.86,5.56,14.2,16.82,True
+STB,Banking,Pennant Pullback,2024-12-04,33950.0,5.64,-0.44,-0.15,6.33,11.49,True
+STB,Banking,Pennant Pullback,2024-12-05,33800.0,5.65,0.59,0.15,7.25,11.98,True
+STB,Banking,Pennant Pullback,2025-10-08,60000.0,4.14,-0.83,-7.33,-13.5,1.67,False
+STB,Banking,Pennant Pullback,2025-10-28,57200.0,10.95,-6.47,-11.54,-12.67,-0.52,False
+STB,Banking,Pennant Pullback,2025-10-29,56900.0,5.96,-8.79,-14.41,-13.36,-2.46,False
+STB,Banking,Pennant Pullback,2025-11-02,52300.0,6.79,-7.27,-6.5,-6.31,3.06,False
+STB,Banking,Pennant Pullback,2025-11-03,53900.0,4.28,-7.88,-8.16,-8.35,-0.74,False
+STB,Banking,Pennant Pullback,2025-11-04,53500.0,6.58,-5.42,-7.48,-7.1,-2.99,False
+STB,Banking,Pennant Pullback,2025-11-05,51900.0,5.26,-6.17,-4.62,-3.28,-1.16,False
+STB,Banking,Pennant Pullback,2025-11-06,48350.0,9.42,-0.62,6.1,1.76,6.1,True
+STB,Banking,Pennant Pullback,2025-11-09,48500.0,11.31,0.82,3.09,0.41,5.77,True
+STB,Banking,Pennant Pullback,2025-11-10,49650.0,9.39,-0.3,0.7,-2.22,3.32,False
+STB,Banking,Pennant Pullback,2026-03-24,62200.0,5.54,0.0,,,0.0,
+STB,Banking,Pennant Pullback,2026-03-25,60600.0,6.69,0.83,,,2.64,
+STB,Banking,Pennant Pullback,2026-03-26,59900.0,3.97,1.5,,,3.84,
+STB,Banking,Triangle Pullback,2024-07-14,29750.0,9.89,0.84,-2.18,-1.85,2.86,False
+STB,Banking,Triangle Pullback,2024-07-15,29900.0,10.25,-3.01,-3.34,-2.51,2.34,False
+STB,Banking,Triangle Pullback,2024-12-05,33800.0,3.07,0.59,0.15,7.25,11.98,True
+STB,Banking,Triangle Pullback,2024-12-08,34000.0,4.17,0.29,1.47,8.53,11.32,True
+STB,Banking,Triangle Pullback,2025-11-02,52300.0,4.81,-7.27,-6.5,-6.31,3.06,False
+STB,Banking,Triangle Pullback,2025-11-03,53900.0,4.98,-7.88,-8.16,-8.35,-0.74,False
+STB,Banking,Triangle Pullback,2025-11-04,53500.0,10.95,-5.42,-7.48,-7.1,-2.99,False
+STB,Banking,Triangle Pullback,2025-11-05,51900.0,5.96,-6.17,-4.62,-3.28,-1.16,False
+STB,Banking,Triangle Pullback,2025-11-09,48500.0,6.79,0.82,3.09,0.41,5.77,True
+STB,Banking,Triangle Pullback,2025-11-10,49650.0,4.28,-0.3,0.7,-2.22,3.32,False
+STB,Banking,Triangle Pullback,2025-11-11,50600.0,6.58,-2.17,-1.28,-3.95,1.38,False
+STB,Banking,Triangle Pullback,2025-11-12,48700.0,5.26,1.64,1.23,-2.05,5.34,False
+STB,Banking,Triangle Pullback,2026-02-05,61500.0,19.34,1.79,6.5,6.99,10.24,True
+STB,Banking,Triangle Pullback,2026-02-08,60300.0,21.38,4.31,11.11,10.45,12.44,True
+STB,Banking,Triangle Pullback,2026-03-19,63400.0,5.31,-5.52,-4.1,,-1.89,
+STB,Banking,Triangle Pullback,2026-03-22,60000.0,3.43,2.0,2.0,,3.67,
+TCB,Banking,Flag Pullback,2024-10-24,22893.55,6.14,-0.21,-1.91,0.21,1.7,True
+TCB,Banking,Flag Pullback,2024-10-27,23039.68,6.84,1.06,-2.11,-0.63,1.06,False
+TCB,Banking,Flag Pullback,2024-10-28,23137.1,10.79,0.42,-4.0,-0.63,0.63,False
+TCB,Banking,Flag Pullback,2024-10-30,23283.23,12.67,-1.26,-6.07,-1.26,0.0,False
+TCB,Banking,Flag Pullback,2024-10-31,23088.39,9.19,-2.11,-5.27,-0.21,0.84,False
+TCB,Banking,Flag Pullback,2024-11-03,22844.84,8.33,-1.71,-4.48,0.85,1.92,True
+TCB,Banking,Flag Pullback,2024-11-05,23283.23,8.78,-3.14,-4.39,-1.88,-0.21,False
+TCB,Banking,Flag Pullback,2025-04-13,25864.84,3.02,-3.01,-2.07,12.62,12.62,True
+TCB,Banking,Flag Pullback,2025-09-28,37750.0,3.13,4.37,9.4,-7.15,9.4,False
+TCB,Banking,Flag Pullback,2025-09-29,37850.0,4.62,3.04,7.79,-4.89,9.11,False
+TCB,Banking,Flag Pullback,2025-09-30,38550.0,4.9,0.13,5.84,-5.58,7.13,False
+TCB,Banking,Flag Pullback,2025-10-01,38850.0,5.04,0.26,6.18,-8.11,6.31,False
+TCB,Banking,Flag Pullback,2025-10-02,38350.0,5.33,2.61,6.0,-8.47,7.69,False
+TCB,Banking,Flag Pullback,2026-01-29,35900.0,3.56,-3.62,-1.25,-12.4,1.53,False
+TCB,Banking,Flag Pullback,2026-02-01,35000.0,4.64,-0.71,2.43,-16.43,4.14,False
+TCB,Banking,Flag Pullback,2026-02-02,34700.0,12.5,-0.29,3.17,-12.68,5.04,False
+TCB,Banking,Flag Pullback,2026-02-03,34550.0,13.75,2.17,4.2,-9.99,5.5,False
+TCB,Banking,Flag Pullback,2026-02-04,34850.0,9.09,1.72,4.59,-13.92,4.59,False
+TCB,Banking,Pennant Pullback,2025-04-21,24500.97,7.28,4.57,9.74,19.88,23.06,True
+TCB,Banking,Pennant Pullback,2025-09-14,37993.55,9.56,-3.85,-0.64,8.7,8.7,True
+TCB,Banking,Pennant Pullback,2025-09-15,38334.52,6.82,-4.7,-1.26,6.43,7.74,True
+TCB,Banking,Pennant Pullback,2025-09-16,37701.29,6.6,0.26,2.25,8.22,9.55,True
+TCB,Banking,Pennant Pullback,2025-09-17,37798.71,15.63,0.26,2.78,9.13,9.26,True
+TCB,Banking,Pennant Pullback,2025-09-18,37409.03,17.39,0.78,2.52,8.66,10.4,True
+TCB,Banking,Pennant Pullback,2025-09-21,36532.26,22.21,3.33,7.85,3.61,13.05,True
+TCB,Banking,Pennant Pullback,2025-09-22,36532.26,14.37,3.61,6.75,3.06,13.05,True
+TCB,Banking,Triangle Pullback,2024-07-15,22114.19,4.56,1.54,1.1,-7.49,4.41,False
+TCB,Banking,Triangle Pullback,2024-09-10,21529.68,3.07,4.07,7.69,11.54,12.67,True
+TCB,Banking,Triangle Pullback,2024-10-09,23916.45,7.29,-0.81,-3.67,-5.5,-0.41,False
+TCB,Banking,Triangle Pullback,2024-10-10,23819.03,8.57,0.0,-3.89,-5.73,0.0,False
+TCB,Banking,Triangle Pullback,2024-10-13,23721.61,6.84,-0.82,-2.87,-4.93,0.41,False
+TCB,Banking,Triangle Pullback,2024-10-14,23624.19,5.2,-0.21,-2.06,-5.98,0.82,False
+TCB,Banking,Triangle Pullback,2024-10-15,23575.48,3.03,0.0,-1.24,-7.23,1.03,False
+TCB,Banking,Triangle Pullback,2024-11-13,22211.61,7.25,1.75,3.51,6.36,6.36,True
+TCB,Banking,Triangle Pullback,2024-11-14,21870.65,7.17,4.68,5.12,8.46,8.46,True
+TCB,Banking,Triangle Pullback,2024-11-17,21870.65,5.82,4.68,5.35,8.24,8.46,True
+TCB,Banking,Triangle Pullback,2025-04-27,25329.03,4.79,5.38,15.0,18.46,19.04,True
+TCB,Banking,Triangle Pullback,2025-04-28,25621.29,7.28,4.94,11.98,15.78,17.68,True
+TCB,Banking,Triangle Pullback,2025-09-14,37993.55,9.25,-3.85,-0.64,8.7,8.7,True
+TCB,Banking,Triangle Pullback,2025-09-15,38334.52,4.41,-4.7,-1.26,6.43,7.74,True
+TCB,Banking,Triangle Pullback,2025-09-16,37701.29,6.49,0.26,2.25,8.22,9.55,True
+TCB,Banking,Triangle Pullback,2025-09-17,37798.71,6.65,0.26,2.78,9.13,9.26,True
+TCB,Banking,Triangle Pullback,2025-09-18,37409.03,7.14,0.78,2.52,8.66,10.4,True
+TCB,Banking,Triangle Pullback,2025-09-21,36532.26,9.56,3.33,7.85,3.61,13.05,True
+TCB,Banking,Triangle Pullback,2025-09-22,36532.26,6.82,3.61,6.75,3.06,13.05,True
+TPB,Banking,Flag Pullback,2024-06-06,12889.34,3.43,3.04,3.52,1.23,4.97,True
+TPB,Banking,Flag Pullback,2024-06-10,12960.55,5.88,2.2,-0.18,1.81,4.4,True
+TPB,Banking,Flag Pullback,2024-06-11,13138.58,8.13,0.54,-1.53,0.15,2.98,True
+TPB,Banking,Flag Pullback,2024-08-14,12605.33,3.15,5.26,4.39,5.26,6.14,True
+TPB,Banking,Flag Pullback,2024-08-15,12900.19,6.98,2.29,2.29,3.71,3.71,True
+TPB,Banking,Flag Pullback,2024-08-18,12900.19,7.2,1.71,0.86,4.29,4.29,True
+TPB,Banking,Flag Pullback,2024-11-03,14639.87,16.67,-2.11,-3.32,-2.72,2.42,False
+TPB,Banking,Flag Pullback,2024-11-04,14639.87,16.03,-2.72,-4.53,-3.32,2.42,False
+TPB,Banking,Flag Pullback,2024-11-05,14993.71,15.73,-4.72,-5.31,-6.78,-0.88,False
+TPB,Banking,Flag Pullback,2024-11-06,14861.02,14.74,-6.25,-3.27,-2.08,-0.89,False
+TPB,Banking,Flag Pullback,2024-11-07,14728.33,16.02,-6.31,-3.3,-2.4,-1.2,False
+TPB,Banking,Flag Pullback,2024-11-14,13799.52,5.33,3.21,3.85,4.17,5.45,True
+TPB,Banking,Flag Pullback,2025-06-01,12476.19,16.24,-0.38,1.53,2.67,3.05,True
+TPB,Banking,Flag Pullback,2025-06-02,12619.05,10.4,-1.51,1.89,2.26,2.26,True
+TPB,Banking,Flag Pullback,2025-06-03,12476.19,5.3,1.15,2.29,3.82,3.82,True
+TPB,Banking,Flag Pullback,2025-06-04,12523.81,7.66,1.14,1.9,4.56,4.56,True
+TPB,Banking,Flag Pullback,2025-06-05,12476.19,9.77,0.76,1.91,4.96,4.96,True
+TPB,Banking,Flag Pullback,2025-09-14,18857.14,26.92,-4.04,-4.8,-1.77,1.01,False
+TPB,Banking,Flag Pullback,2026-02-04,17100.0,5.06,0.29,7.31,-6.14,9.06,False
+TPB,Banking,Flag Pullback,2026-02-05,16800.0,6.67,4.17,9.52,-4.76,11.01,False
+TPB,Banking,Flag Pullback,2026-02-08,16800.0,8.98,7.14,5.95,-4.76,11.01,False
+TPB,Banking,Flag Pullback,2026-02-09,16800.0,6.23,7.44,4.76,-4.17,11.01,False
+TPB,Banking,Pennant Pullback,2025-09-09,18285.71,29.47,0.52,2.34,1.3,3.39,True
+TPB,Banking,Triangle Pullback,2026-01-11,18200.0,3.83,-4.67,-6.04,-7.69,-1.65,False
+VCB,Banking,Flag Pullback,2025-01-06,61291.74,4.73,-0.65,-0.98,-0.43,0.76,False
+VCB,Banking,Flag Pullback,2025-01-07,61358.15,5.0,-1.08,-1.3,-0.97,0.65,False
+VCB,Banking,Flag Pullback,2025-09-25,62543.48,10.91,-1.35,2.65,-4.87,3.29,False
+VCB,Banking,Flag Pullback,2025-09-28,62146.38,11.83,2.98,1.53,-4.74,3.95,False
+VCB,Banking,Flag Pullback,2026-02-09,63100.0,28.7,3.01,-2.38,-4.12,5.23,False
+VCB,Banking,Flag Pullback,2026-02-10,64700.0,31.49,0.62,-2.63,-6.49,2.63,False
+VCB,Banking,Flag Pullback,2026-02-22,66400.0,27.32,-5.27,-13.7,-13.25,-1.51,False
+VCB,Banking,Flag Pullback,2026-02-23,65000.0,28.72,-5.23,-7.08,-10.46,0.62,False
+VCB,Banking,Flag Pullback,2026-02-24,65100.0,27.5,-3.23,-7.22,-10.29,0.46,False
+VCB,Banking,Flag Pullback,2026-02-25,65400.0,23.91,-4.43,-8.56,-11.47,-0.76,False
+VCB,Banking,Flag Pullback,2026-02-26,64900.0,19.3,-5.08,-9.09,-9.4,-2.93,False
+VCB,Banking,Flag Pullback,2026-03-01,62900.0,21.89,-8.9,-6.52,-7.79,0.16,False
+VCB,Banking,Flag Pullback,2026-03-02,61600.0,23.21,-1.95,-1.79,-5.68,2.27,False
+VCB,Banking,Pennant Pullback,2025-04-21,58076.09,6.56,-2.05,-3.25,-2.91,0.34,False
+VCB,Banking,Pennant Pullback,2025-04-22,57579.71,6.42,-1.55,-2.41,-1.72,1.21,False
+VCB,Banking,Pennant Pullback,2025-04-23,57778.26,5.78,-2.06,-2.41,-2.41,0.86,False
+VCB,Banking,Pennant Pullback,2025-04-24,57083.33,4.73,-0.87,2.09,-1.22,2.09,False
+VCB,Banking,Pennant Pullback,2025-09-17,63436.96,5.25,-1.41,-2.82,-0.85,1.83,False
+VCB,Banking,Pennant Pullback,2025-09-18,62543.48,3.45,0.0,-1.35,-1.03,3.29,False
+VCB,Banking,Pennant Pullback,2025-09-21,61550.73,6.64,0.97,3.98,-3.49,4.95,False
+VCB,Banking,Pennant Pullback,2025-09-22,61749.28,7.31,-0.32,3.16,-3.97,4.62,False
+VCB,Banking,Triangle Pullback,2025-04-21,58076.09,7.61,-2.05,-3.25,-2.91,0.34,False
+VCB,Banking,Triangle Pullback,2025-04-22,57579.71,7.85,-1.55,-2.41,-1.72,1.21,False
+VCB,Banking,Triangle Pullback,2025-04-23,57778.26,7.71,-2.06,-2.41,-2.41,0.86,False
+VCB,Banking,Triangle Pullback,2025-04-24,57083.33,6.24,-0.87,2.09,-1.22,2.09,False
+VCB,Banking,Triangle Pullback,2025-04-27,57083.33,5.76,-0.7,2.09,-1.39,2.09,False
+VCB,Banking,Triangle Pullback,2025-04-28,56884.78,6.56,-1.22,0.35,-1.57,2.44,False
+VCB,Banking,Triangle Pullback,2025-05-04,56686.23,6.42,-0.88,-0.18,-1.58,2.8,False
+VCB,Banking,Triangle Pullback,2025-05-05,56586.96,5.78,-0.35,0.18,-0.35,2.98,False
+VCB,Banking,Triangle Pullback,2025-05-06,56586.96,4.73,2.98,0.18,-0.7,2.98,False
+VIB,Banking,Flag Pullback,2025-09-14,21450.0,11.44,-7.93,-7.93,-6.06,-1.86,False
+VIB,Banking,Flag Pullback,2025-09-15,21050.0,10.6,-5.7,-5.46,-4.99,-1.9,False
+VIB,Banking,Flag Pullback,2025-09-16,20650.0,6.63,-0.73,-2.66,-1.94,-0.48,False
+VIB,Banking,Flag Pullback,2025-09-17,20550.0,10.51,-2.19,-4.14,-2.68,0.0,False
+VIB,Banking,Flag Pullback,2025-09-18,20300.0,13.18,-2.46,-2.71,-2.96,1.23,False
+VIB,Banking,Flag Pullback,2025-09-21,19750.0,20.62,0.0,4.05,-7.09,4.05,False
+VIB,Banking,Flag Pullback,2025-09-22,19850.0,24.21,0.25,1.76,-6.05,3.53,False
+VIB,Banking,Flag Pullback,2025-09-23,20500.0,13.44,-1.95,-2.2,-9.02,0.24,False
+VIB,Banking,Flag Pullback,2025-09-24,20100.0,17.88,-1.99,1.49,-7.96,2.24,False
+VIB,Banking,Flag Pullback,2026-02-09,16500.0,5.4,4.85,1.21,3.03,5.45,True
+VIB,Banking,Pennant Pullback,2024-11-03,15522.35,6.67,-1.62,-1.62,1.89,2.7,True
+VIB,Banking,Pennant Pullback,2024-11-04,15522.35,5.79,-0.81,-2.43,1.62,2.7,True
+VIB,Banking,Pennant Pullback,2024-11-05,15606.25,5.21,-1.61,-2.42,1.34,2.15,True
+VIB,Banking,Pennant Pullback,2024-11-06,15522.35,4.37,-1.62,-1.08,4.59,4.59,True
+VIB,Banking,Pennant Pullback,2024-11-07,15354.54,3.52,-0.82,-0.55,5.19,5.74,True
+VIB,Banking,Triangle Pullback,2024-11-03,15522.35,7.82,-1.62,-1.62,1.89,2.7,True
+VIB,Banking,Triangle Pullback,2024-11-04,15522.35,10.61,-0.81,-2.43,1.62,2.7,True
+VIB,Banking,Triangle Pullback,2024-11-05,15606.25,9.52,-1.61,-2.42,1.34,2.15,True
+VIB,Banking,Triangle Pullback,2024-11-06,15522.35,6.06,-1.62,-1.08,4.59,4.59,True
+VIB,Banking,Triangle Pullback,2024-11-07,15354.54,6.94,-0.82,-0.55,5.19,5.74,True
+VPB,Banking,Flag Pullback,2025-09-14,31550.0,31.06,-6.5,-1.43,0.48,1.74,True
+VPB,Banking,Flag Pullback,2025-09-15,31700.0,29.31,-5.68,-1.89,2.52,2.52,True
+VPB,Banking,Flag Pullback,2025-09-16,31000.0,27.49,1.94,-0.32,8.71,8.71,True
+VPB,Banking,Flag Pullback,2025-09-17,30800.0,44.92,0.49,-2.11,7.79,9.42,True
+VPB,Banking,Flag Pullback,2025-09-18,30400.0,44.75,0.0,-2.96,5.1,10.86,True
+VPB,Banking,Flag Pullback,2025-09-21,29500.0,49.81,5.42,6.95,0.85,14.24,True
+VPB,Banking,Flag Pullback,2025-09-22,29900.0,39.34,4.01,3.85,1.51,12.71,True
+VPB,Banking,Flag Pullback,2025-09-23,31600.0,26.89,-2.22,-1.58,-3.64,6.65,False
+VPB,Banking,Flag Pullback,2025-09-24,30950.0,29.43,-2.58,3.72,-3.07,8.89,False
+VPB,Banking,Flag Pullback,2025-09-25,30400.0,22.88,-2.96,5.59,-3.95,10.86,False
+VPB,Banking,Flag Pullback,2025-09-28,31100.0,17.44,1.45,1.93,-9.0,8.36,False
+VPB,Banking,Flag Pullback,2025-09-29,31100.0,18.44,-0.16,4.5,-5.31,8.36,False
+VPB,Banking,Flag Pullback,2025-09-30,30900.0,16.55,0.65,9.06,-3.4,9.06,False
+VPB,Banking,Flag Pullback,2025-10-01,30150.0,17.91,6.47,10.12,-3.15,11.77,False
+VPB,Banking,Flag Pullback,2026-02-02,27500.0,8.66,-3.27,5.45,-7.27,5.45,False
+VPB,Banking,Flag Pullback,2026-02-03,27750.0,6.36,1.98,3.96,-4.68,4.5,False
+VPB,Banking,Flag Pullback,2026-02-09,26600.0,7.21,9.02,3.2,-3.38,9.02,False
+VPB,Banking,Pennant Pullback,2024-06-10,17815.87,5.23,1.64,3.83,6.01,7.65,True
+VPB,Banking,Pennant Pullback,2024-06-11,18886.77,5.25,-2.06,-2.06,-1.03,1.55,False
+VPB,Banking,Pennant Pullback,2025-06-01,18000.0,4.08,-0.83,4.44,2.78,4.44,True
+VPB,Banking,Pennant Pullback,2025-07-13,21000.0,3.58,6.19,19.52,40.95,40.95,True
+VPB,Banking,Pennant Pullback,2025-07-14,20750.0,3.87,8.43,13.73,42.65,42.65,True
+VPB,Banking,Pennant Pullback,2025-08-28,35000.0,28.04,-7.43,-9.43,-11.14,-0.29,False
+VPB,Banking,Pennant Pullback,2025-09-02,34500.0,25.71,-5.94,-10.14,-10.43,1.16,False
+VPB,Banking,Pennant Pullback,2025-09-03,34900.0,27.71,-7.59,-11.75,-13.61,-4.01,False
+VPB,Banking,Pennant Pullback,2025-09-04,33500.0,29.98,-5.67,-9.25,-11.94,-3.13,False
+VPB,Banking,Pennant Pullback,2025-09-07,31200.0,38.52,1.12,-5.45,1.12,4.01,True
+VPB,Banking,Pennant Pullback,2025-09-08,32400.0,38.41,-2.16,-7.72,-4.17,0.15,False
+VPB,Banking,Pennant Pullback,2025-09-09,32450.0,32.74,-4.47,-2.62,-4.16,-0.62,False
+VPB,Banking,Pennant Pullback,2025-12-30,28650.0,8.04,-1.4,0.87,-2.27,6.46,False
+VPB,Banking,Pennant Pullback,2026-01-04,27900.0,9.01,8.24,6.27,-1.08,9.32,False
+VPB,Banking,Triangle Pullback,2025-07-20,22300.0,3.58,12.56,18.39,43.5,43.5,True
+VPB,Banking,Triangle Pullback,2025-07-21,22500.0,3.87,4.89,17.78,52.0,52.0,True
+VPB,Banking,Triangle Pullback,2025-08-28,35000.0,28.27,-7.43,-9.43,-11.14,-0.29,False
+VPB,Banking,Triangle Pullback,2025-09-02,34500.0,30.05,-5.94,-10.14,-10.43,1.16,False
+VPB,Banking,Triangle Pullback,2025-09-03,34900.0,20.41,-7.59,-11.75,-13.61,-4.01,False
+VPB,Banking,Triangle Pullback,2025-09-04,33500.0,25.94,-5.67,-9.25,-11.94,-3.13,False
+VPB,Banking,Triangle Pullback,2025-09-07,31200.0,28.04,1.12,-5.45,1.12,4.01,True
+VPB,Banking,Triangle Pullback,2025-09-08,32400.0,28.04,-2.16,-7.72,-4.17,0.15,False
+VPB,Banking,Triangle Pullback,2025-09-09,32450.0,25.71,-4.47,-2.62,-4.16,-0.62,False
+VPB,Banking,Triangle Pullback,2026-01-08,28250.0,8.04,2.3,0.88,-5.13,7.96,False
+VPB,Banking,Triangle Pullback,2026-01-11,30200.0,9.01,-1.82,-8.11,-11.42,0.99,False
+BCM,Real Estate,Flag Pullback,2025-04-16,52589.01,5.63,3.74,4.67,13.46,16.82,True
+BCM,Real Estate,Flag Pullback,2025-04-17,53080.5,4.61,3.33,5.74,12.78,15.74,True
+BCM,Real Estate,Flag Pullback,2025-04-20,54260.06,3.96,0.91,8.7,8.15,13.22,True
+BCM,Real Estate,Flag Pullback,2025-10-13,63696.59,3.76,-1.23,2.62,3.4,6.02,True
+BCM,Real Estate,Flag Pullback,2025-10-14,63401.7,7.23,0.78,3.41,3.72,6.51,True
+BCM,Real Estate,Pennant Pullback,2024-06-18,60708.33,20.42,5.26,1.91,7.5,9.25,True
+BCM,Real Estate,Pennant Pullback,2024-09-09,69228.8,5.15,-0.14,0.7,-3.92,1.4,False
+BCM,Real Estate,Pennant Pullback,2024-09-10,69131.98,5.46,0.0,1.54,-4.2,1.54,False
+BCM,Real Estate,Pennant Pullback,2024-09-11,69131.98,5.17,0.7,0.84,-4.34,1.54,False
+BCM,Real Estate,Pennant Pullback,2024-09-12,68647.86,6.75,0.56,0.56,-3.67,2.26,False
+BCM,Real Estate,Pennant Pullback,2025-02-09,69692.73,3.84,-1.55,5.08,13.12,13.12,True
+BCM,Real Estate,Pennant Pullback,2025-02-10,68906.34,6.76,-0.86,9.27,14.41,14.41,True
+BCM,Real Estate,Pennant Pullback,2025-03-26,76082.05,7.34,-9.04,-22.87,-27.91,0.26,False
+BCM,Real Estate,Pennant Pullback,2025-03-27,76278.64,8.14,-15.59,-22.04,-28.22,-2.19,False
+BCM,Real Estate,Pennant Pullback,2025-03-30,73526.32,6.63,-18.45,-24.47,-26.47,1.47,False
+BCM,Real Estate,Pennant Pullback,2025-03-31,74607.59,8.13,-25.16,-29.51,-24.24,-0.4,False
+BCM,Real Estate,Pennant Pullback,2025-04-01,74312.7,6.52,-19.71,-29.23,-25.93,-6.88,False
+BCM,Real Estate,Pennant Pullback,2025-04-02,69201.24,7.28,-15.2,-23.3,-18.89,-6.96,False
+BCM,Real Estate,Pennant Pullback,2025-04-03,64384.68,6.99,-7.63,-15.73,-8.4,-6.87,False
+BCM,Real Estate,Pennant Pullback,2025-04-07,59961.3,14.9,-7.38,-14.75,-2.46,-0.49,False
+BCM,Real Estate,Pennant Pullback,2025-09-04,66547.21,3.87,-1.18,1.77,-1.92,2.95,False
+BCM,Real Estate,Pennant Pullback,2025-09-07,65760.84,4.9,2.84,1.2,0.0,4.19,False
+BCM,Real Estate,Pennant Pullback,2025-09-08,66743.81,4.28,1.62,-1.77,-2.5,2.65,False
+BCM,Real Estate,Pennant Pullback,2025-09-09,66350.62,5.84,3.26,-0.3,-0.74,3.26,False
+BCM,Real Estate,Triangle Pullback,2024-09-05,69712.91,9.9,-1.53,-0.97,-5.69,0.69,False
+BCM,Real Estate,Triangle Pullback,2024-09-08,68938.33,11.79,-1.26,0.42,-3.93,1.83,False
+BCM,Real Estate,Triangle Pullback,2024-09-09,69228.8,4.95,-0.14,0.7,-3.92,1.4,False
+BCM,Real Estate,Triangle Pullback,2024-09-10,69131.98,5.85,0.0,1.54,-4.2,1.54,False
+BCM,Real Estate,Triangle Pullback,2024-09-12,68647.86,3.65,0.56,0.56,-3.67,2.26,False
+BCM,Real Estate,Triangle Pullback,2024-12-17,66645.51,3.66,2.21,4.42,2.21,7.08,True
+BCM,Real Estate,Triangle Pullback,2024-12-18,65367.65,7.14,4.81,6.02,4.06,9.17,True
+BCM,Real Estate,Triangle Pullback,2024-12-19,66547.21,5.24,3.1,3.84,2.07,7.24,True
+BCM,Real Estate,Triangle Pullback,2024-12-22,66743.81,3.37,2.8,6.92,1.18,6.92,True
+BCM,Real Estate,Triangle Pullback,2025-02-12,68906.34,5.67,3.28,8.42,12.41,14.98,True
+BCM,Real Estate,Triangle Pullback,2025-02-13,68906.34,4.44,6.85,7.99,12.7,14.98,True
+BCM,Real Estate,Triangle Pullback,2025-02-16,68611.45,3.84,6.73,8.31,17.19,17.19,True
+BCM,Real Estate,Triangle Pullback,2025-02-17,68316.56,6.76,10.22,9.06,17.7,17.7,True
+BCM,Real Estate,Triangle Pullback,2025-04-02,69201.24,7.34,-15.2,-23.3,-18.89,-6.96,False
+BCM,Real Estate,Triangle Pullback,2025-04-03,64384.68,8.14,-7.63,-15.73,-8.4,-6.87,False
+BCM,Real Estate,Triangle Pullback,2025-04-07,59961.3,6.63,-7.38,-14.75,-2.46,-0.49,False
+BCM,Real Estate,Triangle Pullback,2025-04-08,55832.82,8.13,-5.81,-3.17,8.27,8.27,True
+BCM,Real Estate,Triangle Pullback,2025-04-09,59666.41,6.52,-11.86,-8.57,1.81,1.81,True
+BCM,Real Estate,Triangle Pullback,2025-04-10,58683.44,7.28,-9.55,-6.53,4.69,4.69,True
+BCM,Real Estate,Triangle Pullback,2025-04-13,59469.82,6.99,-8.76,-7.93,0.83,3.31,True
+BCM,Real Estate,Triangle Pullback,2025-04-14,55537.93,14.9,-7.96,-2.65,7.96,10.62,True
+KDH,Real Estate,Flag Pullback,2024-10-22,30272.73,3.16,0.6,0.3,-2.25,1.05,False
+KDH,Real Estate,Flag Pullback,2024-10-23,30590.91,3.69,-0.45,-0.15,-2.53,-0.15,False
+KDH,Real Estate,Flag Pullback,2024-10-24,30136.36,3.04,0.0,1.21,-1.66,1.36,False
+KDH,Real Estate,Flag Pullback,2024-10-27,30454.54,3.46,-1.49,0.0,-2.09,0.3,False
+KDH,Real Estate,Flag Pullback,2024-10-28,30454.54,5.36,-1.64,-0.15,-0.9,0.3,False
+KDH,Real Estate,Flag Pullback,2026-02-02,26850.0,4.43,2.79,5.21,-6.7,6.33,False
+KDH,Real Estate,Flag Pullback,2026-02-03,26850.0,5.91,6.33,4.1,-4.1,6.33,False
+KDH,Real Estate,Pennant Pullback,2024-07-09,31322.31,3.69,-2.64,-5.01,-5.8,1.72,False
+KDH,Real Estate,Pennant Pullback,2025-11-20,34850.0,6.46,0.43,-2.58,-6.31,1.58,False
+KDH,Real Estate,Pennant Pullback,2025-11-24,34500.0,3.88,-2.75,-3.48,-4.35,2.61,False
+KDH,Real Estate,Triangle Pullback,2024-07-08,30991.74,4.46,0.8,-5.33,-5.87,2.8,False
+VHM,Real Estate,Flag Pullback,2025-01-05,40000.0,3.11,0.0,0.0,-5.5,1.0,False
+VHM,Real Estate,Flag Pullback,2025-11-04,99600.0,4.47,-5.62,-2.71,7.23,7.23,True
+VHM,Real Estate,Flag Pullback,2025-11-05,98900.0,11.11,-5.66,-1.11,6.37,7.99,True
+VHM,Real Estate,Flag Pullback,2025-11-06,92000.0,20.94,2.07,7.93,16.3,16.3,True
+VHM,Real Estate,Flag Pullback,2025-11-09,86900.0,24.82,9.32,18.18,26.58,26.58,True
+VHM,Real Estate,Flag Pullback,2025-11-10,90000.0,28.67,7.78,14.0,19.44,22.22,True
+VHM,Real Estate,Flag Pullback,2026-02-03,91300.0,61.62,12.81,17.2,5.04,21.58,True
+VHM,Real Estate,Flag Pullback,2026-02-04,97600.0,46.42,11.68,10.25,-1.74,13.73,False
+VHM,Real Estate,Pennant Pullback,2024-10-03,41500.0,20.77,5.06,9.04,0.0,16.27,False
+VHM,Real Estate,Pennant Pullback,2024-10-06,41200.0,15.59,10.07,16.02,0.85,17.11,True
+VHM,Real Estate,Pennant Pullback,2025-10-12,124200.0,4.71,-13.04,-14.25,-30.03,2.25,False
+VHM,Real Estate,Triangle Pullback,2025-09-11,105500.0,10.8,-3.6,-6.16,16.59,16.59,True
+MSN,Retail,Flag Pullback,2024-09-09,75200.0,4.63,-0.93,-0.53,0.0,1.86,False
+MSN,Retail,Flag Pullback,2024-09-10,75100.0,5.92,-0.93,0.53,2.53,2.53,True
+MSN,Retail,Flag Pullback,2024-09-11,75100.0,4.16,-0.93,1.33,6.52,6.52,True
+MSN,Retail,Flag Pullback,2024-09-12,74200.0,5.35,0.67,2.29,9.3,9.3,True
+MSN,Retail,Flag Pullback,2024-09-15,72900.0,6.99,2.06,3.84,10.15,11.25,True
+MSN,Retail,Flag Pullback,2024-09-16,74500.0,5.63,0.4,2.82,8.46,8.86,True
+MSN,Retail,Flag Pullback,2024-09-17,74400.0,4.46,1.48,2.15,8.06,9.01,True
+MSN,Retail,Flag Pullback,2024-09-18,74400.0,5.14,2.28,2.15,8.87,9.01,True
+MSN,Retail,Flag Pullback,2024-09-19,74700.0,4.02,1.61,1.2,7.63,8.57,True
+MSN,Retail,Flag Pullback,2024-09-22,74400.0,4.59,1.75,0.54,7.8,9.01,True
+MSN,Retail,Flag Pullback,2025-04-07,54000.0,3.77,8.33,8.7,16.3,16.67,True
+MSN,Retail,Flag Pullback,2025-04-14,58500.0,4.29,0.34,6.84,6.84,7.69,True
+MSN,Retail,Pennant Pullback,2026-03-23,72100.0,5.48,4.72,,,6.66,
+MSN,Retail,Triangle Pullback,2026-01-06,78400.0,3.68,2.81,1.91,5.48,7.27,True
+MSN,Retail,Triangle Pullback,2026-03-30,75500.0,5.48,,,,1.85,
+MWG,Retail,Flag Pullback,2025-06-23,63979.43,6.28,-0.62,3.54,8.47,8.94,True
+MWG,Retail,Flag Pullback,2025-06-24,64078.01,7.15,-0.31,4.15,8.46,8.77,True
+MWG,Retail,Flag Pullback,2026-01-28,89500.0,5.36,0.78,3.8,-4.8,4.69,False
+MWG,Retail,Flag Pullback,2026-01-29,92900.0,6.51,-4.84,-0.11,-10.98,0.86,False
+MWG,Retail,Flag Pullback,2026-02-01,93700.0,6.2,-4.7,-1.81,-17.82,-0.11,False
+MWG,Retail,Flag Pullback,2026-03-22,74200.0,9.39,8.89,5.53,,11.05,
+MWG,Retail,Flag Pullback,2026-03-23,76000.0,8.47,7.63,,,8.42,
+MWG,Retail,Pennant Pullback,2024-08-14,64965.25,3.34,6.22,5.92,1.37,6.22,True
+MWG,Retail,Pennant Pullback,2024-08-15,68021.27,5.13,1.45,0.14,-1.16,1.45,False
+MWG,Retail,Triangle Pullback,2024-08-21,69007.09,3.34,-0.29,-3.14,-2.71,0.0,False
+MWG,Retail,Triangle Pullback,2024-08-22,69007.09,5.13,-1.29,-3.14,-1.86,-0.29,False
+MWG,Retail,Triangle Pullback,2024-12-05,60233.33,3.58,-0.16,-0.82,-6.71,1.8,False
+MWG,Retail,Triangle Pullback,2026-01-12,87100.0,4.55,-1.26,-2.41,2.53,7.58,True
+MWG,Retail,Triangle Pullback,2026-01-13,86000.0,3.03,-0.7,-0.58,6.86,8.95,True
+SAB,Retail,Flag Pullback,2024-07-21,48505.66,3.54,-1.44,-6.64,3.77,3.77,True
+SAB,Retail,Flag Pullback,2024-10-24,48331.49,3.17,0.0,1.98,1.08,2.34,True
+SAB,Retail,Flag Pullback,2026-02-09,48350.0,5.31,0.93,-4.86,-8.27,1.76,False
+SAB,Retail,Flag Pullback,2026-02-10,48700.0,12.88,1.03,-5.54,-8.73,1.03,False
+SAB,Retail,Flag Pullback,2026-02-11,48800.0,11.0,0.61,-6.45,-9.12,0.82,False
+SAB,Retail,Flag Pullback,2026-03-08,42450.0,6.17,4.83,1.06,4.59,6.24,True
+SAB,Retail,Flag Pullback,2026-03-09,44750.0,3.78,-0.89,0.78,,0.78,
+VNM,Retail,Flag Pullback,2024-09-19,64310.9,11.67,1.06,-2.5,-4.07,1.06,False
+VNM,Retail,Flag Pullback,2024-09-22,64487.83,5.17,-0.5,-4.76,-4.47,0.78,False
+VNM,Retail,Flag Pullback,2024-09-23,64350.53,5.55,-0.28,-2.99,-4.27,1.0,False
+VNM,Retail,Flag Pullback,2024-09-24,63709.77,4.76,0.72,-2.59,-3.3,2.01,False
+VNM,Retail,Flag Pullback,2025-03-23,56643.51,5.45,-1.3,-11.24,-8.79,0.0,False
+VNM,Retail,Flag Pullback,2025-03-24,56643.51,4.49,-0.98,-15.31,-8.14,-0.33,False
+VNM,Retail,Flag Pullback,2026-01-14,71000.0,3.72,-0.14,0.14,-2.82,3.38,False
+VNM,Retail,Flag Pullback,2026-01-18,70600.0,3.06,-2.41,2.83,0.0,3.97,False
+VNM,Retail,Flag Pullback,2026-03-10,63000.0,6.35,-2.06,-1.43,,0.16,
+VNM,Retail,Pennant Pullback,2025-11-09,57000.0,4.23,8.95,10.53,11.4,14.04,True
+VNM,Retail,Pennant Pullback,2025-11-10,58900.0,3.08,3.06,5.09,6.11,10.36,True
+VNM,Retail,Pennant Pullback,2025-12-25,61500.0,11.11,-1.14,2.93,10.08,19.35,True
+VNM,Retail,Pennant Pullback,2025-12-28,62100.0,13.86,-1.93,9.02,9.02,18.2,True
+VNM,Retail,Pennant Pullback,2025-12-29,61800.0,10.36,0.65,14.89,15.05,18.77,True
+VNM,Retail,Pennant Pullback,2025-12-30,61200.0,8.03,-0.33,13.73,15.36,19.93,True
+VNM,Retail,Pennant Pullback,2026-02-10,69100.0,7.12,4.63,-6.08,-10.71,4.63,False
+VNM,Retail,Pennant Pullback,2026-02-11,69000.0,13.42,2.32,-8.41,-11.59,4.78,False
+VNM,Retail,Pennant Pullback,2026-02-12,69500.0,13.17,-1.87,-10.22,-13.67,4.03,False
+VNM,Retail,Pennant Pullback,2026-02-22,70600.0,15.17,-5.67,-17.71,-13.88,2.41,False
+VNM,Retail,Pennant Pullback,2026-02-23,70200.0,19.35,-9.69,-11.54,-12.82,2.99,False
+VNM,Retail,Triangle Pullback,2024-09-09,66257.05,6.03,-2.0,-2.88,-5.78,-0.27,False
+VNM,Retail,Triangle Pullback,2024-09-10,65991.66,7.84,-1.74,-3.46,-5.95,0.13,False
+VNM,Retail,Triangle Pullback,2024-09-11,66080.12,4.83,-1.87,-2.06,-6.22,-1.65,False
+VNM,Retail,Triangle Pullback,2025-08-19,57311.32,5.81,0.83,1.5,3.33,8.5,True
+VNM,Retail,Triangle Pullback,2025-08-20,57406.84,6.56,1.5,0.83,2.16,8.32,True
+VNM,Retail,Triangle Pullback,2025-08-21,56069.58,4.15,2.73,2.73,4.94,10.9,True
+VNM,Retail,Triangle Pullback,2025-08-24,56069.58,3.45,4.77,1.87,5.62,10.9,True
+VNM,Retail,Triangle Pullback,2025-11-04,58000.0,3.85,3.1,5.0,11.38,12.07,True
+VNM,Retail,Triangle Pullback,2025-12-29,61800.0,8.03,0.65,14.89,15.05,18.77,True
+VNM,Retail,Triangle Pullback,2025-12-30,61200.0,8.28,-0.33,13.73,15.36,19.93,True
+VNM,Retail,Triangle Pullback,2026-02-24,72300.0,7.12,-10.24,-12.86,-14.11,-2.35,False
+VNM,Retail,Triangle Pullback,2026-02-25,70600.0,13.42,-10.48,-12.75,-13.6,-3.4,False
+VNM,Retail,Triangle Pullback,2026-02-26,68200.0,13.17,-8.5,-7.48,-9.82,-2.35,False
+VNM,Retail,Triangle Pullback,2026-03-01,66600.0,15.17,-12.76,-7.21,-9.01,-2.55,False
+VNM,Retail,Triangle Pullback,2026-03-02,63400.0,19.35,-2.05,-3.0,-4.57,2.37,False
+VNM,Retail,Triangle Pullback,2026-03-03,64900.0,13.2,-2.93,-4.93,-5.55,-2.62,False
+VNM,Retail,Triangle Pullback,2026-03-04,63200.0,14.72,-2.53,-3.48,-3.8,-0.16,False
+VNM,Retail,Triangle Pullback,2026-03-05,62400.0,9.8,1.12,-3.85,-3.85,1.12,False
+VNM,Retail,Triangle Pullback,2026-03-26,61500.0,3.42,-2.44,,,-0.33,
+VNM,Retail,Triangle Pullback,2026-03-30,60500.0,3.69,,,,1.32,
+VNM,Retail,Triangle Pullback,2026-03-31,61300.0,6.79,,,,-0.65,
+GAS,Energy,Flag Pullback,2024-06-17,66490.2,3.65,-2.18,0.26,0.38,1.28,True
+GAS,Energy,Flag Pullback,2024-06-18,66660.69,4.22,-2.17,0.0,-0.26,1.02,False
+GAS,Energy,Flag Pullback,2024-06-19,66490.2,8.12,-1.92,0.26,0.13,1.28,True
+GAS,Energy,Flag Pullback,2024-06-20,66404.96,6.47,-1.67,0.9,-0.13,1.41,False
+GAS,Energy,Flag Pullback,2024-06-23,65211.54,8.29,1.57,2.88,0.65,3.27,True
+GAS,Energy,Flag Pullback,2024-06-24,65041.05,7.34,2.49,3.54,0.66,3.54,True
+GAS,Energy,Flag Pullback,2024-06-25,65211.54,6.2,2.22,2.61,0.65,3.27,True
+GAS,Energy,Flag Pullback,2024-06-26,65211.54,6.57,2.22,2.22,0.39,3.27,True
+GAS,Energy,Flag Pullback,2024-06-27,65296.79,6.09,2.61,1.83,0.78,3.13,True
+GAS,Energy,Flag Pullback,2024-06-30,66234.48,6.91,1.29,0.77,-0.9,1.67,False
+GAS,Energy,Flag Pullback,2024-07-01,66660.69,7.45,1.02,0.13,-1.28,1.02,False
+GAS,Energy,Flag Pullback,2024-07-02,66660.69,6.75,0.38,-0.26,2.17,2.17,True
+GAS,Energy,Flag Pullback,2024-07-04,67001.66,6.08,-0.76,-1.02,0.38,1.65,True
+GAS,Energy,Flag Pullback,2024-07-07,67086.91,5.66,-0.51,-2.16,-2.8,1.52,False
+GAS,Energy,Flag Pullback,2024-07-08,67342.64,4.69,-0.89,-2.78,-2.15,1.14,False
+GAS,Energy,Flag Pullback,2024-09-25,69589.22,8.02,-2.03,-0.95,-4.05,-0.68,False
+GAS,Energy,Flag Pullback,2024-09-26,69119.02,5.54,-0.27,-0.41,-3.54,-0.27,False
+GAS,Energy,Flag Pullback,2025-09-10,62000.0,3.83,1.61,-0.16,-1.77,3.23,False
+GAS,Energy,Pennant Pullback,2024-09-08,72201.55,4.61,-5.44,-4.92,-5.05,-0.71,False
+GAS,Energy,Pennant Pullback,2024-09-09,71690.08,4.88,-4.64,-3.32,-4.77,-0.59,False
+GAS,Energy,Pennant Pullback,2024-09-10,71263.86,7.14,-3.54,-2.61,-4.07,0.0,False
+GAS,Energy,Pennant Pullback,2024-09-11,71263.86,6.12,-3.14,-2.35,-3.27,-1.95,False
+GAS,Energy,Pennant Pullback,2024-09-12,69871.34,6.49,-1.62,-1.08,-1.48,-0.4,False
+GAS,Energy,Pennant Pullback,2024-09-15,68272.66,5.73,0.55,0.83,0.41,1.93,True
+GAS,Energy,Triangle Pullback,2024-09-15,68272.66,4.61,0.55,0.83,0.41,1.93,True
+GAS,Energy,Triangle Pullback,2025-07-13,64134.93,4.28,-1.03,1.03,3.23,3.23,True
+GAS,Energy,Triangle Pullback,2025-07-14,63664.73,3.97,0.3,0.44,4.14,4.14,True
+GAS,Energy,Triangle Pullback,2025-07-15,63382.61,3.81,2.37,0.74,3.86,4.6,True
+GAS,Energy,Triangle Pullback,2025-07-20,63476.65,9.37,2.07,0.74,3.7,4.44,True
+GAS,Energy,Triangle Pullback,2025-07-21,63852.8,8.79,0.15,-0.15,2.95,3.83,True
+GAS,Energy,Triangle Pullback,2025-07-22,64887.24,10.61,-1.59,0.43,-1.01,2.17,False
+GAS,Energy,Triangle Pullback,2025-07-23,64981.28,12.19,-2.03,0.0,0.29,2.03,True
+GAS,Energy,Triangle Pullback,2025-07-24,64605.12,6.92,-1.6,2.18,-1.02,2.62,False
+GAS,Energy,Triangle Pullback,2025-07-27,64793.2,10.84,-1.31,2.18,-0.29,2.32,False
+GVR,Industrial,Flag Pullback,2025-07-29,29085.24,12.61,2.54,10.68,-1.19,10.68,False
+GVR,Industrial,Flag Pullback,2025-12-02,27700.0,5.83,-3.43,-5.05,-5.42,0.54,False
+GVR,Industrial,Flag Pullback,2025-12-03,27850.0,5.51,-4.31,-4.67,-7.54,-1.62,False
+GVR,Industrial,Flag Pullback,2025-12-07,26950.0,10.69,-5.01,-1.3,9.28,9.28,True
+GVR,Industrial,Flag Pullback,2025-12-08,26900.0,9.84,-1.49,-2.42,11.71,11.71,True
+GVR,Industrial,Flag Pullback,2025-12-09,26750.0,7.36,-1.68,-2.8,18.13,18.13,True
+GVR,Industrial,Flag Pullback,2025-12-10,26650.0,10.75,-0.38,-3.75,20.83,20.83,True
+GVR,Industrial,Flag Pullback,2026-03-30,31700.0,6.89,,,,2.52,
+GVR,Industrial,Flag Pullback,2026-03-31,32500.0,4.56,,,,-1.23,
+GVR,Industrial,Triangle Pullback,2025-03-17,32930.4,4.14,3.59,-4.64,-29.64,4.64,False
+HPG,Industrial,Flag Pullback,2024-07-02,23958.33,3.13,0.7,-1.91,-5.39,0.87,False
+HPG,Industrial,Flag Pullback,2024-11-03,21916.67,6.24,5.32,-1.9,2.28,5.32,True
+HPG,Industrial,Flag Pullback,2024-11-04,22083.33,6.73,3.77,-3.96,1.89,4.53,True
+HPG,Industrial,Flag Pullback,2024-11-05,22458.33,9.56,0.37,-5.01,-0.93,2.78,False
+HPG,Industrial,Flag Pullback,2024-11-06,22458.33,7.92,-2.41,-4.08,3.34,3.34,True
+HPG,Industrial,Flag Pullback,2025-03-23,22625.0,4.92,-1.47,-15.65,-7.73,1.47,False
+HPG,Industrial,Flag Pullback,2025-03-25,22958.33,3.54,-1.09,-17.42,-7.08,-0.18,False
+HPG,Industrial,Flag Pullback,2025-03-26,22916.67,6.16,-7.82,-11.64,-6.55,-0.91,False
+HPG,Industrial,Pennant Pullback,2024-10-29,22500.0,3.75,-0.19,0.19,-2.59,2.59,False
+HPG,Industrial,Pennant Pullback,2024-10-30,22416.67,4.38,0.19,-2.23,-1.86,2.97,False
+HPG,Industrial,Pennant Pullback,2024-10-31,22125.0,4.8,1.69,-2.45,0.75,4.33,True
+HPG,Industrial,Pennant Pullback,2025-08-24,25950.0,11.65,8.48,11.18,11.95,16.96,True
+HPG,Industrial,Triangle Pullback,2025-01-09,21291.67,5.89,3.72,3.91,2.15,5.09,True
+HPG,Industrial,Triangle Pullback,2025-08-25,27200.0,16.78,9.74,7.17,5.88,11.58,True
+HPG,Industrial,Triangle Pullback,2025-08-26,26750.0,15.28,7.66,12.15,6.73,13.46,True
+HPG,Industrial,Triangle Pullback,2025-08-27,27100.0,12.55,6.64,11.99,5.54,11.99,True
+HPG,Industrial,Triangle Pullback,2025-08-28,27500.0,12.04,4.91,8.91,2.36,10.36,True
+HPG,Industrial,Triangle Pullback,2025-09-02,28150.0,11.65,2.49,3.73,0.53,7.82,True
+PLX,Energy,Flag Pullback,2024-09-08,44943.51,6.22,-3.12,-2.58,-3.23,-0.11,False
+PLX,Energy,Flag Pullback,2024-09-11,43927.57,5.39,-0.11,0.44,-1.98,1.32,False
+PLX,Energy,Flag Pullback,2024-09-12,44314.59,7.36,0.44,-1.86,-2.4,0.44,False
+PLX,Energy,Flag Pullback,2024-09-15,43540.54,5.81,0.56,-1.11,-1.22,2.22,False
+PLX,Energy,Flag Pullback,2024-09-16,43540.54,5.72,0.44,-1.11,-4.78,2.22,False
+PLX,Energy,Flag Pullback,2024-09-17,43540.54,5.86,0.89,-0.11,-7.0,2.22,False
+PLX,Energy,Flag Pullback,2024-09-19,44508.11,4.99,-2.28,-1.96,-7.93,-0.87,False
+PLX,Energy,Flag Pullback,2024-09-22,43782.43,6.32,-1.66,-0.66,-8.07,0.77,False
+PLX,Energy,Flag Pullback,2024-09-23,43734.05,8.17,-1.55,-1.22,-7.52,0.88,False
+PLX,Energy,Flag Pullback,2024-09-24,43927.57,3.16,-0.99,-2.2,-6.83,0.44,False
+PLX,Energy,Flag Pullback,2024-09-25,44121.08,6.7,-2.63,-2.41,-8.44,-1.1,False
+PLX,Energy,Flag Pullback,2024-09-26,43492.16,5.11,0.33,-0.56,-7.56,0.33,False
+PLX,Energy,Flag Pullback,2025-01-01,36912.7,3.6,2.23,4.85,4.59,4.85,True
+PLX,Energy,Flag Pullback,2025-09-17,35600.0,5.07,-1.54,-4.49,-5.34,-0.7,False
+PLX,Energy,Flag Pullback,2026-03-30,40400.0,10.17,,,,0.74,
+PLX,Energy,Flag Pullback,2026-03-31,40700.0,15.83,,,,-0.74,
+PLX,Energy,Pennant Pullback,2024-07-04,42524.59,9.35,5.35,6.71,8.08,9.22,True
+PLX,Energy,Pennant Pullback,2024-07-07,44991.89,10.39,3.23,-0.32,-2.15,3.23,False
+PLX,Energy,Pennant Pullback,2024-07-08,44508.11,15.2,2.39,-1.09,2.17,4.35,True
+PLX,Energy,Triangle Pullback,2024-07-11,44798.38,9.35,1.3,3.24,3.67,3.67,True
+PLX,Energy,Triangle Pullback,2024-07-14,46443.24,10.39,-3.44,-0.42,1.77,1.77,True
+PLX,Energy,Triangle Pullback,2025-02-25,41847.3,4.03,1.16,-0.81,-4.86,2.89,False
+PLX,Energy,Triangle Pullback,2025-02-26,41557.03,3.63,1.63,-2.91,-4.66,3.61,False
+POW,Energy,Flag Pullback,2024-11-03,9621.85,3.66,2.18,-1.31,8.3,9.61,True
+POW,Energy,Flag Pullback,2024-12-25,10210.08,6.41,-2.88,-4.12,-5.35,0.0,False
+POW,Energy,Flag Pullback,2024-12-26,10084.03,5.98,-3.75,-1.67,-3.75,1.25,False
+POW,Energy,Flag Pullback,2024-12-29,10210.08,5.98,-5.76,-4.12,-3.29,-1.23,False
+POW,Energy,Flag Pullback,2024-12-30,10084.03,8.12,-2.92,-0.83,-2.08,0.0,False
+POW,Energy,Flag Pullback,2025-01-01,10084.03,5.13,-2.5,-1.25,-1.67,-0.83,False
+POW,Energy,Flag Pullback,2025-01-02,9915.97,8.7,-1.27,-0.42,1.27,1.27,True
+POW,Energy,Flag Pullback,2025-01-05,9705.88,10.67,2.16,0.43,2.16,3.46,True
+POW,Energy,Flag Pullback,2025-01-06,9621.85,10.62,1.75,-0.44,4.37,4.37,True
+POW,Energy,Flag Pullback,2025-01-07,9789.92,12.95,2.15,-3.0,2.15,2.58,True
+POW,Energy,Flag Pullback,2025-01-09,9789.92,7.42,0.86,-1.29,4.29,4.29,True
+POW,Energy,Flag Pullback,2025-01-12,9915.97,7.46,-1.69,-2.12,3.81,3.81,True
+POW,Energy,Flag Pullback,2026-02-11,13300.0,11.33,6.02,13.91,-2.63,24.44,False
+POW,Energy,Flag Pullback,2026-02-12,13400.0,11.76,8.21,8.58,-1.87,23.51,False
+POW,Energy,Flag Pullback,2026-02-22,13850.0,13.1,11.91,-2.17,-8.3,19.49,False
+POW,Energy,Flag Pullback,2026-02-23,13900.0,11.72,19.06,-5.76,-8.63,19.06,False
+POW,Energy,Flag Pullback,2026-02-24,14300.0,12.69,8.04,-5.24,-6.64,15.73,False
+POW,Energy,Flag Pullback,2026-02-25,14100.0,15.62,7.45,-4.96,-7.09,17.38,False
+POW,Energy,Flag Pullback,2026-04-01,12850.0,6.69,,,,-1.56,
+POW,Energy,Flag Pullback,2026-04-02,12650.0,7.78,,,,-1.98,
+POW,Energy,Pennant Pullback,2025-04-22,10042.02,7.41,2.93,8.37,12.97,13.81,True
+POW,Energy,Pennant Pullback,2025-04-23,10084.03,8.79,1.67,6.67,12.5,13.33,True
+POW,Energy,Pennant Pullback,2025-04-24,10000.0,6.2,6.72,8.4,13.45,14.29,True
+POW,Energy,Pennant Pullback,2025-04-27,9873.95,5.79,8.94,9.36,13.19,15.74,True
+POW,Energy,Pennant Pullback,2025-04-28,9957.98,6.22,7.59,8.86,10.55,14.77,True
+POW,Energy,Pennant Pullback,2025-05-04,10336.13,7.47,5.28,4.88,9.35,10.57,True
+POW,Energy,Pennant Pullback,2025-05-05,10252.1,5.79,4.92,6.97,10.25,11.48,True
+POW,Energy,Triangle Pullback,2024-08-07,11596.64,4.24,-5.43,-1.45,-5.43,0.36,False
+POW,Energy,Triangle Pullback,2024-08-08,11638.66,6.18,-2.89,-2.17,-6.14,-0.72,False
+POW,Energy,Triangle Pullback,2024-08-11,11428.57,7.89,-0.74,-1.47,-5.51,1.1,False
+POW,Energy,Triangle Pullback,2025-05-04,10336.13,7.41,5.28,4.88,9.35,10.57,True
+POW,Energy,Triangle Pullback,2025-05-05,10252.1,8.79,4.92,6.97,10.25,11.48,True
+POW,Energy,Triangle Pullback,2025-05-06,10672.27,6.2,1.57,3.54,6.69,7.09,True
+POW,Energy,Triangle Pullback,2025-05-07,10756.3,5.79,0.39,6.25,7.03,7.03,True
+POW,Energy,Triangle Pullback,2025-05-08,10714.29,6.22,1.18,4.71,5.1,7.45,True
+POW,Energy,Triangle Pullback,2026-02-04,14200.0,5.05,-6.34,-0.7,-5.63,16.55,False
+POW,Energy,Triangle Pullback,2026-02-05,13500.0,3.25,-0.74,7.41,-1.48,22.59,False
+POW,Energy,Triangle Pullback,2026-02-08,13450.0,4.55,2.97,15.24,-1.86,23.05,False
+FPT,Technology,Flag Pullback,2024-07-28,109059.66,3.64,-8.06,0.78,1.94,3.72,True
+FPT,Technology,Flag Pullback,2025-08-19,96693.82,8.41,7.47,5.83,5.42,7.98,True
+FPT,Technology,Flag Pullback,2026-02-08,99000.0,5.4,-4.55,-9.49,-21.01,-0.2,False
+FPT,Technology,Flag Pullback,2026-02-09,97800.0,5.32,-5.42,-11.04,-18.81,1.02,False
+FPT,Technology,Flag Pullback,2026-02-10,98600.0,6.51,-9.63,-13.69,-20.28,0.2,False
+FPT,Technology,Flag Pullback,2026-02-11,98800.0,4.79,-8.4,-14.57,-22.27,-2.53,False
+FPT,Technology,Flag Pullback,2026-02-12,96300.0,12.5,-3.53,-15.26,-22.53,-1.87,False
+FPT,Technology,Flag Pullback,2026-02-22,94500.0,13.76,-5.19,-19.68,-22.65,-1.69,False
+FPT,Technology,Pennant Pullback,2025-05-29,99283.1,4.09,-1.29,0.03,1.68,3.15,True
+FPT,Technology,Pennant Pullback,2025-06-01,98942.22,3.13,0.09,3.51,2.81,3.51,True
+FPT,Technology,Triangle Pullback,2025-06-05,98004.78,4.09,1.34,1.95,7.57,7.57,True
+FPT,Technology,Triangle Pullback,2025-06-08,99027.44,3.13,3.42,0.72,7.59,7.59,True
+FPT,Technology,Triangle Pullback,2025-12-01,96600.0,7.02,0.31,-1.76,-0.1,0.93,False
+FPT,Technology,Triangle Pullback,2025-12-02,96600.0,7.62,-1.04,-0.72,-0.83,0.93,False
+FPT,Technology,Triangle Pullback,2025-12-03,97500.0,9.02,-1.54,-3.18,-2.56,-0.62,False
+FPT,Technology,Triangle Pullback,2025-12-04,96200.0,8.12,-2.6,-2.39,-2.29,0.73,False
+FPT,Technology,Triangle Pullback,2025-12-07,95500.0,11.7,-1.78,-1.88,2.09,2.09,True
+FPT,Technology,Triangle Pullback,2025-12-08,96900.0,11.8,-2.06,-2.99,-0.41,0.62,False
+FPT,Technology,Triangle Pullback,2025-12-09,95600.0,12.61,0.31,-2.09,1.88,1.99,True
+FPT,Technology,Triangle Pullback,2025-12-10,96000.0,11.58,-1.67,-3.12,3.65,3.65,True
+FPT,Technology,Triangle Pullback,2025-12-11,93700.0,14.64,0.21,-1.28,5.55,6.19,True
+FPT,Technology,Triangle Pullback,2025-12-14,93800.0,10.57,-0.11,0.53,6.4,6.4,True
+BVH,Insurance,Flag Pullback,2024-06-27,44099.06,10.2,0.87,-1.09,-6.09,3.48,False
+BVH,Insurance,Flag Pullback,2024-06-30,44482.53,12.11,-0.22,-0.75,-6.57,2.59,False
+BVH,Insurance,Flag Pullback,2024-08-01,41702.37,4.27,-0.46,1.03,2.76,6.44,True
+BVH,Insurance,Flag Pullback,2024-08-04,40168.49,4.51,3.34,6.21,6.68,10.5,True
+BVH,Insurance,Flag Pullback,2025-03-18,52393.89,11.44,-2.25,-2.43,-15.07,0.19,False
+BVH,Insurance,Flag Pullback,2025-03-19,52001.42,12.23,0.38,-8.49,-15.09,0.94,False
+BVH,Insurance,Flag Pullback,2025-03-20,51510.84,14.17,1.9,-14.0,-16.19,1.9,False
+BVH,Insurance,Flag Pullback,2025-03-23,51216.5,15.78,2.11,-19.54,-16.86,2.49,False
+BVH,Insurance,Flag Pullback,2025-03-24,51412.73,11.28,0.57,-25.38,-16.03,2.1,False
+BVH,Insurance,Flag Pullback,2025-03-25,51216.5,12.67,-0.19,-19.92,-11.02,2.49,False
+BVH,Insurance,Flag Pullback,2025-03-26,52197.65,12.89,-8.83,-17.29,-13.35,0.56,False
+BVH,Insurance,Flag Pullback,2025-03-30,52295.77,7.56,-21.2,-17.45,-13.79,-1.13,False
+BVH,Insurance,Flag Pullback,2025-03-31,51707.07,7.4,-25.81,-16.41,-12.52,-1.14,False
+BVH,Insurance,Flag Pullback,2025-09-17,57594.03,23.39,-3.75,-7.84,-12.44,-1.36,False
+BVH,Insurance,Flag Pullback,2025-09-18,56809.1,19.88,-2.42,-8.46,-12.78,-2.42,False
+BVH,Insurance,Flag Pullback,2025-09-21,55435.48,21.83,-0.53,-3.54,-16.64,0.0,False
+BVH,Insurance,Flag Pullback,2025-09-22,54944.9,14.2,-1.25,-4.64,-12.5,0.89,False
+BVH,Insurance,Pennant Pullback,2024-10-02,41127.16,3.23,2.33,2.56,1.63,2.8,True
+BVH,Insurance,Pennant Pullback,2024-10-03,41079.23,4.67,2.92,2.68,2.22,2.92,True
+BVH,Insurance,Pennant Pullback,2025-03-06,55631.71,5.25,-5.47,-7.41,-20.37,-0.88,False
+BVH,Insurance,Pennant Pullback,2025-03-09,55141.13,6.87,-5.69,-7.12,-25.27,-2.14,False
+BVH,Insurance,Pennant Pullback,2025-03-10,53865.62,3.74,-2.91,-4.55,-28.78,0.18,False
+BVH,Insurance,Pennant Pullback,2025-03-11,53963.74,6.25,-2.91,-5.09,-24.0,-1.64,False
+BVH,Insurance,Pennant Pullback,2025-03-12,53080.7,6.25,-2.03,-1.66,-18.67,-0.92,False
+BVH,Insurance,Pennant Pullback,2025-03-13,52590.12,4.21,-2.05,-0.19,-16.79,-0.19,False
+BVH,Insurance,Triangle Pullback,2024-09-30,41606.5,4.67,-1.04,0.69,-0.35,1.61,False
+BVH,Insurance,Triangle Pullback,2024-10-01,41414.77,6.44,0.12,1.39,-0.46,2.08,False
+BVH,Insurance,Triangle Pullback,2024-10-02,41127.16,9.31,2.33,2.56,1.63,2.8,True
+BVH,Insurance,Triangle Pullback,2024-10-03,41079.23,6.73,2.92,2.68,2.22,2.92,True
+BVH,Insurance,Triangle Pullback,2024-10-06,41175.1,7.21,2.44,1.86,2.79,2.79,True
+BVH,Insurance,Triangle Pullback,2024-10-07,41175.1,6.81,1.75,0.58,2.21,2.79,True
+BVH,Insurance,Triangle Pullback,2024-10-08,41462.7,3.23,1.27,0.12,4.39,4.39,True
+BVH,Insurance,Triangle Pullback,2024-10-09,42085.84,3.23,0.23,-1.03,4.21,4.21,True
+BVH,Insurance,Triangle Pullback,2024-10-10,42277.57,4.67,-0.23,-1.7,2.49,3.74,True
+BVH,Insurance,Triangle Pullback,2025-02-03,50431.57,8.37,2.53,11.48,10.12,14.2,True
+BVH,Insurance,Triangle Pullback,2025-02-05,50235.34,3.08,6.25,11.13,12.7,14.65,True
+BVH,Insurance,Triangle Pullback,2025-03-09,55141.13,4.54,-5.69,-7.12,-25.27,-2.14,False
+BVH,Insurance,Triangle Pullback,2025-03-10,53865.62,5.33,-2.91,-4.55,-28.78,0.18,False
+BVH,Insurance,Triangle Pullback,2025-03-11,53963.74,3.85,-2.91,-5.09,-24.0,-1.64,False
+BVH,Insurance,Triangle Pullback,2025-03-12,53080.7,4.49,-2.03,-1.66,-18.67,-0.92,False
+BVH,Insurance,Triangle Pullback,2025-03-13,52590.12,5.25,-2.05,-0.19,-16.79,-0.19,False
+SSI,Financial Services,Flag Pullback,2024-06-10,28053.13,3.2,0.84,-3.49,-3.21,2.23,False
+SSI,Financial Services,Flag Pullback,2024-06-11,28680.01,8.28,-1.09,-6.01,-6.15,-0.27,False
+SSI,Financial Services,Flag Pullback,2024-10-22,26231.68,3.05,-1.12,-2.97,-9.48,-0.37,False
+SSI,Financial Services,Flag Pullback,2024-10-23,26134.16,3.39,-2.24,-4.1,-8.58,0.0,False
+SSI,Financial Services,Flag Pullback,2024-10-27,26134.16,5.53,-1.31,-5.04,-9.33,-0.37,False
+SSI,Financial Services,Flag Pullback,2024-10-28,26036.65,6.78,-1.31,-7.49,-8.99,-0.37,False
+SSI,Financial Services,Flag Pullback,2024-11-06,25695.34,4.27,-6.26,-6.64,-2.47,-0.95,False
+SSI,Financial Services,Flag Pullback,2024-11-12,24817.7,3.95,-4.52,-4.52,2.75,3.54,True
+SSI,Financial Services,Flag Pullback,2025-01-15,23793.79,7.82,3.07,2.66,3.48,3.89,True
+SSI,Financial Services,Flag Pullback,2025-01-16,23940.06,7.82,2.85,1.83,3.26,3.26,True
+SSI,Financial Services,Flag Pullback,2025-09-28,37550.0,19.49,7.19,10.12,-7.32,10.39,False
+SSI,Financial Services,Flag Pullback,2025-09-29,38550.0,18.87,5.84,6.36,-7.0,7.52,False
+SSI,Financial Services,Flag Pullback,2025-09-30,38600.0,10.27,6.74,7.38,-7.77,7.38,False
+SSI,Financial Services,Flag Pullback,2025-10-01,37850.0,15.1,7.4,9.25,-7.93,9.51,False
+SSI,Financial Services,Flag Pullback,2025-10-02,37650.0,10.2,8.1,8.37,-8.9,10.09,False
+SSI,Financial Services,Flag Pullback,2025-10-05,40250.0,9.24,2.73,-5.71,-19.25,2.98,False
+SSI,Financial Services,Flag Pullback,2025-10-06,40800.0,14.91,0.49,-5.39,-14.83,1.59,False
+SSI,Financial Services,Flag Pullback,2025-11-04,34900.0,4.06,1.72,-0.72,-7.31,1.86,False
+SSI,Financial Services,Flag Pullback,2025-11-06,32950.0,3.44,6.07,4.1,-2.12,7.89,False
+SSI,Financial Services,Flag Pullback,2025-11-09,33600.0,7.9,5.36,2.38,-12.5,5.8,False
+SSI,Financial Services,Flag Pullback,2026-02-09,29950.0,6.33,7.18,8.85,-4.34,12.52,False
+SSI,Financial Services,Pennant Pullback,2024-07-17,26916.9,3.01,-7.13,-11.79,-10.04,1.31,False
+SSI,Financial Services,Pennant Pullback,2024-09-19,26329.19,3.93,2.22,1.11,1.3,3.33,True
+SSI,Financial Services,Pennant Pullback,2024-09-22,25939.13,9.24,4.89,3.76,1.13,4.89,True
+SSI,Financial Services,Pennant Pullback,2025-09-11,40859.01,13.95,-3.7,-7.0,-0.39,0.83,False
+SSI,Financial Services,Pennant Pullback,2025-09-14,41151.55,15.0,-6.87,-8.75,0.48,0.48,True
+SSI,Financial Services,Pennant Pullback,2026-03-31,27900.0,6.81,,,,-1.25,
+SSI,Financial Services,Pennant Pullback,2026-04-01,27550.0,8.06,,,,-2.0,
+SSI,Financial Services,Triangle Pullback,2024-09-26,26914.29,3.93,-1.09,-0.54,-3.26,1.09,False
+SSI,Financial Services,Triangle Pullback,2024-09-29,27206.83,9.24,-1.08,-0.9,-3.94,-0.36,False
+SSI,Financial Services,Triangle Pullback,2025-09-18,39347.52,13.95,-3.42,-4.31,3.69,5.34,True
+SSI,Financial Services,Triangle Pullback,2025-09-21,38323.6,15.0,-2.02,5.03,-0.97,8.16,False
+SSI,Financial Services,Triangle Pullback,2025-09-22,38421.12,7.5,0.34,6.19,0.47,7.88,True
+SSI,Financial Services,Triangle Pullback,2025-09-24,39000.0,10.36,-2.95,4.23,-3.85,6.28,False
+SSI,Financial Services,Triangle Pullback,2025-09-25,38000.0,6.49,-0.92,7.11,-5.26,9.08,False
+SSI,Financial Services,Triangle Pullback,2026-02-03,31550.0,3.74,-1.11,1.9,-4.12,6.81,False
+SSI,Financial Services,Triangle Pullback,2026-02-04,31000.0,6.43,0.81,4.52,-5.97,8.71,False
+SSI,Financial Services,Triangle Pullback,2026-02-05,29900.0,3.42,5.02,8.36,-5.02,12.71,False
+VJC,Aviation,Flag Pullback,2025-10-01,128700.0,10.24,3.42,34.81,51.9,51.9,True
+VJC,Aviation,Flag Pullback,2025-10-02,129300.0,11.46,3.09,35.34,44.62,51.2,True
+VJC,Aviation,Flag Pullback,2025-10-05,134300.0,4.11,6.18,29.93,36.63,45.57,True
+VJC,Aviation,Flag Pullback,2026-01-29,170500.0,6.31,-2.64,-0.76,-8.27,9.44,False
+VJC,Aviation,Flag Pullback,2026-02-01,170000.0,10.37,-2.94,2.88,-10.0,9.76,False
+VJC,Aviation,Flag Pullback,2026-02-02,168000.0,14.7,-2.98,11.07,-7.74,11.07,False
+VJC,Aviation,Pennant Pullback,2024-10-01,105000.0,3.37,0.57,0.76,0.0,3.71,False
+VJC,Aviation,Pennant Pullback,2025-09-07,141900.0,35.42,2.61,-4.51,-5.36,2.89,False
+VJC,Aviation,Pennant Pullback,2025-09-08,145000.0,30.23,-2.07,-8.28,-8.0,0.69,False
+VJC,Aviation,Pennant Pullback,2025-09-09,144900.0,30.39,-2.0,-7.73,-7.94,0.76,False
+VJC,Aviation,Triangle Pullback,2024-09-08,103000.0,4.85,0.97,1.94,1.94,2.43,True
+VJC,Aviation,Triangle Pullback,2024-09-09,104200.0,3.17,0.77,0.86,0.58,1.25,True

@@ -1,0 +1,4 @@
+pattern,signals,win_rate,avg_ret_5,avg_ret_10,avg_ret_20,avg_max_ret
+Flag Pullback,369,36.2,0.27,-0.16,-1.79,5.0
+Pennant Pullback,186,51.7,-0.19,-0.54,-0.22,5.62
+Triangle Pullback,261,54.1,-0.45,0.31,0.69,5.24
