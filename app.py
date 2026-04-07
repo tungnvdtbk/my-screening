@@ -606,6 +606,7 @@ def _check_vcp(df: pd.DataFrame) -> dict | None:
         "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
                          f"Contraction {contraction_ratio:.1f}×  "
                          f"Vol {vol_dry_ratio:.0%} of start"),
+        "_window_bars": 60,
     }
 
 
@@ -666,6 +667,7 @@ def _check_flat_base(df: pd.DataFrame) -> dict | None:
         "status":       status,
         "entry_candle": entry_candle,
         "notes":        f"Range {r:.1f}% over 40 bars  Vol {vol_ratio:.0%} of prior",
+        "_window_bars": 40,
     }
 
 
@@ -729,6 +731,7 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
         "entry_candle": entry_candle,
         "notes":        (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
                          f"Vol {vol_avg5/vol_ma20:.0%} of avg"),
+        "_window_bars": 20,
     }
 
 
@@ -805,6 +808,21 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
         pivot    = round(slmax * idx + intercmax, 2)
         stoploss = round(slmin * idx + intercmin, 2)
         close_now = float(df["Close"].iloc[-1])
+
+        # trendline endpoints in datetime coords (for Plotly shapes)
+        lookback_n  = params.get("lookback", 20)
+        tail_idx    = df.tail(200).index
+        win_s       = max(0, idx - lookback_n)
+        win_e       = min(len(tail_idx) - 1, idx)
+        _tl = {
+            "x0":      tail_idx[win_s],
+            "x1":      tail_idx[win_e],
+            "high_y0": slmax * win_s + intercmax,
+            "high_y1": slmax * win_e + intercmax,
+            "low_y0":  slmin * win_s + intercmin,
+            "low_y1":  slmin * win_e + intercmin,
+        }
+
         return {
             "pattern":      pattern_name,
             "pivot":        pivot,
@@ -813,6 +831,8 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
             "notes":        f"Pole/prior gain: {pole_gain*100:.1f}%",
             "entry_candle": "—",
             "status":       "🔥 BUY" if close_now >= pivot else "⏳ Setup",
+            "_tl":          _tl,
+            "_window_bars": lookback_n,
         }
     except Exception:
         return None
@@ -900,6 +920,9 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
 
     df_chart = df_c.iloc[-252:].copy()
 
+    # detect patterns first so we can overlay them on the chart
+    live_p = detect_patterns(df_c, require_trend=False)
+
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
         x=df_chart.index,
@@ -917,10 +940,63 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
                 x=df_chart.index, y=df_chart[col],
                 mode="lines", name=col, line=dict(color=color, width=1.2),
             ))
+
+    # ── overlay detected patterns ────────────────────────────────────
+    for p in live_p:
+        pivot    = p.get("pivot")
+        stoploss = p.get("stoploss")
+        tl       = p.get("_tl")
+        wb       = p.get("_window_bars", 30)
+
+        # shaded pattern zone
+        x0_zone = tl["x0"] if tl else df_chart.index[-min(wb, len(df_chart))]
+        x1_zone = tl["x1"] if tl else df_chart.index[-1]
+        fig.add_vrect(
+            x0=x0_zone, x1=x1_zone,
+            fillcolor="rgba(108,156,255,0.07)", layer="below", line_width=0,
+        )
+
+        # pivot horizontal line (red dashed)
+        if pivot:
+            fig.add_hline(
+                y=pivot, line_dash="dash", line_color="#ef4444",
+                line_width=1.3, opacity=0.85,
+                annotation_text=f"Pivot {pivot:.1f}",
+                annotation_font_color="#ef4444", annotation_font_size=10,
+                annotation_position="right",
+            )
+
+        # stoploss horizontal line (amber dotted)
+        if stoploss:
+            fig.add_hline(
+                y=stoploss, line_dash="dot", line_color="#f59e0b",
+                line_width=1.1, opacity=0.75,
+                annotation_text=f"SL {stoploss:.1f}",
+                annotation_font_color="#f59e0b", annotation_font_size=10,
+                annotation_position="right",
+            )
+
+        # diagonal trendlines for flag/pennant/triangle
+        if tl:
+            fig.add_shape(
+                type="line",
+                x0=tl["x0"], y0=tl["high_y0"],
+                x1=tl["x1"], y1=tl["high_y1"],
+                line=dict(color="#ef4444", width=1.8, dash="dash"),
+                layer="above",
+            )
+            fig.add_shape(
+                type="line",
+                x0=tl["x0"], y0=tl["low_y0"],
+                x1=tl["x1"], y1=tl["low_y1"],
+                line=dict(color="#f59e0b", width=1.8, dash="dot"),
+                layer="above",
+            )
+
     fig.update_layout(
         xaxis_rangeslider_visible=False,
-        height=380,
-        margin=dict(l=0, r=0, t=0, b=0),
+        height=420,
+        margin=dict(l=0, r=60, t=0, b=0),
         paper_bgcolor="#0a0e17",
         plot_bgcolor="#0a0e17",
         font_color="#e2e8f0",
@@ -952,9 +1028,6 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
                 ]
                 for lbl, ok in crit:
                     st.markdown(f"{'✅' if ok else '❌'} {lbl}")
-
-    # live pattern detection
-    live_p = detect_patterns(df_c, require_trend=False)
     if live_p:
         with st.expander(f"🔍 Patterns — {sym_ticker}"):
             for lp in live_p:
