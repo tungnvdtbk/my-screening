@@ -588,13 +588,14 @@ def _range_pct(chunk: pd.DataFrame) -> float:
 def _check_vcp(df: pd.DataFrame) -> dict | None:
     """
     Setup A — Volatility Contraction Pattern.
-    Needs ≥ 60 bars. Splits last 60 days into 3 × 20-day windows;
-    checks price-range and volume both contract each window.
+    3 × 20-day windows; range AND volume must contract monotonically.
 
-    Backtest (3y, 8 US symbols, lookahead=15):
-      Overall hit rate ~54%.  Quality now based on contraction_ratio
-      (r1/r3) and vol_dry_ratio (v3/v1) — these proved more predictive
-      than absolute range tightness alone.
+    Improvements over original:
+    - tight_close tightened 10% → 7% (VN stocks need tighter coil)
+    - Requires uptrend context: price > MA50 > MA150
+    - Requires proximity to 52w high (VCP forms near highs, not mid-range)
+    - MA20 > MA50 (short-term momentum alignment)
+    - Score 0-100 integrated with new pattern table
     """
     if len(df) < 60:
         return None
@@ -608,18 +609,40 @@ def _check_vcp(df: pd.DataFrame) -> dict | None:
 
     price_contracting = r1 > r2 > r3
     vol_drying        = v3 < v2 * 0.90 and v2 < v1 * 0.95
-    tight_close       = r3 < 10.0
+    tight_close       = r3 < 7.0          # tightened: 10% → 7%
 
     if not (price_contracting and vol_drying and tight_close):
         return None
 
+    close     = df["Close"]
+    price     = float(close.iloc[-1])
+    ma20_v    = float(close.rolling(20).mean().iloc[-1])
+    ma50_v    = float(close.rolling(50).mean().iloc[-1])
+    ma150_v   = float(close.rolling(150).mean().iloc[-1]) if len(df) >= 150 else float("nan")
+
+    # uptrend context: price > MA50 > MA150 (don't fire VCP in downtrend)
+    if pd.isna(ma50_v) or price <= ma50_v:
+        return None
+    if not pd.isna(ma150_v) and ma50_v <= ma150_v:
+        return None
+
+    # MA20 above MA50 — short-term momentum confirms trend
+    if not pd.isna(ma20_v) and ma20_v < ma50_v:
+        return None
+
+    # proximity to 52-week high — VCP forms near highs, not mid-range
+    high52 = float(df["High"].iloc[-252:].max()) if len(df) >= 252 else float(df["High"].max())
+    near_high52 = price >= high52 * 0.85   # within 15% of 52w high
+
     recent_high       = float(df["High"].iloc[-20:].max())
-    # Quality: contraction ratio + volume dry-up ratio (backtest-calibrated)
     contraction_ratio = r1 / r3 if r3 > 0 else 0
     vol_dry_ratio     = v3 / v1 if v1 > 0 else 1.0
 
-    if contraction_ratio >= 5 and vol_dry_ratio < 0.50:
+    # quality: contraction + vol dry-up + proximity to high
+    if contraction_ratio >= 5 and vol_dry_ratio < 0.50 and near_high52:
         quality = "★★★"
+    elif contraction_ratio >= 3 and near_high52:
+        quality = "★★"
     elif contraction_ratio >= 3:
         quality = "★★"
     else:
@@ -629,17 +652,29 @@ def _check_vcp(df: pd.DataFrame) -> dict | None:
     status, entry_candle = _check_entry_candle(df, pivot)
     confirmed = (status == "🔥 BUY")
 
+    # score 0-100 (compatible with cp pattern score system)
+    score = 0
+    score += min(25, int(contraction_ratio / 5 * 25))          # contraction strength
+    score += min(25, int((1 - min(1.0, vol_dry_ratio)) * 25))  # vol dry-up
+    score += 20 if not pd.isna(ma150_v) and ma50_v > ma150_v else 10  # trend depth
+    score += 15 if near_high52 else 0                           # proximity to 52w high
+    score += 15 if r3 < 4 else 8 if r3 < 6 else 0             # coil tightness
+    score = min(100, score)
+
     return {
         "pattern":      "VCP",
         "quality":      quality,
+        "score":        score,
+        "entry_ok":     near_high52 and r3 < 5,
         "pivot":        pivot,
         "stoploss":     round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
         "confirmed":    confirmed,
         "status":       status,
         "entry_candle": entry_candle,
         "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
-                         f"Contraction {contraction_ratio:.1f}×  "
-                         f"Vol {vol_dry_ratio:.0%} of start"),
+                         f"Contr {contraction_ratio:.1f}×  "
+                         f"Vol {vol_dry_ratio:.0%}  "
+                         f"{'near52H' if near_high52 else 'mid-range'}"),
         "_window_bars": 60,
     }
 
@@ -692,9 +727,20 @@ def _check_flat_base(df: pd.DataFrame) -> dict | None:
     status, entry_candle = _check_entry_candle(df, fb_pivot)
     confirmed = (status == "🔥 BUY")
 
+    # score 0-100
+    score = 0
+    score += 30 if price_near_top and vol_ratio < 0.70 else 15 if price_near_top else 0
+    score += 25 if vol_ratio < 0.70 else 15 if vol_ratio < 0.85 else 0
+    score += 20 if r < 6 else 10 if r < 8 else 5    # base tightness
+    score += 15 if price >= ma50_v * 1.05 else 8     # how far above MA50
+    score += 10 if status == "🔥 BUY" else 3 if status == "👀 Monitoring" else 0
+    score = min(100, score)
+
     return {
         "pattern":      "Flat Base",
         "quality":      quality,
+        "score":        score,
+        "entry_ok":     price_near_top and vol_ratio < 0.70,
         "pivot":        fb_pivot,
         "stoploss":     round(float(base["Low"].min()) * 0.99, 1),
         "confirmed":    confirmed,
@@ -708,10 +754,18 @@ def _check_flat_base(df: pd.DataFrame) -> dict | None:
 def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
     """
     Setup B — Pullback to MA20 in Uptrend.
-    Price was above MA20, pulled back to within 3%, volume declining,
-    no panic-sell session (vol × 3 + price −4 %).
+
+    Improvements:
+    - MA20 must be RISING (slope > 0 over 5 bars) — pullback to declining
+      MA20 is a breakdown, not a setup
+    - Requires MA50 > MA150 (not just price > MA50) — stronger trend filter
+    - Tolerance widened 3% → 4% to catch valid pullbacks that slightly
+      overshoot MA20 before bouncing
+    - SL uses MA20 × 0.97 (near SL) instead of MA50 × 0.97 (too far)
+    - Score 0-100 integrated with new pattern table
+    - Quality: 3-factor (vol + MA20 slope + trend depth)
     """
-    if len(df) < 30:
+    if len(df) < 60:
         return None
 
     close  = df["Close"]
@@ -719,22 +773,35 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
 
     ma20 = close.rolling(20).mean()
     ma50 = close.rolling(50).mean()
+    ma150 = close.rolling(150).mean()
 
     price   = float(close.iloc[-1])
     ma20_v  = float(ma20.iloc[-1])
     ma50_v  = float(ma50.iloc[-1])
+    ma150_v = float(ma150.iloc[-1]) if len(df) >= 150 else float("nan")
 
     if any(pd.isna(v) for v in [ma20_v, ma50_v]):
         return None
 
-    above_ma50 = price > ma50_v
-    near_ma20  = abs(price - ma20_v) / ma20_v < 0.03
+    # MA20 must be rising — pullback to declining MA20 = breakdown
+    ma20_5d_ago = float(ma20.iloc[-6]) if len(ma20.dropna()) >= 6 else float("nan")
+    ma20_rising = (not pd.isna(ma20_5d_ago)) and (ma20_v > ma20_5d_ago)
+    if not ma20_rising:
+        return None
 
-    # Was above MA20 recently (confirms pullback, not breakdown)
+    # Trend depth: require price > MA50 AND (MA50 > MA150 if available)
+    if price <= ma50_v:
+        return None
+    trend_deep = (not pd.isna(ma150_v)) and (ma50_v > ma150_v)
+
+    # Pullback tolerance widened to 4% (catches valid overshoot + bounce)
+    near_ma20 = abs(price - ma20_v) / ma20_v < 0.04
+
+    # Was above MA20 recently (confirms pullback, not first touch)
     was_above = any(float(close.iloc[i]) > float(ma20.iloc[i])
-                    for i in range(-8, -1))
+                    for i in range(-10, -1))
 
-    if not (above_ma50 and near_ma20 and was_above):
+    if not (near_ma20 and was_above):
         return None
 
     # Volume declining in pullback (last 5 days vs 20-day avg)
@@ -749,22 +816,47 @@ def _check_pullback_ma20(df: pd.DataFrame) -> dict | None:
         if pct_chg < -4.0 and vol_mult > 3.0:
             return None   # panic sell detected → skip
 
-    quality   = "★★★" if vol_declining else "★★"
+    # Quality: 3-factor
+    if vol_declining and trend_deep:
+        quality = "★★★"
+    elif vol_declining or trend_deep:
+        quality = "★★"
+    else:
+        quality = "★"
+
     prev_high = float(close.iloc[-6:-1].max())
     pb_pivot  = round(prev_high * 1.005, 1)
     status, entry_candle = _check_entry_candle(df, pb_pivot)
     confirmed = (status == "🔥 BUY")
 
+    # SL: below MA20 (tighter, more precise) rather than MA50
+    stoploss = round(ma20_v * 0.97, 1)
+
+    # score 0-100
+    score = 0
+    score += 25 if vol_declining else 0           # vol declining in pullback
+    score += 20 if ma20_rising else 0             # MA20 slope (critical filter)
+    score += 20 if trend_deep else 10             # MA50 > MA150 depth
+    score += 15 if abs(price - ma20_v) / ma20_v < 0.01 else \
+             10 if abs(price - ma20_v) / ma20_v < 0.02 else 5  # precision of touch
+    score += 15 if not pd.isna(ma150_v) and price > ma50_v > ma20_v > ma150_v else 0
+    score += 5 if entry_candle != "None" else 0  # bullish candle at MA20
+    score = min(100, score)
+
     return {
         "pattern":      "Pullback MA20",
         "quality":      quality,
+        "score":        score,
+        "entry_ok":     vol_declining and abs(price - ma20_v) / ma20_v < 0.02,
         "pivot":        pb_pivot,
-        "stoploss":     round(ma50_v * 0.97, 1),
+        "stoploss":     stoploss,
         "confirmed":    confirmed,
         "status":       status,
         "entry_candle": entry_candle,
         "notes":        (f"Price {price:.1f} vs MA20 {ma20_v:.1f}  "
-                         f"Vol {vol_avg5/vol_ma20:.0%} of avg"),
+                         f"Vol {vol_avg5/vol_ma20:.0%}  "
+                         f"{'MA20↑' if ma20_rising else 'MA20↓'}  "
+                         f"{'deep trend' if trend_deep else 'shallow'}"),
         "_window_bars": 20,
     }
 

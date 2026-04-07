@@ -894,12 +894,15 @@ class TestPatternDetection(unittest.TestCase):
         self.assertIsNotNone(p, "Pullback MA20 should be detected")
         self.assertEqual(p["pattern"], "Pullback MA20")
 
-    def test_pullback_stoploss_below_ma50(self):
+    def test_pullback_stoploss_below_ma20(self):
+        """SL is now MA20×0.97 (tighter than MA50-based SL)."""
         df = self.make_pullback_ma20_df()
         p = app._check_pullback_ma20(df)
         if p:
-            ma50_v = float(df["Close"].rolling(50).mean().iloc[-1])
-            self.assertLess(p["stoploss"], ma50_v + 0.1)
+            ma20_v = float(df["Close"].rolling(20).mean().iloc[-1])
+            # SL should be near MA20 (within 5% below it)
+            self.assertGreater(p["stoploss"], ma20_v * 0.92)
+            self.assertLess(p["stoploss"], ma20_v * 1.01)
 
     def test_pullback_not_detected_below_ma50(self):
         """Downtrend: price below MA50 → no Pullback MA20 signal."""
