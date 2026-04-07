@@ -26,7 +26,7 @@ _st.spinner       = _CM
 _st.expander      = _CM
 _st.progress      = lambda *a, **kw: _CM()
 for _a in ["set_page_config","title","caption","info","warning","error",
-           "subheader","markdown","metric","dataframe","line_chart",
+           "subheader","markdown","metric","dataframe","line_chart","plotly_chart",
            "selectbox","slider","download_button","stop","rerun","header","write"]:
     setattr(_st, _a, lambda *a, **kw: None)
 sys.modules["streamlit"] = _st
@@ -227,12 +227,8 @@ def main():
         if df is None:
             print("no data")
             continue
-        # Run pattern checkers directly (bypass trend filter for chart generation)
-        found = []
-        for check_fn in [app._check_vcp, app._check_flat_base, app._check_pullback_ma20]:
-            p = check_fn(df)
-            if p:
-                found.append(p)
+        # Run all pattern checks (including new flag/pennant/triangle pullback)
+        found = app.detect_patterns(df, require_trend=False)
         if found:
             for p in found:
                 results.append((sym, df, p))
