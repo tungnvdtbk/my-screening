@@ -1179,6 +1179,136 @@ def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
     )
 
 
+def _check_vcp_reversal(df: pd.DataFrame) -> dict | None:
+    """
+    VCP Reversal — volatility contraction after a downtrend (selling exhaustion).
+
+    Same mechanics as VCP (3-window range + vol contraction) but applied at
+    a potential BOTTOM rather than in an uptrend:
+    - Prior downtrend required: stock was meaningfully higher 60–80 bars ago
+    - Forms near 52-week LOW (not high)
+    - No uptrend MA requirement (stock is in recovery phase)
+    - Slightly looser tightness (8% vs 7%) — bottoms are messier than tops
+
+    Logic: when sellers exhaust themselves at a low, the range and volume
+    both dry up — same coiling mechanism as VCP but reversed direction.
+    """
+    if len(df) < 80:
+        return None
+
+    p1, p2, p3 = df.iloc[-60:-40], df.iloc[-40:-20], df.iloc[-20:]
+    r1, r2, r3 = _range_pct(p1), _range_pct(p2), _range_pct(p3)
+    v1 = float(p1["Volume"].mean())
+    v2 = float(p2["Volume"].mean())
+    v3 = float(p3["Volume"].mean())
+
+    # Relaxed conditions — bottoms are messier than continuation VCPs:
+    # Final window much tighter than first (not necessarily monotonic step-by-step)
+    range_narrowed    = r3 < r1 * 0.65      # final coil is 35%+ tighter than start
+    tight_close       = r3 < 10.0           # wider than continuation (10% vs 7%)
+    # Overall vol dry-up (compare end to start, not step-by-step)
+    vol_drying_overall = v3 < v1 * 0.75
+
+    if not (range_narrowed and tight_close and vol_drying_overall):
+        return None
+
+    # Prior downtrend: stock was significantly higher 60–80 bars ago
+    prior = df.iloc[-80:-60]
+    prior_mid = float(prior["Close"].mean())
+    p1_mid    = float(p1["Close"].mean())
+    if prior_mid <= p1_mid * 1.08:   # need at least 8% prior decline
+        return None
+
+    # Must be near 52-week low (reversal, not continuation)
+    price  = float(df["Close"].iloc[-1])
+    low52  = float(df["Low"].iloc[-252:].min()) if len(df) >= 252 else float(df["Low"].min())
+    high52 = float(df["High"].iloc[-252:].max()) if len(df) >= 252 else float(df["High"].max())
+    near_low52 = price <= low52 * 1.25
+    if not near_low52:
+        return None
+
+    contraction_ratio = r1 / r3 if r3 > 0 else 0
+    vol_dry_ratio     = v3 / v1 if v1 > 0 else 1.0
+    prior_decline     = (prior_mid - price) / prior_mid   # how deep the decline was
+
+    if contraction_ratio >= 4 and vol_dry_ratio < 0.50:
+        quality = "★★★"
+    elif contraction_ratio >= 3:
+        quality = "★★"
+    else:
+        quality = "★"
+
+    recent_high  = float(df["High"].iloc[-20:].max())
+    pivot        = round(recent_high * 1.01, 1)
+    status, entry_candle = _check_entry_candle(df, pivot)
+
+    # score 0-100
+    score  = min(25, int(contraction_ratio / 4 * 25))          # contraction
+    score += min(25, int((1 - min(1.0, vol_dry_ratio)) * 25))  # vol dry-up
+    score += 20 if price <= low52 * 1.10 else 10               # proximity to 52w low
+    score += min(20, int(prior_decline / 0.30 * 20))           # prior decline depth
+    score += 10 if r3 < 5 else 5                               # coil tightness
+    score  = min(100, score)
+
+    return {
+        "pattern":      "VCP Reversal",
+        "subtype":      "reversal",
+        "quality":      quality,
+        "score":        score,
+        "entry_ok":     near_low52 and r3 < 6,
+        "pivot":        pivot,
+        "stoploss":     round(float(df["Low"].iloc[-20:].min()) * 0.99, 1),
+        "confirmed":    (status == "🔥 BUY"),
+        "status":       status,
+        "entry_candle": entry_candle,
+        "notes":        (f"Range {r1:.1f}%→{r2:.1f}%→{r3:.1f}%  "
+                         f"Contr {contraction_ratio:.1f}×  "
+                         f"Vol {vol_dry_ratio:.0%}  "
+                         f"Decline {prior_decline:.0%}  near52L"),
+        "_window_bars": 60,
+    }
+
+
+def _check_triangle_reversal(df: pd.DataFrame) -> dict | None:
+    """
+    Triangle Reversal — ascending triangle after a downtrend.
+
+    An ascending triangle has FLAT resistance (sellers running out at the
+    same level) and RISING lows (buyers stepping in at higher prices each
+    time). When this forms after a meaningful decline, it signals a base
+    being built and a likely reversal up through the resistance level.
+
+    Key differences from Triangle Pullback (continuation):
+    - Prior downtrend required
+    - Uses ascending triangle type (flat top, rising bottom)
+    - No vol contraction required (vol expansion at breakout is the signal)
+    - Relaxed prior_gain (only small local bounce needed before triangle)
+    """
+    if not HAS_CP or df is None or len(df) < 80:
+        return None
+
+    # Prior downtrend: average price 60–80 bars ago > current by ≥5%
+    prior_mid   = float(df["Close"].iloc[-80:-60].mean())
+    current_mid = float(df["Close"].iloc[-20:].mean())
+    if prior_mid <= current_mid * 1.05:
+        return None
+
+    result = _run_cp_detector(
+        df, find_pullback_triangle,
+        "pullback_triangle_point", "pullback_triangle_prior_gain",
+        "pullback_triangle_slmax", "pullback_triangle_slmin",
+        "pullback_triangle_intercmax", "pullback_triangle_intercmin",
+        "Triangle Reversal",
+        dict(lookback=25, min_points=2, prior_lookback=10,
+             min_prior_gain=0.005, rlimit=0.82,  # relaxed: small local bounce is enough
+             triangle_type="ascending"),
+        require_vol=False,   # no vol contraction needed for reversal
+    )
+    if result:
+        result["subtype"] = "reversal"
+    return result
+
+
 def _compute_breadth() -> dict:
     """
     Market breadth across VN30 + VNMID. Uses cached load_price_data.
@@ -1308,33 +1438,49 @@ def detect_patterns(df: pd.DataFrame, require_trend: bool = True,
                     apply_market_filter: bool = True,
                     apply_rs_filter: bool = True) -> list[dict]:
     """
-    Run all pattern checks.
+    Run all pattern checks — continuation AND reversal.
 
-    require_trend=True       — only return patterns when price > MA50 > MA150 > MA200.
-    require_trend=False      — run regardless of trend; include trend_grade 🟢/🟡/🔴.
-    apply_market_filter=True — skip all patterns when VN-Index < MA20 (market downtrend).
-    apply_rs_filter=True     — skip patterns on stocks with RS below ~60th percentile.
+    Continuation patterns (VCP, Flat Base, Pullback MA20, Pennant, Triangle):
+      - Respect market_filter (skip in bear market) and RS filter
+      - Require uptrend context
 
-    Filters removed: Flag Pullback (VN30 max 17.6% win rate at any config;
-    VNMID 51.7% only with 29 signals — not reliable enough).
+    Reversal patterns (VCP Reversal, Triangle Reversal):
+      - Run regardless of market regime — bear markets are when bottoms form
+      - No RS filter (laggards are exactly what reversals trade)
+      - Have their own built-in prior-downtrend check
     """
     if df is None or df.empty or len(df) < 60:
-        return []
-    if require_trend and not _passes_trend_filter(df):
-        return []
-    if apply_market_filter and not _market_regime_ok():
-        return []
-    if apply_rs_filter and not _stock_rs_ok(df):
         return []
 
     grade   = _trend_grade(df)
     results = []
-    for check in [_check_vcp, _check_flat_base, _check_pullback_ma20,
-                  _check_cp_pennant, _check_cp_triangle]:   # Flag removed
+
+    # ── continuation patterns (respect all filters) ───────────────────────
+    run_continuation = True
+    if require_trend and not _passes_trend_filter(df):
+        run_continuation = False
+    if apply_market_filter and not _market_regime_ok():
+        run_continuation = False
+    if apply_rs_filter and not _stock_rs_ok(df):
+        run_continuation = False
+
+    if run_continuation:
+        for check in [_check_vcp, _check_flat_base, _check_pullback_ma20,
+                      _check_cp_pennant, _check_cp_triangle]:
+            p = check(df)
+            if p:
+                p["trend_grade"] = grade
+                p.setdefault("subtype", "continuation")
+                results.append(p)
+
+    # ── reversal patterns (always run — bear markets are when bottoms form) ─
+    for check in [_check_vcp_reversal, _check_triangle_reversal]:
         p = check(df)
         if p:
             p["trend_grade"] = grade
+            p.setdefault("subtype", "reversal")
             results.append(p)
+
     return results
 
 
@@ -1949,6 +2095,7 @@ if "pattern_scan_meta" in st.session_state:
                 p_table.append({
                     "Mã":           r["sym"].replace(".VN", ""),
                     "Score":        r.get("score", 0),
+                    "Type":         "🔄 Reversal" if r.get("subtype") == "reversal" else "📈 Cont.",
                     "Trend":        r.get("trend_grade", "🔴"),
                     "Pattern":      r["pattern"],
                     "Status":       r.get("status", "⏳ Setup"),
