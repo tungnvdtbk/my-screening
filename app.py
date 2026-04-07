@@ -839,6 +839,8 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
 
 
 def _check_cp_flag(df: pd.DataFrame) -> dict | None:
+    if not HAS_CP:
+        return None
     return _run_cp_detector(
         df, find_pullback_flag,
         "pullback_flag_point", "pullback_flag_pole_gain",
@@ -850,6 +852,8 @@ def _check_cp_flag(df: pd.DataFrame) -> dict | None:
 
 
 def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
+    if not HAS_CP:
+        return None
     return _run_cp_detector(
         df, find_pullback_pennant,
         "pullback_pennant_point", "pullback_pennant_pole_gain",
@@ -861,6 +865,8 @@ def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
 
 
 def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
+    if not HAS_CP:
+        return None
     return _run_cp_detector(
         df, find_pullback_triangle,
         "pullback_triangle_point", "pullback_triangle_prior_gain",
