@@ -156,15 +156,22 @@ def _breakout_row(df, price=100.0, high10_mult=0.97, high20_mult=0.98):
 
 
 def _nr7_row(df, price=100.0, high10_mult=0.97, high20_mult=0.98):
-    """Patch last row to satisfy NR7 conditions."""
+    """
+    Patch last row to satisfy NR7 conditions including new quality filters:
+      - Volume QUIET++ (< 0.5x avg) → +25 score points
+      - Previous candle wraps current → Inside Bar → +25 score points
+      - Total score = 50 ≥ MIN_SCORE(30) and ≥ NR7_EARLY threshold(50)
+    """
     atr      = max(float(df["atr10"].dropna().iloc[-1]), 0.5)
     avg_vol  = float(df["avg_vol20"].dropna().iloc[-1])
     ma50     = price * 0.93
-    narrow   = atr * 0.4             # NR7: range smaller than recent candles
+    narrow   = atr * 0.4   # NR7: range smaller than recent candles
+    # Make previous candle wider than current → Inside Bar
+    df = patch_prev(df, High=price * 1.02, Low=price * 0.97)
     return patch_last(df,
         Close=price,    Open=price - narrow * 0.4,
         High=price,     Low=price - narrow,
-        Volume=avg_vol * 2.5,
+        Volume=avg_vol * 0.4,              # QUIET++ → not HIGH, score +25
         atr10=atr,     avg_vol20=avg_vol,  avg_vol_pre5=avg_vol * 0.70,
         ma50=ma50,     ma50_prev5=ma50 * 0.99,
         high10=price * high10_mult,

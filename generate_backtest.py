@@ -10,6 +10,24 @@ from __future__ import annotations
 
 import os
 import sys
+import types as _t
+
+# ── Stub Streamlit + vnstock3 so app.py can be imported without a server ──
+_st = _t.ModuleType("streamlit")
+_st.cache_data    = lambda **kw: (lambda f: f)
+_st.session_state = {}
+for _a in [
+    "set_page_config", "title", "caption", "info", "warning", "error",
+    "subheader", "markdown", "metric", "dataframe", "selectbox", "slider",
+    "button", "checkbox", "header", "write", "divider", "tabs", "spinner",
+    "columns", "progress", "number_input", "success", "plotly_chart",
+    "image", "text_input",
+]:
+    setattr(_st, _a, lambda *a, **kw: None)
+sys.modules["streamlit"] = _st
+sys.modules.setdefault("vnstock3", _t.ModuleType("vnstock3"))
+
+import app   # use production scan functions directly
 
 import matplotlib
 matplotlib.use("Agg")
@@ -38,6 +56,17 @@ VN30_SYMBOLS = [
     "MWG.VN", "SAB.VN", "VNM.VN", "GAS.VN", "GVR.VN", "HPG.VN",
     "PLX.VN", "POW.VN", "FPT.VN", "BVH.VN", "SSI.VN", "VJC.VN",
 ]
+
+VNMID_SYMBOLS = [
+    "MSB.VN", "OCB.VN", "EIB.VN", "VIX.VN", "VCI.VN", "HCM.VN",
+    "NLG.VN", "DIG.VN", "NVL.VN", "PDR.VN", "KBC.VN", "HDG.VN",
+    "GMD.VN", "HAH.VN", "PVT.VN", "HSG.VN", "NKG.VN",
+    "BSR.VN", "PVD.VN", "NT2.VN", "REE.VN", "PNJ.VN",
+    "DGW.VN", "VHC.VN", "HVN.VN", "DHG.VN", "CTD.VN",
+    "CMG.VN", "FTS.VN", "BSI.VN",
+]
+
+VN100_SYMBOLS = VN30_SYMBOLS + VNMID_SYMBOLS
 
 
 # ── Data loading ─────────────────────────────────────────────────────────────
@@ -70,89 +99,36 @@ def load_data(symbol: str) -> pd.DataFrame | None:
         return None
 
 
-# ── Indicators ────────────────────────────────────────────────────────────────
+# ── Indicators & Signal detection — delegate to app.py (single source of truth) ──
 
 def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    d = df.copy()
-    tr = pd.concat([
-        d["High"] - d["Low"],
-        (d["High"] - d["Close"].shift(1)).abs(),
-        (d["Low"]  - d["Close"].shift(1)).abs(),
-    ], axis=1).max(axis=1)
-    d["atr10"]        = tr.shift(2).rolling(10).mean()
-    d["avg_vol20"]    = d["Volume"].shift(2).rolling(20).mean()
-    d["avg_vol_pre5"] = d["Volume"].shift(2).rolling(5).mean()
-    d["high10"]       = d["High"].shift(2).rolling(10).max()
-    d["high20"]       = d["High"].shift(2).rolling(20).max()
-    d["ma50"]         = d["Close"].rolling(50).mean()
-    d["ma200"]        = d["Close"].rolling(200).mean()
-    d["ma50_prev5"]   = d["ma50"].shift(5)
-    return d
+    """Thin wrapper: uses app.compute_indicators so backtest == production."""
+    return app.compute_indicators(df)
 
 
-# ── Signal detection ──────────────────────────────────────────────────────────
-
-def find_breakout_signals(df: pd.DataFrame) -> list[tuple[int, str]]:
-    """Returns list of (index, signal_type) where signal_type is BREAKOUT_STRONG or BREAKOUT_EARLY."""
-    signals = []
+def find_signals(df: pd.DataFrame, signal_fn) -> list[tuple[int, str]]:
+    """
+    Run a production scan function (app.scan_breakout / scan_nr7 / scan_gap)
+    across every row of df by slicing the df to iloc[:i+1].
+    Indicators must already be computed on the full df.
+    Returns list of (row_index, signal_type).
+    """
+    results = []
     for i in range(60, len(df)):
-        row = df.iloc[i]
-        if any(pd.isna(row[c]) for c in ["atr10", "avg_vol20", "high10", "high20", "ma50", "ma50_prev5"]):
-            continue
-        atr10 = row["atr10"]; ma50 = row["ma50"]
-        close = row["Close"]; open_ = row["Open"]
-        high  = row["High"];  low   = row["Low"]
-        if not (close > ma50 and ma50 > row["ma50_prev5"]):
-            continue
-        if not (close > open_):
-            continue
-        if not (close >= high * 0.998):
-            continue
-        if not ((high - low) > 1.5 * atr10):
-            continue
-        # [4b] Body ≥ 60% of full range
-        candle_range = high - low
-        if candle_range > 0 and (close - open_) / candle_range < 0.6:
-            continue
-        if not (high > row["high10"]):
-            continue
-        if close > ma50 * 1.08:
-            continue
-        sig_type = "BREAKOUT_STRONG" if high > row["high20"] else "BREAKOUT_EARLY"
-        signals.append((i, sig_type))
-    return signals
+        sig = signal_fn(df.iloc[:i + 1])
+        if sig:
+            results.append((i, sig["signal"]))
+    return results
 
 
 def find_reversal_signals(df: pd.DataFrame) -> list[int]:
-    signals = []
+    """Run app.scan_reversal across history. Returns row indices."""
+    results = []
     for i in range(210, len(df)):
-        row  = df.iloc[i]
-        prev = df.iloc[i - 1]
-        if any(pd.isna(row[c]) for c in ["atr10", "avg_vol20", "ma50", "ma200"]):
-            continue
-        atr10 = row["atr10"]; ma50 = row["ma50"]; ma200 = row["ma200"]
-        close = row["Close"]; open_ = row["Open"]
-        high  = row["High"];  low   = row["Low"]
-        if not (close < ma50):
-            continue
-        if not (abs(close - ma200) <= 1.0 * atr10):
-            continue
-        if not (low < prev["Low"]):
-            continue
-        if not (close > open_):
-            continue
-        if not (close >= high * 0.998):
-            continue
-        if not ((high - low) > 1.5 * atr10):
-            continue
-        # [6b] Body ≥ 60% of full range
-        candle_range = high - low
-        if candle_range > 0 and (close - open_) / candle_range < 0.6:
-            continue
-        if close < ma200 * 0.92:
-            continue
-        signals.append(i)
-    return signals
+        sig = app.scan_reversal(df.iloc[:i + 1])
+        if sig:
+            results.append(i)
+    return results
 
 
 # ── Trade simulation ──────────────────────────────────────────────────────────
@@ -324,12 +300,12 @@ def draw_chart(df: pd.DataFrame, trade: dict, symbol: str, out_path: str) -> Non
 
 def main() -> None:
     print("=" * 60)
-    print("BACKTEST — Breakout & Reversal trên VN30 (2 năm)")
+    print("BACKTEST — NR7 Signals trên VN30 (2 năm)")
     print("=" * 60)
 
     all_trades: list[dict] = []
 
-    for sym in VN30_SYMBOLS:
+    for sym in VN100_SYMBOLS:
         print(f"  {sym:<12}", end=" ")
         df = load_data(sym)
         if df is None or len(df) < 60:
@@ -338,33 +314,25 @@ def main() -> None:
 
         df = compute_indicators(df)
 
-        bo_list  = find_breakout_signals(df)   # list of (idx, sig_type)
-        rev_idx  = find_reversal_signals(df)   # list of int
-        bo_type_map = {idx: t for idx, t in bo_list}
-        bo_idx_set  = set(bo_type_map.keys())
+        nr7_list = find_signals(df, app.scan_nr7)  # uses production scan_nr7
 
         sym_trades: list[dict] = []
         cooldown  = 10
         prev_sig  = -999
 
-        for idx in sorted(bo_idx_set | set(rev_idx)):
+        for idx, sig_type in sorted(nr7_list):
             if idx - prev_sig < cooldown:
                 continue
-            sig_type = bo_type_map.get(idx, "REVERSAL")
-            trade    = simulate_trade(df, idx, sig_type)
-            if trade and trade["rr"] >= 1.0:
+            trade = simulate_trade(df, idx, sig_type)
+            if trade and trade["rr"] >= 0.8:
                 trade["symbol"] = sym.replace(".VN", "")
                 trade["df"]     = df
                 sym_trades.append(trade)
                 all_trades.append(trade)
                 prev_sig = idx
 
-        bo_count  = sum(1 for t in sym_trades if t["signal_type"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY"))
-        rev_count = sum(1 for t in sym_trades if t["signal_type"] == "REVERSAL")
-        wins      = sum(1 for t in sym_trades if t["result"] == "WIN")
-        print(f"{len(sym_trades):2d} trades "
-              f"(BO:{bo_count} REV:{rev_count})  "
-              f"win {wins}/{len(sym_trades)}")
+        wins = sum(1 for t in sym_trades if t["result"] == "WIN")
+        print(f"{len(sym_trades):2d} NR7 trades  win {wins}/{len(sym_trades)}")
 
     if not all_trades:
         print("\nKhông có tín hiệu. Kiểm tra lại dữ liệu.")
@@ -374,11 +342,10 @@ def main() -> None:
     total  = len(all_trades)
     n_win  = sum(1 for t in all_trades if t["result"] == "WIN")
     n_loss = sum(1 for t in all_trades if t["result"] == "LOSS")
-    bo_strong = [t for t in all_trades if t["signal_type"] == "BREAKOUT_STRONG"]
-    bo_early  = [t for t in all_trades if t["signal_type"] == "BREAKOUT_EARLY"]
-    rev_all   = [t for t in all_trades if t["signal_type"] == "REVERSAL"]
-    pf_w      = sum(t["pnl_pct"] for t in all_trades if t["result"] == "WIN")
-    pf_l      = abs(sum(t["pnl_pct"] for t in all_trades if t["result"] == "LOSS"))
+    nr7_strong = [t for t in all_trades if t["signal_type"] == "NR7_STRONG"]
+    nr7_early  = [t for t in all_trades if t["signal_type"] == "NR7_EARLY"]
+    pf_w       = sum(t["pnl_pct"] for t in all_trades if t["result"] == "WIN")
+    pf_l       = abs(sum(t["pnl_pct"] for t in all_trades if t["result"] == "LOSS"))
 
     def _wr(lst: list[dict]) -> str:
         if not lst: return "N/A"
@@ -386,15 +353,14 @@ def main() -> None:
         return f"{w}/{len(lst)} ({w/len(lst)*100:.0f}%)"
 
     print("\n" + "=" * 60)
-    print(f"TỔNG KẾT  ({total} trades hợp lệ)")
-    print(f"  Win rate         : {n_win/total*100:.1f}%  ({n_win}W / {n_loss}L / {total-n_win-n_loss}TO)")
-    print(f"  Profit Factor    : {pf_w/max(pf_l, 0.01):.2f}")
-    print(f"  BREAKOUT_STRONG  : {len(bo_strong)} trades  win {_wr(bo_strong)}")
-    print(f"  BREAKOUT_EARLY   : {len(bo_early)} trades  win {_wr(bo_early)}")
-    print(f"  REVERSAL         : {len(rev_all)} trades  win {_wr(rev_all)}")
+    print(f"TỔNG KẾT NR7  ({total} trades hợp lệ)")
+    print(f"  Win rate      : {n_win/total*100:.1f}%  ({n_win}W / {n_loss}L / {total-n_win-n_loss}TO)")
+    print(f"  Profit Factor : {pf_w/max(pf_l, 0.01):.2f}")
+    print(f"  NR7_STRONG    : {len(nr7_strong)} trades  win {_wr(nr7_strong)}")
+    print(f"  NR7_EARLY     : {len(nr7_early)} trades  win {_wr(nr7_early)}")
     print("=" * 60)
 
-    # ── Select ~30 representative charts
+    # ── Select 10 representative NR7 charts
     wins_sorted   = sorted(
         [t for t in all_trades if t["result"] == "WIN"],
         key=lambda t: t["pnl_pct"], reverse=True,
@@ -403,17 +369,11 @@ def main() -> None:
         [t for t in all_trades if t["result"] == "LOSS"],
         key=lambda t: t["pnl_pct"],
     )
-    timeouts      = [t for t in all_trades if t["result"] == "TIMEOUT"]
+    timeouts = [t for t in all_trades if t["result"] == "TIMEOUT"]
 
-    selected: list[dict] = []
-    # Mix BREAKOUT and REVERSAL, WIN and LOSS
-    selected += [t for t in wins_sorted   if t["signal_type"] == "BREAKOUT_STRONG"][:5]
-    selected += [t for t in wins_sorted   if t["signal_type"] == "BREAKOUT_EARLY"][:3]
-    selected += [t for t in wins_sorted   if t["signal_type"] == "REVERSAL"][:7]
-    selected += [t for t in losses_sorted if t["signal_type"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY")][:5]
-    selected += [t for t in losses_sorted if t["signal_type"] == "REVERSAL"][:5]
-    selected += timeouts[:5]
-    selected = selected[:30]
+    import random
+    random.seed(42)
+    selected = random.sample(all_trades, min(10, len(all_trades)))
 
     # ── Clear old PNGs
     removed = 0
