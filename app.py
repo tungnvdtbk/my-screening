@@ -964,7 +964,7 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
         if pivot:
             fig.add_hline(
                 y=pivot, line_dash="dash", line_color="#ff4d94",
-                line_width=1.8, opacity=0.9,
+                line_width=1.2, opacity=0.8,
                 annotation_text=f"Pivot {pivot:.1f}",
                 annotation_font_color="#ff4d94", annotation_font_size=10,
                 annotation_position="right",
@@ -974,7 +974,7 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
         if stoploss:
             fig.add_hline(
                 y=stoploss, line_dash="dot", line_color="#ff9900",
-                line_width=1.5, opacity=0.85,
+                line_width=1.1, opacity=0.75,
                 annotation_text=f"SL {stoploss:.1f}",
                 annotation_font_color="#ff9900", annotation_font_size=10,
                 annotation_position="right",
@@ -989,7 +989,7 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
                     type="line",
                     x0=tl["x0"], y0=tl["high_y0"],
                     x1=tl["x1"], y1=tl["high_y1"],
-                    line=dict(color="#00e5ff", width=2.5),   # electric cyan
+                    line=dict(color="#00e5ff", width=1.4),   # electric cyan
                     layer="above",
                 )
             if not any(v != v for v in low_vals):
@@ -997,7 +997,7 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
                     type="line",
                     x0=tl["x0"], y0=tl["low_y0"],
                     x1=tl["x1"], y1=tl["low_y1"],
-                    line=dict(color="#ff6b35", width=2.5),   # bright orange
+                    line=dict(color="#ff6b35", width=1.4),   # bright orange
                     layer="above",
                 )
 
