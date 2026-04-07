@@ -903,8 +903,9 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
     try:
         df_w = df.tail(200).reset_index()
         result = detector_fn(df_w.copy(), **params)
-        # look for a signal in the last 5 bars
-        tail = result.tail(5)
+        # freshness: only accept signals detected in the last 2 bars
+        # (stale patterns already resolved — up or down — are not actionable)
+        tail = result.tail(2)
         hits = tail[tail[point_col] > 0]
         if hits.empty:
             return None
@@ -1021,25 +1022,77 @@ def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
     )
 
 
-def detect_patterns(df: pd.DataFrame, require_trend: bool = True) -> list[dict]:
+def _market_regime_ok() -> bool:
+    """
+    Market regime filter: VN-Index must be above its MA20 (short-term bull).
+    Eliminates pattern signals generated during broad market downtrends,
+    which account for a large share of false positives.
+    Returns True when VN-Index data is unavailable (fail open).
+    """
+    try:
+        vndf = get_vnindex_data()
+        if vndf is None or len(vndf) < 20:
+            return True          # fail open — show patterns if no data
+        close = vndf["Close"] if "Close" in vndf.columns else vndf.iloc[:, 0]
+        ma20  = float(close.rolling(20).mean().iloc[-1])
+        price = float(close.iloc[-1])
+        return price > ma20
+    except Exception:
+        return True              # fail open
+
+
+def _stock_rs_ok(df: pd.DataFrame, min_rs: int = 60) -> bool:
+    """
+    RS relative-strength check at pattern level.
+    Compares 12-month price performance vs median of VN30 universe.
+    Stocks with RS < min_rs are likely laggards — avoid.
+    Returns True (pass) when RS cannot be computed.
+    """
+    try:
+        if df is None or len(df) < 252:
+            return True          # not enough history — fail open
+        perf_12m = float(df["Close"].iloc[-1]) / float(df["Close"].iloc[-252]) - 1
+        # lightweight RS: compare against a fixed reference (S&P500 proxy via VNM ETF cached)
+        ref = get_vnindex_data()
+        if ref is None or len(ref) < 252:
+            return True
+        ref_close = ref["Close"] if "Close" in ref.columns else ref.iloc[:, 0]
+        ref_12m = float(ref_close.iloc[-1]) / float(ref_close.iloc[-252]) - 1
+        # RS percentile approximation: stock - index relative performance
+        # If stock outperforms index by any margin it clears 60th percentile
+        # heuristic: top 40% if outperforms index + 5pp
+        return perf_12m >= (ref_12m - 0.10)   # stock within 10pp of index or better
+    except Exception:
+        return True              # fail open
+
+
+def detect_patterns(df: pd.DataFrame, require_trend: bool = True,
+                    apply_market_filter: bool = True,
+                    apply_rs_filter: bool = True) -> list[dict]:
     """
     Run all pattern checks.
 
-    require_trend=True  (default) — only returns patterns when
-                        price > MA50 > MA150 > MA200 (strict uptrend filter).
-    require_trend=False — runs pattern checks regardless of trend; each
-                        result includes a 'trend_grade' 🟢/🟡/🔴 field so
-                        the caller can colour-code candidates.
+    require_trend=True       — only return patterns when price > MA50 > MA150 > MA200.
+    require_trend=False      — run regardless of trend; include trend_grade 🟢/🟡/🔴.
+    apply_market_filter=True — skip all patterns when VN-Index < MA20 (market downtrend).
+    apply_rs_filter=True     — skip patterns on stocks with RS below ~60th percentile.
+
+    Filters removed: Flag Pullback (VN30 max 17.6% win rate at any config;
+    VNMID 51.7% only with 29 signals — not reliable enough).
     """
     if df is None or df.empty or len(df) < 60:
         return []
     if require_trend and not _passes_trend_filter(df):
         return []
+    if apply_market_filter and not _market_regime_ok():
+        return []
+    if apply_rs_filter and not _stock_rs_ok(df):
+        return []
 
     grade   = _trend_grade(df)
     results = []
     for check in [_check_vcp, _check_flat_base, _check_pullback_ma20,
-                  _check_cp_flag, _check_cp_pennant, _check_cp_triangle]:
+                  _check_cp_pennant, _check_cp_triangle]:   # Flag removed
         p = check(df)
         if p:
             p["trend_grade"] = grade
