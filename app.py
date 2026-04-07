@@ -842,27 +842,62 @@ def _cp_trend_ok(df: pd.DataFrame, idx: int) -> bool:
     return price > ma50_v > ma150_v
 
 
-def _cp_quality(pole_gain: float, vol_ok: bool, trend_ok: bool) -> str:
+def _cp_quality(pole_gain: float, vol_ok: bool, trend_ok: bool,
+                pattern_name: str) -> tuple[str, str]:
     """
-    Multi-factor quality rating calibrated from R:R backtest results.
-    ★★★ : vol contraction + trend ok + strong pole  → ~50%+ win rate
-    ★★  : vol contraction OR (trend ok + decent pole)
-    ★   : basic detection only (below breakeven, caution)
+    Per-pattern quality rating + expected win-rate label.
+    Calibrated from VN30+VNMID R:R backtest (5% risk / 15% reward).
+
+    Triangle (vol is already a hard requirement):
+      ★★★  trend_ok + pole≥4%  → ~55%+ expected
+      ★★   trend_ok OR pole≥3% → ~35-50%
+      ★    vol passed only      → ~20-30%
+
+    Flag (vol is soft, pole≥4% required as param):
+      ★★★  vol_ok + trend_ok + pole≥5% → ~50% (VNMID proven)
+      ★★   vol_ok + pole≥4%            → ~30%
+      ★    basic                        → ~19%
+
+    Pennant (no hard filters — trend filter hurts VNMID 33%→14%):
+      ★★★  trend_ok + pole≥5% → ~35%+
+      ★★   pole≥4%            → ~30%
+      ★    basic               → ~22-34%
     """
-    if vol_ok and trend_ok and pole_gain >= 0.05:
-        return "★★★"
-    if vol_ok and trend_ok:
-        return "★★"
-    if vol_ok or (trend_ok and pole_gain >= 0.04):
-        return "★★"
-    return "★"
+    if pattern_name == "Triangle Pullback":
+        # vol is already required as a hard filter
+        if trend_ok and pole_gain >= 0.04:
+            return "★★★", "~55%"
+        if trend_ok or pole_gain >= 0.03:
+            return "★★",  "~35%"
+        return "★", "~25%"
+
+    if pattern_name == "Flag Pullback":
+        if vol_ok and trend_ok and pole_gain >= 0.05:
+            return "★★★", "~50%"
+        if vol_ok and pole_gain >= 0.04:
+            return "★★",  "~30%"
+        return "★", "~19%"
+
+    # Pennant Pullback
+    if trend_ok and pole_gain >= 0.05:
+        return "★★★", "~35%"
+    if pole_gain >= 0.04:
+        return "★★",  "~30%"
+    return "★", "~25%"
 
 
 def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
                      gain_col: str, slmax_col: str, slmin_col: str,
                      intercmax_col: str, intercmin_col: str,
-                     pattern_name: str, params: dict) -> dict | None:
-    """Adapter: run a chart_patterns pullback detector on the last N bars."""
+                     pattern_name: str, params: dict,
+                     require_vol: bool = False) -> dict | None:
+    """
+    Adapter: run a chart_patterns pullback detector on the last N bars.
+
+    require_vol=True (Triangle): hard-filters signals without volume
+    contraction. Backtest evidence: VN30 Triangle vol_filter = 52.4%
+    vs 16.8% baseline (5%/15% R:R, 2y, 30 stocks).
+    """
     if not HAS_CP or df is None or len(df) < 60:
         return None
     try:
@@ -884,11 +919,17 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
         stoploss = round(slmin * idx + intercmin, 2)
         close_now = float(df["Close"].iloc[-1])
 
-        # quality filters (backtest-calibrated)
+        # quality filters (backtest-calibrated per pattern)
         lookback_n = params.get("lookback", 20)
         pole_lb    = params.get("pole_lookback", params.get("prior_lookback", 15))
         vol_ok     = _cp_vol_contraction(df, idx, lookback_n, pole_lb)
         trend_ok   = _cp_trend_ok(df, idx)
+
+        # hard vol filter for Triangle (proven 52.4% win rate vs 16.8% without)
+        if require_vol and not vol_ok:
+            return None
+
+        quality, exp_wr = _cp_quality(pole_gain, vol_ok, trend_ok, pattern_name)
 
         # trendline endpoints in datetime coords (for Plotly shapes)
         tail_idx = df.tail(200).index
@@ -905,16 +946,16 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
             "zone_x1": tail_idx[win_e],
         }
 
-        vol_label   = "vol✓" if vol_ok   else "vol✗"
-        trend_label = "trend✓" if trend_ok else "trend✗"
+        vol_lbl   = "vol✓" if vol_ok   else "vol✗"
+        trend_lbl = "trend✓" if trend_ok else "trend✗"
 
         return {
             "pattern":      pattern_name,
             "pivot":        pivot,
             "stoploss":     stoploss,
-            "quality":      _cp_quality(pole_gain, vol_ok, trend_ok),
+            "quality":      quality,
             "notes":        (f"Pole: {pole_gain*100:.1f}%  "
-                             f"{vol_label}  {trend_label}"),
+                             f"{vol_lbl}  {trend_lbl}  exp:{exp_wr}"),
             "entry_candle": "—",
             "status":       "🔥 BUY" if close_now >= pivot else "⏳ Setup",
             "_tl":          _tl,
@@ -925,6 +966,12 @@ def _run_cp_detector(df: pd.DataFrame, detector_fn, point_col: str,
 
 
 def _check_cp_flag(df: pd.DataFrame) -> dict | None:
+    """
+    Flag Pullback — tightened pole gain to 4% (backtest: VNMID combined
+    with pole≥5% gives 51.7%; 4% is a practical middle ground).
+    Vol contraction is soft (quality) not hard (filter) since vol_filter
+    alone only gives 21.5% on VNMID and 9.1% on VN30.
+    """
     if not HAS_CP:
         return None
     return _run_cp_detector(
@@ -934,11 +981,16 @@ def _check_cp_flag(df: pd.DataFrame) -> dict | None:
         "pullback_flag_intercmax", "pullback_flag_intercmin",
         "Flag Pullback",
         dict(lookback=20, min_points=2, pole_lookback=15,
-             min_pole_gain=0.03, r_max=0.90, r_min=0.90),
+             min_pole_gain=0.04, r_max=0.90, r_min=0.90),
+        require_vol=False,
     )
 
 
 def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
+    """
+    Pennant Pullback — no hard filters. VNMID baseline=33.6% win rate;
+    trend filter drops VNMID to 14.4% so it must stay soft (quality only).
+    """
     if not HAS_CP:
         return None
     return _run_cp_detector(
@@ -949,6 +1001,7 @@ def _check_cp_pennant(df: pd.DataFrame) -> dict | None:
         "Pennant Pullback",
         dict(lookback=20, min_points=2, pole_lookback=15,
              min_pole_gain=0.03, r_max=0.90, r_min=0.90),
+        require_vol=False,
     )
 
 
@@ -962,8 +1015,9 @@ def _check_cp_triangle(df: pd.DataFrame) -> dict | None:
         "pullback_triangle_intercmax", "pullback_triangle_intercmin",
         "Triangle Pullback",
         dict(lookback=25, min_points=2, prior_lookback=15,
-             min_prior_gain=0.03, rlimit=0.90,
+             min_prior_gain=0.04, rlimit=0.90,
              triangle_type="symmetrical"),
+        require_vol=True,   # hard filter: VN30 vol_filter=52.4% vs 16.8% baseline
     )
 
 
