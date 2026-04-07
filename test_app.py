@@ -1197,5 +1197,59 @@ class TestCandlePatternDetection(unittest.TestCase):
 
 
 # ═════════════════════════════════════════════════════════════════════
+class TestEnvironment(unittest.TestCase):
+    """
+    Verify the runtime environment matches what Streamlit Cloud needs.
+    These tests catch missing dependencies or broken bundled packages
+    before deployment.
+    """
+
+    def test_has_cp_is_true(self):
+        """chart_patterns subpackage must be importable (HAS_CP=True).
+        If this fails on CI it means a bundled file is broken or
+        scipy/tqdm are missing from requirements.txt."""
+        self.assertTrue(
+            app.HAS_CP,
+            "HAS_CP is False — chart_patterns subpackage failed to import. "
+            "Check chart_patterns/__init__.py and that scipy+tqdm are installed."
+        )
+
+    def test_pullback_detectors_importable(self):
+        """All three pullback detector functions must be accessible."""
+        from chart_patterns.pullback_flag     import find_pullback_flag
+        from chart_patterns.pullback_pennant  import find_pullback_pennant
+        from chart_patterns.pullback_triangle import find_pullback_triangle
+        self.assertTrue(callable(find_pullback_flag))
+        self.assertTrue(callable(find_pullback_pennant))
+        self.assertTrue(callable(find_pullback_triangle))
+
+    def test_scipy_available(self):
+        """scipy.stats.linregress must be importable (used by all detectors)."""
+        from scipy.stats import linregress
+        self.assertTrue(callable(linregress))
+
+    def test_plotly_available(self):
+        """plotly must be importable (used by the candlestick chart)."""
+        import plotly.graph_objects as go
+        self.assertIsNotNone(go.Figure)
+
+    def test_detect_patterns_returns_list(self):
+        """detect_patterns must return a list even when df is too small."""
+        result = app.detect_patterns(pd.DataFrame(), require_trend=False)
+        self.assertIsInstance(result, list)
+        self.assertEqual(result, [])
+
+    def test_cp_checkers_return_none_on_small_df(self):
+        """_check_cp_* must not crash and return None when given too little data."""
+        tiny = pd.DataFrame({
+            "Open": [1.0], "High": [1.1], "Low": [0.9],
+            "Close": [1.0], "Volume": [1000],
+        })
+        self.assertIsNone(app._check_cp_flag(tiny))
+        self.assertIsNone(app._check_cp_pennant(tiny))
+        self.assertIsNone(app._check_cp_triangle(tiny))
+
+
+# ═════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     unittest.main(verbosity=2)
