@@ -8,3 +8,5 @@ ipython
 openpyxl
 pyarrow
 plotly
+scipy
+tqdm

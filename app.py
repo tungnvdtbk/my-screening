@@ -16,15 +16,11 @@ try:
 except ImportError:
     HAS_VNSTOCK = False
 
-# chart_patterns library (flag/pennant/triangle pullback detectors)
-import sys as _sys
-for _cp in ["/"]:          # /chart_patterns/__init__.py makes "/" the right parent
-    if _cp not in _sys.path and os.path.isdir(os.path.join(_cp, "chart_patterns")):
-        _sys.path.insert(0, _cp)
+# pullback pattern detectors (bundled in chart_patterns/ subpackage)
 try:
-    from chart_patterns.chart_patterns.pullback_flag     import find_pullback_flag
-    from chart_patterns.chart_patterns.pullback_pennant  import find_pullback_pennant
-    from chart_patterns.chart_patterns.pullback_triangle import find_pullback_triangle
+    from chart_patterns.pullback_flag     import find_pullback_flag
+    from chart_patterns.pullback_pennant  import find_pullback_pennant
+    from chart_patterns.pullback_triangle import find_pullback_triangle
     HAS_CP = True
 except ImportError:
     HAS_CP = False
