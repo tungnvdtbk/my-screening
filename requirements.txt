@@ -7,3 +7,4 @@ vnstock3
 ipython
 openpyxl
 pyarrow
+plotly

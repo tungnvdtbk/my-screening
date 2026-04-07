@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import json
 import os
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from io import BytesIO
 
@@ -805,11 +806,37 @@ def _show_inline_chart(sym_ticker: str, use_cache: bool = True,
     df_c["MA50"]  = df_c["Close"].rolling(50).mean()
     df_c["MA150"] = df_c["Close"].rolling(150).mean()
 
-    chart_cols = ["Close", "MA20", "MA50"]
-    if not df_c["MA150"].isna().all():
-        chart_cols.append("MA150")
+    df_chart = df_c.iloc[-252:].copy()
 
-    st.line_chart(df_c[chart_cols].iloc[-252:], use_container_width=True)
+    fig = go.Figure()
+    fig.add_trace(go.Candlestick(
+        x=df_chart.index,
+        open=df_chart["Open"],
+        high=df_chart["High"],
+        low=df_chart["Low"],
+        close=df_chart["Close"],
+        name="Price",
+        increasing_line_color="#26a69a",
+        decreasing_line_color="#ef5350",
+    ))
+    for col, color in [("MA20", "#60a5fa"), ("MA50", "#34d399"), ("MA150", "#f59e0b")]:
+        if col in df_chart.columns and not df_chart[col].isna().all():
+            fig.add_trace(go.Scatter(
+                x=df_chart.index, y=df_chart[col],
+                mode="lines", name=col, line=dict(color=color, width=1.2),
+            ))
+    fig.update_layout(
+        xaxis_rangeslider_visible=False,
+        height=380,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="#0a0e17",
+        plot_bgcolor="#0a0e17",
+        font_color="#e2e8f0",
+        xaxis=dict(gridcolor="#1e2535"),
+        yaxis=dict(gridcolor="#1e2535"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     # criteria expander (uses scan_rows if provided)
     if scan_rows:
