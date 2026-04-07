@@ -256,8 +256,8 @@ def main():
               f"{p.get('status',''):<16} {p.get('entry_candle',''):<20} {p.get('quality','')}")
 
     # Generate charts (top 6 or all if fewer)
-    print(f"\nGenerating charts for top {min(6, len(results))} patterns...")
-    for sym, df, p in results[:6]:
+    print(f"\nGenerating charts for all {len(results)} patterns...")
+    for sym, df, p in results:
         out = make_chart(sym, df, p)
         print(f"  saved → {out}")
 
