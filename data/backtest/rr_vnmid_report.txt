@@ -1,0 +1,37 @@
+
+========================================================================
+  WIN RATE BY PATTERN × CONFIG  (Win = +15% before −5%)
+  Universe: 70 VNMID stocks
+========================================================================
+
+  Flag Pullback
+  Config            Signals  Decided    Win%   AvgRet   AvgMAE  AvgDays
+  -----------------------------------------------------------------
+  baseline              746      615   19.2%   -1.16%    5.73%     11.3  ✗
+  trend_filter          105      100   31.0%   +1.20%    5.10%     10.1  ✗
+  vol_filter            212      172   21.5%   -0.70%    5.66%     10.5  ✗
+  combined               29       29   51.7%   +5.34%    3.61%     10.9  ✓
+
+  Pennant Pullback
+  Config            Signals  Decided    Win%   AvgRet   AvgMAE  AvgDays
+  -----------------------------------------------------------------
+  baseline              298      259   33.6%   +1.72%    5.12%     13.5  ✗
+  trend_filter           99       90   14.4%   -2.11%    6.17%     10.9  ✗
+  vol_filter             64       51   13.7%   -2.25%    5.98%     10.7  ✗
+  combined               18       15    0.0%   -5.00%    6.67%      4.8  ✗
+
+  Triangle Pullback
+  Config            Signals  Decided    Win%   AvgRet   AvgMAE  AvgDays
+  -----------------------------------------------------------------
+  baseline              461      417   29.5%   +0.90%    5.03%     11.4  ✗
+  trend_filter          159      138   15.2%   -1.96%    5.87%      8.0  ✗
+  vol_filter             88       76   19.7%   -1.05%    5.34%     11.2  ✗
+  combined               15       12    8.3%   -3.33%    5.79%      7.4  ✗
+
+========================================================================
+  IMPROVEMENT: combined vs baseline
+========================================================================
+  Flag Pullback          19.2% → 51.7%  (+32.5pp)   signals 746 → 29
+  Triangle Pullback      29.5% → 8.3%  (-21.2pp)   signals 461 → 15
+
+  Breakeven win rate at 5%/15% R:R = 25.0%
