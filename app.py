@@ -265,10 +265,13 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     d["high10"]       = d["High"].shift(2).rolling(10).max()
     d["high20"]       = d["High"].shift(2).rolling(20).max()
     # MAs at signal candle
+    d["ma20"]         = d["Close"].rolling(20).mean()
     d["ma50"]         = d["Close"].rolling(50).mean()
     d["ma200"]        = d["Close"].rolling(200).mean()
-    # MA50 from 5 days ago
+    # MA from N bars ago (for slope checks)
+    d["ma20_prev5"]   = d["ma20"].shift(5)
     d["ma50_prev5"]   = d["ma50"].shift(5)
+    d["ma200_prev20"] = d["ma200"].shift(20)
     # Previous candle's high — close-above confirmation
     d["high_prev1"]   = d["High"].shift(1)
     # Candle range for NR7 detection
@@ -735,77 +738,134 @@ def scan_gap(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
 
 # ============================================================
-# SCAN — Reversal Hunter (Phương Án 2)
+# SCAN — Trend Filter (Pullback to MA in uptrend)
 # ============================================================
-def scan_reversal(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+MIN_AVG_VOLUME_TF = 100_000   # minimum liquidity gate
+
+def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     """
-    Signal candle = df.iloc[-1].
-    Status is always PENDING (confirm requires next candle closing above high[-1]).
-    SIZE relaxed to 1.2× ATR. Body filter removed.
+    Trend Filter — two signal types inside a strong uptrend:
+
+    TF_MA20  Shallower pullback, stronger trend, vol ≥ 1.2× avg, close > HIGH10
+    TF_MA50  Deeper pullback, early-trend only, vol ≥ 1.5× avg, close > close[-5]
+
+    Shared rules (1-8, 10-17):
+      1. Low > MA200
+      2. Close > MA200
+      3. MA20 > MA50 > MA200
+      4. MA20 > MA20[5]
+      5. MA50 > MA50[5]
+      6. MA200 > MA200[20]
+      7. Close > Open
+     10. (MA20-MA200)/MA200 ≤ 12%
+     11. (MA50-MA200)/MA200 ≤ 8%
+     12. (Close-MA20)/MA20 ≤ 5%
+     13. (Close-MA50)/MA50 ≤ 8%
+     14. AvgVolume(20) ≥ 100,000
+     16. (High-Low) > 0.8 × ATR10
+     17. RS4W ≥ 0.95
+
+    TF_MA20 specific:
+      8a. Close > HIGH10           (breaks 10-day high)
+      9a. Low ≤ MA20 × 1.03       (tested MA20)
+     15a. Volume > 1.2 × avg_vol20
+
+    TF_MA50 specific:
+      8b. Close > close[-5]        (5-day momentum, less demanding than HIGH10)
+      9b. Low ≤ MA50 × 1.03 AND Close > MA50
+     11b. (MA50-MA200)/MA200 ≤ 0.05  (early uptrend only)
+     15b. Volume > 1.5 × avg_vol20   (needs stronger buying to recover from deep pullback)
+
+    SL = min(Low, touched_MA) × 0.995
     """
     if df is None or len(df) < 210:
         return None
-    row  = df.iloc[-1]
-    prev = df.iloc[-2]
+    row = df.iloc[-1]
 
-    required = ["atr10", "avg_vol20", "ma50", "ma200"]
+    required = ["atr10", "avg_vol20", "ma20", "ma50", "ma200",
+                "ma20_prev5", "ma50_prev5", "ma200_prev20", "high10"]
     if any(pd.isna(row[c]) for c in required):
         return None
 
-    atr10     = row["atr10"]
-    avg_vol20 = row["avg_vol20"]
-    ma50      = row["ma50"]
-    ma200     = row["ma200"]
+    ma20         = row["ma20"]
+    ma50         = row["ma50"]
+    ma200        = row["ma200"]
+    ma20_prev5   = row["ma20_prev5"]
+    ma50_prev5   = row["ma50_prev5"]
+    ma200_prev20 = row["ma200_prev20"]
+    high10       = row["high10"]
+    atr10        = row["atr10"]
+    avg_vol20    = row["avg_vol20"]
     close = row["Close"]; open_ = row["Open"]
     high  = row["High"];  low   = row["Low"]
     vol   = row["Volume"]
 
-    # [1] Price below MA50 (downtrend)
-    if not (close < ma50):
-        return None
-    # [2] Near MA200 support (within 1× ATR10)
-    if not (abs(close - ma200) <= 1.0 * atr10):
-        return None
-    # [3] Rejection — tested lower than prev low
-    if not (low < prev["Low"]):
-        return None
-    # [4] Bull candle
-    if not (close > open_):
-        return None
-    # [5] Close near high
-    if not (close >= high * 0.998):
-        return None
-    # [6] Candle range > 1.2× ATR10 (relaxed from 1.5×, body filter removed)
-    if not ((high - low) > 1.2 * atr10):
-        return None
-    # Filter: not more than 8% below MA200
-    if close < ma200 * 0.92:
-        return None
+    # ── Shared rules 1-7 ──────────────────────────────────────────
+    if not (low > ma200):           return None   # [1]
+    if not (close > ma200):         return None   # [2]
+    if not (ma20 > ma50 > ma200):   return None   # [3]
+    if not (ma20 > ma20_prev5):     return None   # [4]
+    if not (ma50 > ma50_prev5):     return None   # [5]
+    if not (ma200 > ma200_prev20):  return None   # [6]
+    if not (close > open_):         return None   # [7]
+
+    # ── Shared rules 10-17 ────────────────────────────────────────
+    if (ma20 - ma200) / ma200 > 0.12:  return None   # [10]
+    if (close - ma20) / ma20  > 0.05:  return None   # [12]
+    if (close - ma50) / ma50  > 0.08:  return None   # [13]
+    if avg_vol20 < MIN_AVG_VOLUME_TF:  return None   # [14]
+    if (high - low) < 0.8 * atr10:    return None   # [16]
 
     vol_tier = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
     rs4w     = compute_rs4w(df, vnindex_df)
-    sl       = round(low, 2)
-    tp1      = round(ma50, 2)
-    tp2      = round(close + 2.0 * atr10, 2)
+    if rs4w is not None and rs4w < 0.95:  return None   # [17]
+
+    # ── Try TF_MA20 first (higher quality) ───────────────────────
+    if (low <= ma20 * 1.03             # [9a] tested MA20
+            and close > high10         # [8a] breaks 10-day high
+            and vol >= 1.2 * avg_vol20  # [15a]
+            and (ma50 - ma200) / ma200 <= 0.08):   # [11]
+        signal_type = "TF_MA20"
+        touched_ma  = ma20
+
+    # ── Try TF_MA50 (deeper pullback, stricter gates) ─────────────
+    elif (low <= ma50 * 1.03           # [9b] tested MA50
+            and close > ma50           # [9b] closed back above MA50
+            and (ma50 - ma200) / ma200 <= 0.05     # [11b] early uptrend only
+            and vol >= 1.5 * avg_vol20  # [15b] stronger vol required
+            and len(df) >= 6 and close > df.iloc[-6]["Close"]):  # [8b] 5-day momentum
+        signal_type = "TF_MA50"
+        touched_ma  = ma50
+
+    else:
+        return None
+
+    sl_raw = min(low, touched_ma) * 0.995
+    sl     = round(sl_raw, 2)
+    entry  = round(close, 2)
+    tp     = round(entry + 2.0 * atr10, 2)
+    rr     = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
 
     return {
-        "signal":     "REVERSAL",
-        "status":     "PENDING",
-        "date":       df.index[-1],
-        "close":      round(close, 2),
-        "ma50":       round(ma50, 2),
-        "ma200":      round(ma200, 2),
-        "atr10":      round(atr10, 2),
-        "sl":         sl,
-        "tp1":        tp1,
-        "tp2":        tp2,
-        "vol_tier":   vol_tier,
-        "rs4w":       rs4w,
-        "volume":     int(vol),
-        "vol_char":   compute_vol_character(df),
-        "tight_days": count_tight_days(df),
-        "weekly_ok":  check_weekly_trend(df),
-        "avg_vol20": int(avg_vol20),
+        "signal":          signal_type,
+        "date":            df.index[-1],
+        "close":           round(close, 2),
+        "ma20":            round(ma20, 2),
+        "ma50":            round(ma50, 2),
+        "ma200":           round(ma200, 2),
+        "high10":          round(high10, 2),
+        "atr10":           round(atr10, 2),
+        "touched_ma":      "MA20" if signal_type == "TF_MA20" else "MA50",
+        "sl":              sl,
+        "tp":              tp,
+        "rr":              rr,
+        "vol_tier":        vol_tier,
+        "rs4w":            rs4w,
+        "volume":          int(vol),
+        "avg_vol20":       int(avg_vol20),
+        "vol_char":        compute_vol_character(df),
+        "weekly_ok":       check_weekly_trend(df),
+        "supply_overhead": has_overhead_supply(df, high, atr10),
     }
 
 
@@ -993,7 +1053,8 @@ _SIGNAL_PRIORITY = {
     "BREAKOUT_EARLY":  3,
     "GAP_EARLY":       4,
     "NR7_EARLY":       5,
-    "REVERSAL":        6,
+    "TF_MA20":         6,
+    "TF_MA50":         7,
 }
 
 def run_scan(
@@ -1019,10 +1080,10 @@ def run_scan(
             return None
         df = compute_indicators(df)
         sig = (
-            scan_breakout(df, vnindex_df) or
-            scan_gap(df, vnindex_df)      or
-            scan_nr7(df, vnindex_df)      or
-            scan_reversal(df, vnindex_df)
+            scan_breakout(df, vnindex_df)     or
+            scan_gap(df, vnindex_df)           or
+            scan_nr7(df, vnindex_df)           or
+            scan_trend_filter(df, vnindex_df)
         )
         if sig:
             sig["symbol"] = sym.replace(".VN", "")
@@ -1114,7 +1175,7 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
     ), row=1, col=1)
 
     # Moving averages
-    ma_specs = [("ma50", "#f59e0b", "MA50"), ("ma200", "#818cf8", "MA200")]
+    ma_specs = [("ma20", "#34d399", "MA20"), ("ma50", "#f59e0b", "MA50"), ("ma200", "#818cf8", "MA200")]
     for col_name, color, label in ma_specs:
         if col_name in view.columns and not view[col_name].isna().all():
             fig.add_trace(go.Scatter(
@@ -1307,7 +1368,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             "BREAKOUT_STRONG": "🚀", "BREAKOUT_EARLY": "📊",
             "NR7_STRONG": "🔩",     "NR7_EARLY": "🔧",
             "GAP_STRONG": "⚡",     "GAP_EARLY": "🌩",
-            "REVERSAL": "🔄",
+            "TF_MA20": "🎯", "TF_MA50": "📌",
         }.get(r["signal"], "")
         rs4w     = r.get("rs4w")
         rs_pct   = r.get("rs_pct")
@@ -1335,6 +1396,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         ns = r.get("nr7_score")
         if ns is not None:   qf.append(f"S{ns}")
         quality = "·".join(qf) if qf else "—"
+        touched = r.get("touched_ma", "")
         table_rows.append({
             "Mã":      r["symbol"],
             "Loại":    f"{sig_icon} {r['signal']}{gap_str}",
@@ -1345,6 +1407,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             "RS4W":    f"{rs_icon} {rs_str}",
             "Volume":  f"{vol_icon} {r.get('vol_tier', '')}",
             "Quality": quality,
+            "Touch":   touched,
             "Ngành":   r.get("sector", ""),
         })
 
@@ -1956,7 +2019,7 @@ def main() -> None:
 
     # ── Header
     st.title("📈 VN Stock Screener — Swing D1")
-    st.caption("Breakout Momentum & Reversal Hunter | Scan sau khi nến ngày đóng cửa")
+    st.caption("Breakout Momentum & Trend Filter | Scan sau khi nến ngày đóng cửa")
 
     # ── Sidebar
     with st.sidebar:
@@ -2036,10 +2099,13 @@ def main() -> None:
 - Gap ≥ 0.5% so với close hôm qua
 - Gap không bị lấp, đóng phá HIGH10
 
-**🔄 Reversal**
-- Giá < MA50, gần MA200 (±1× ATR)
-- Test đáy thấp hơn rồi từ chối
-- Cần confirm nến sau đóng > đỉnh tín hiệu
+**🎯 TF_MA20** *(Pullback nhẹ đến MA20)*
+- Trend mạnh: MA20 > MA50 > MA200 (đều dốc lên)
+- Low chạm MA20, đóng phá HIGH10 + vol ≥ 1.2×
+
+**📌 TF_MA50** *(Pullback sâu đến MA50 — early uptrend)*
+- MA50 gần MA200 (≤5%), low chạm MA50, đóng trên MA50
+- 5-day momentum + vol ≥ 1.5× (cần bùng nổ mạnh hơn)
 
 **🟢 RS4W** — RS > 1.05 = cổ phiếu mạnh hơn thị trường
 
@@ -2079,7 +2145,7 @@ def main() -> None:
     if st.session_state.get("market_downtrend"):
         st.warning(
             "⚠️ Thị trường downtrend (VNIndex < MA50) — "
-            "Breakout signals đã bị tắt. Chỉ hiển thị Reversal & Watchlist."
+            "Breakout signals đã bị tắt. Chỉ hiển thị Trend Filter & Watchlist."
         )
 
     # ── Results
@@ -2091,19 +2157,19 @@ def main() -> None:
         n_bo  = sum(1 for r in results if r["signal"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY"))
         n_nr7 = sum(1 for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY"))
         n_gap = sum(1 for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY"))
-        n_rev = sum(1 for r in results if r["signal"] == "REVERSAL")
+        n_tf  = sum(1 for r in results if r["signal"] in ("TF_MA20", "TF_MA50"))
         n_rs  = sum(1 for r in results if (r.get("rs4w") or 0) >= 1.05)
         st.subheader(
             f"Kết quả {universe} — {len(results)} tín hiệu "
-            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 🔄{n_rev} · 🟢RS{n_rs})"
+            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 🎯{n_tf} · 🟢RS{n_rs})"
         )
 
-        tab_all, tab_bo, tab_nr7, tab_gap, tab_rev, tab_watch = st.tabs([
+        tab_all, tab_bo, tab_nr7, tab_gap, tab_tf, tab_watch = st.tabs([
             f"Tất cả ({len(results)})",
             f"🚀 Breakout ({n_bo})",
             f"🔩 NR7 ({n_nr7})",
             f"⚡ Gap ({n_gap})",
-            f"🔄 Reversal ({n_rev})",
+            f"🎯 Trend Filter ({n_tf})",
             f"👀 Watchlist ({len(watchlist)})",
         ])
         with tab_all:
@@ -2114,8 +2180,8 @@ def main() -> None:
             _render_results([r for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY")], use_cache, key="tab_nr7")
         with tab_gap:
             _render_results([r for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY")], use_cache, key="tab_gap")
-        with tab_rev:
-            _render_results([r for r in results if r["signal"] == "REVERSAL"], use_cache, key="tab_rev")
+        with tab_tf:
+            _render_results([r for r in results if r["signal"] in ("TF_MA20", "TF_MA50")], use_cache, key="tab_tf")
         with tab_watch:
             _render_watchlist(watchlist, use_cache)
 

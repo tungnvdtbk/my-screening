@@ -1,0 +1,15 @@
+Scan stocks where:
+- Low > MA200
+- Close > MA200
+- MA20 > MA50 > MA200
+- MA20 > MA20[5]
+- MA50 > MA50[5]
+- MA200 > MA200[20]
+- Close > Open
+- Close > Highest(High, 10)[1]
+- abs(Low - MA20) / MA20 <= 0.02 OR abs(Low - MA50) / MA50 <= 0.02
+- (MA20 - MA200) / MA200 <= 0.12
+- (MA50 - MA200) / MA200 <= 0.08
+- (Close - MA20) / MA20 <= 0.05
+- (Close - MA50) / MA50 <= 0.08
+- AvgVolume(20) >= MinAvgVolume
