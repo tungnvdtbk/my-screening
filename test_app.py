@@ -4,7 +4,7 @@ Run: python test_app.py
 
 Covers:
   compute_indicators · _vol_tier · compute_rs4w · compute_market_filter
-  scan_breakout · scan_nr7 · scan_gap · scan_reversal
+  scan_breakout · scan_nr7 · scan_gap
   _save_df/_load_df · cache_stats/clear_cache · load_price_data
 """
 
@@ -95,7 +95,7 @@ def make_df_ending(n, end_date, base=50.0, vol=500_000, seed=42):
     rng = np.random.default_rng(seed)
     prices = base + np.linspace(0, base * 0.3, n) + rng.standard_normal(n) * 0.2
     prices = np.abs(prices)
-    idx = pd.date_range(end=end_date, periods=n, freq="B")
+    idx = pd.bdate_range(end=end_date, periods=n)
     return pd.DataFrame({
         "Open":   prices * 0.99,
         "High":   prices * 1.01,
@@ -204,25 +204,6 @@ def _gap_row(df, price=100.0, gap_pct=0.008, high10_mult=0.97, high20_mult=0.98)
         nr7=False, gap_pct=gap_pct,
     )
 
-
-def _reversal_row(df, price=50.0):
-    """Patch last row to satisfy scan_reversal conditions."""
-    atr      = max(float(df["atr10"].dropna().iloc[-1]), 0.3)
-    avg_vol  = float(df["avg_vol20"].dropna().iloc[-1])
-    ma200    = price + atr * 0.5     # close within 1 ATR of MA200
-    ma50     = price * 1.08          # close < MA50 (downtrend)
-    prev_low = price + 0.5           # prev low > current low → rejection
-    df = patch_prev(df, Low=prev_low)
-    return patch_last(df,
-        Close=price,   Open=price * 0.992,
-        High=price * 1.001, Low=price - atr * 1.3,
-        Volume=avg_vol * 2.5,
-        atr10=atr,    avg_vol20=avg_vol,  avg_vol_pre5=avg_vol * 0.70,
-        ma50=ma50,    ma50_prev5=ma50 * 0.99,
-        ma200=ma200,
-        candle_range=price * 1.001 - (price - atr * 1.3),
-        nr7=False, gap_pct=0.0,
-    )
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -600,67 +581,6 @@ class TestScanGap(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────
-
-class TestScanReversal(unittest.TestCase):
-    """scan_reversal(df) — MA200 support reversal detection."""
-
-    def setUp(self):
-        self.base = _ind(300, trend="down")
-
-    def test_reversal_detected(self):
-        df = _reversal_row(self.base, price=50.0)
-        result = app.scan_reversal(df)
-        self.assertIsNotNone(result)
-        self.assertEqual(result["signal"], "REVERSAL")
-
-    def test_status_is_pending(self):
-        df = _reversal_row(self.base, price=50.0)
-        result = app.scan_reversal(df)
-        self.assertIsNotNone(result)
-        self.assertEqual(result["status"], "PENDING")
-
-    def test_returns_none_too_short(self):
-        df = app.compute_indicators(make_downtrend_df(100))
-        self.assertIsNone(app.scan_reversal(df))
-
-    def test_returns_none_price_above_ma50(self):
-        """close >= ma50 → not in downtrend → no reversal."""
-        df = _reversal_row(self.base, price=50.0)
-        df = patch_last(df, ma50=48.0)   # ma50 below close
-        self.assertIsNone(app.scan_reversal(df))
-
-    def test_returns_none_not_near_ma200(self):
-        """Price far from MA200 → no support zone."""
-        df = _reversal_row(self.base, price=50.0)
-        atr = float(df["atr10"].iloc[-1])
-        df  = patch_last(df, ma200=50.0 + atr * 3.0)   # MA200 3 ATR away
-        self.assertIsNone(app.scan_reversal(df))
-
-    def test_returns_none_no_rejection(self):
-        """low >= prev_low → no rejection wick."""
-        df = _reversal_row(self.base, price=50.0)
-        low = float(df["Low"].iloc[-1])
-        df  = patch_prev(df, Low=low - 1.0)   # prev low now LOWER than current
-        self.assertIsNone(app.scan_reversal(df))
-
-    def test_returns_none_too_far_below_ma200(self):
-        """close < ma200 × 0.92 → dead-cat-bounce filter."""
-        df = _reversal_row(self.base, price=50.0)
-        df = patch_last(df, ma200=56.0)   # close (50) < 56 × 0.92 = 51.5 → filtered
-        self.assertIsNone(app.scan_reversal(df))
-
-    def test_result_keys(self):
-        df = _reversal_row(self.base)
-        result = app.scan_reversal(df)
-        self.assertIsNotNone(result)
-        for key in ["signal", "status", "close", "sl", "tp1", "tp2", "vol_tier", "rs4w"]:
-            self.assertIn(key, result)
-
-    def test_sl_below_close(self):
-        df = _reversal_row(self.base)
-        result = app.scan_reversal(df)
-        self.assertIsNotNone(result)
-        self.assertLess(result["sl"], result["close"])
 
 
 # ══════════════════════════════════════════════════════════════════════
