@@ -1213,17 +1213,6 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
                           line=dict(color="#22c55e", dash="dash", width=1.2),
                           annotation_text="R.Low / Support", annotation_position="right",
                           row=1, col=1)
-        # PB+BO specific: consolidation zone
-        if "consol_high" in sig and sig.get("consol_high"):
-            fig.add_hline(y=sig["consol_high"],
-                          line=dict(color="#a78bfa", dash="dash", width=1.2),
-                          annotation_text="Consol H", annotation_position="right",
-                          row=1, col=1)
-        if "consol_low" in sig and sig.get("consol_low"):
-            fig.add_hline(y=sig["consol_low"],
-                          line=dict(color="#a78bfa", dash="dot", width=1.0),
-                          annotation_text="Consol L", annotation_position="right",
-                          row=1, col=1)
 
     # Volume bars
     vol_colors = [
@@ -1772,239 +1761,11 @@ def _render_mr_results(rows: list[dict], use_cache: bool, key: str = "mr_table")
         sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
         if sel_rows:
             st.session_state["mr_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("pb_sel",  None)
             st.session_state.pop("sig_sel", None)
             st.session_state.pop("wl_sel",  None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
-
-# ============================================================
-# SCAN — Trend Pullback + Breakout (independent strategy)
-# ============================================================
-def scan_pullback_breakout(
-    df: pd.DataFrame,
-    vnindex_df=None,
-    *,
-    consol_bars: int        = 5,
-    pullback_bars: int      = 15,
-    consol_range_max: float = 0.05,   # max 5% range = "tight" consolidation
-    pullback_min: float     = 0.03,   # pullback must be at least 3% from prior high/low
-    pullback_max: float     = 0.20,   # but not more than 20% (not a reversal)
-    rr_ratio: float         = 2.0,
-) -> dict | None:
-    """
-    Trend Pullback + Breakout pattern.
-    Long : uptrend → price pulls back → consolidation → close breaks above consol high
-    Short: downtrend → price bounces → consolidation → close breaks below consol low
-    No look-ahead: signal candle = df.iloc[-1]; all windows use prior data only.
-    """
-    min_bars = 55 + consol_bars + pullback_bars
-    if df is None or len(df) < min_bars:
-        return None
-
-    row  = df.iloc[-1]
-    required = ["ma50", "ma50_prev5", "atr10", "avg_vol20"]
-    if any(pd.isna(row.get(c, float("nan"))) for c in required):
-        return None
-
-    close = row["Close"]; open_ = row["Open"]
-    high  = row["High"];  low   = row["Low"]
-    ma50  = row["ma50"];  ma50_prev5 = row["ma50_prev5"]
-    atr10 = row["atr10"]; avg_vol20  = row["avg_vol20"]
-    vol   = row["Volume"]
-
-    # Consolidation window: last consol_bars candles BEFORE signal candle
-    consol = df.iloc[-consol_bars - 1: -1]
-    if len(consol) < consol_bars:
-        return None
-    consol_high = float(consol["High"].max())
-    consol_low  = float(consol["Low"].min())
-    consol_mid  = (consol_high + consol_low) / 2
-    consol_range_pct = (consol_high - consol_low) / consol_mid if consol_mid > 0 else 1.0
-
-    # Consolidation must be tight
-    if consol_range_pct > consol_range_max:
-        return None
-
-    # Prior trend window: before the consolidation
-    prior = df.iloc[-pullback_bars - consol_bars - 1: -consol_bars - 1]
-    if len(prior) < 5:
-        return None
-    prior_high = float(prior["High"].max())
-    prior_low  = float(prior["Low"].min())
-
-    # Determine direction from signal candle first — avoids ambiguity when
-    # both MA50 conditions could apply simultaneously.
-    # Long only — signal candle must close above consolidation high (bull breakout)
-    if not (close > consol_high and close > open_):
-        return None
-    signal_type = "PB_LONG"
-
-    # Trend: prior window had highs above MA50 (uptrend was active before pullback)
-    if not (prior_high > ma50):
-        return None
-    # Sanity: consolidation not too far below MA50
-    if consol_low < ma50 * 0.85:
-        return None
-    # Pullback: consolidation sits below the prior high by pullback_min..pullback_max
-    if prior_high <= 0:
-        return None
-    pullback_pct = (prior_high - consol_high) / prior_high
-    if not (pullback_min <= pullback_pct <= pullback_max):
-        return None
-    sl        = round(consol_low, 2)
-    entry     = round(close, 2)
-    tp        = round(entry + rr_ratio * (entry - sl), 2)
-    rr        = round((tp - entry) / max(entry - sl, 0.001), 2)
-    direction = "Long"
-
-    vol_tier = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
-    rs4w     = compute_rs4w(df, vnindex_df)
-    vol_char = compute_vol_character(df)
-    weekly   = check_weekly_trend(df)
-
-    return {
-        "signal":           signal_type,
-        "direction":        direction,
-        "date":             df.index[-1],
-        "close":            round(close, 2),
-        "consol_high":      round(consol_high, 2),
-        "consol_low":       round(consol_low, 2),
-        "prior_high":       round(prior_high, 2),
-        "prior_low":        round(prior_low, 2),
-        "consol_range_pct": round(consol_range_pct * 100, 1),
-        "pullback_pct":     round(pullback_pct * 100, 1),
-        "atr10":            round(atr10, 2),
-        "ma50":             round(ma50, 2),
-        "ma200":            round(row.get("ma200", float("nan")), 2),
-        "sl":               sl,
-        "tp":               tp,
-        "rr":               rr,
-        "vol_tier":         vol_tier,
-        "vol_char":         vol_char,
-        "weekly_ok":        weekly,
-        "rs4w":             rs4w,
-        "volume":           int(vol),
-        "avg_vol20":        int(avg_vol20),
-    }
-
-
-def run_pb_scan(
-    symbols: dict[str, str],
-    use_cache: bool = True,
-    vnindex_df=None,
-    progress_cb=None,
-    pb_params: dict | None = None,
-) -> tuple[list[dict], bool]:
-    """
-    Run scan_pullback_breakout across all symbols in parallel.
-    Returns (signals, market_downtrend).
-    """
-    pb_params     = pb_params or {}
-    results: list[dict] = []
-    total = len(symbols)
-    done  = 0
-
-    def _scan_one(sym: str) -> dict | None:
-        df = load_price_data(sym, use_cache=use_cache)
-        if df is None or df.empty:
-            return None
-        df  = compute_indicators(df)
-        sig = scan_pullback_breakout(df, vnindex_df, **pb_params)
-        if sig:
-            sig["symbol"] = sym.replace(".VN", "")
-            sig["sector"] = symbols.get(sym, "")
-        return sig
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(_scan_one, sym): sym for sym in symbols}
-        for fut in as_completed(futures):
-            try:
-                res = fut.result()
-                if res:
-                    results.append(res)
-            except Exception:
-                pass
-            done += 1
-            if progress_cb:
-                progress_cb(done, total)
-
-    # Market regime
-    market_downtrend = False
-    if vnindex_df is not None:
-        try:
-            idx_col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
-            vn = vnindex_df[idx_col].dropna()
-            if len(vn) >= 51:
-                market_downtrend = bool(vn.iloc[-1] < vn.rolling(50).mean().iloc[-1])
-        except Exception:
-            pass
-
-    def _sort(r: dict):
-        sig_order = 0 if r["signal"] == "PB_LONG" else 1
-        vol_order = {"TIER1": 0, "TIER2": 1}.get(r.get("vol_tier", ""), 2)
-        rs_order  = 0 if (r.get("rs4w") or 0) >= 1.05 else 1
-        return (sig_order, vol_order, rs_order, r["symbol"])
-
-    return sorted(results, key=_sort), market_downtrend
-
-
-# ============================================================
-# PB+BO RESULTS TABLE
-# ============================================================
-def _render_pb_results(rows: list[dict], use_cache: bool, key: str = "pb_table") -> None:
-    if not rows:
-        st.info("Không có tín hiệu PB+BO.")
-        return
-
-    st.caption(
-        "Trend Pullback + Breakout — "
-        "Long: uptrend → pullback → breakout trên consolidation | "
-        "Short: downtrend → bounce → breakdown dưới consolidation"
-    )
-
-    table_rows = []
-    for r in rows:
-        rs4w     = r.get("rs4w")
-        rs_str   = f"{rs4w:.2f}" if rs4w is not None else "—"
-        rs_icon  = "🟢" if rs4w and rs4w >= 1.05 else ("🔴" if rs4w and rs4w < 0.95 else "")
-        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
-        sig_icon = "📈" if r["signal"] == "PB_LONG" else "📉"
-        qf = []
-        if r.get("vol_char") == "ACCUM":   qf.append("A")
-        if r.get("weekly_ok"):             qf.append("W")
-        table_rows.append({
-            "Mã":        r["symbol"],
-            "Hướng":     f"{sig_icon} {r['signal']}",
-            "Giá":       r["close"],
-            "Consol H":  r.get("consol_high", ""),
-            "Consol L":  r.get("consol_low", ""),
-            "PB%":       f"{r.get('pullback_pct', '')}%",
-            "Range%":    f"{r.get('consol_range_pct', '')}%",
-            "SL":        r["sl"],
-            "TP":        r["tp"],
-            "R:R":       r.get("rr", ""),
-            "RS4W":      f"{rs_icon} {rs_str}",
-            "Vol":       f"{vol_icon} {r.get('vol_tier', '')}",
-            "Quality":   "·".join(qf) if qf else "—",
-            "Ngành":     r.get("sector", ""),
-        })
-
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row",
-            key=key,
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["pb_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("sig_sel", None)
-            st.session_state.pop("wl_sel", None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
 # ============================================================
@@ -2066,22 +1827,6 @@ def main() -> None:
             "bottom_zone_threshold": mr_bot_zone,
         }
         st.session_state["mr_config"] = mr_config
-
-        st.divider()
-        st.header("PB+BO Config")
-        pb_consol_bars  = st.slider("Consolidation bars",    3, 10,  5)
-        pb_consol_range = st.slider("Consol range max (%)",  1, 10,  5) / 100
-        pb_pb_min       = st.slider("Pullback min (%)",      1,  8,  3) / 100
-        pb_pb_max       = st.slider("Pullback max (%)",     10, 30, 20) / 100
-        pb_rr           = st.slider("R:R ratio",           1.0, 4.0, 2.0, 0.5)
-        pb_params = dict(
-            consol_bars       = pb_consol_bars,
-            consol_range_max  = pb_consol_range,
-            pullback_min      = pb_pb_min,
-            pullback_max      = pb_pb_max,
-            rr_ratio          = pb_rr,
-        )
-        st.session_state["pb_params"] = pb_params
 
         st.divider()
         st.header("Chiến lược")
@@ -2205,53 +1950,6 @@ def main() -> None:
         st.info("Nhấn Scan VN30 hoặc Scan VN100 để bắt đầu.")
 
     # ══════════════════════════════════════════════════════════════
-    # PB+BO — Independent Trend Pullback + Breakout scan
-    # ══════════════════════════════════════════════════════════════
-    st.divider()
-    st.subheader("📐 Trend Pullback + Breakout Scan")
-    st.caption("Independent scan — Long/Short based on trend → pullback → consolidation → breakout")
-
-    col_pb30, col_pb100 = st.columns(2)
-    with col_pb30:
-        do_pb30  = st.button("Scan PB+BO VN30",  use_container_width=True)
-    with col_pb100:
-        do_pb100 = st.button("Scan PB+BO VN100", use_container_width=True)
-
-    pb_params = st.session_state.get("pb_params", {})
-
-    if do_pb30:
-        prog = st.progress(0, text="Scanning PB+BO VN30… 0 / 30")
-        def _pb_cb30(done, total):
-            prog.progress(done / total, text=f"Scanning PB+BO VN30… {done} / {total}")
-        pb_sigs, _ = run_pb_scan(VN30_STOCKS,  use_cache=use_cache,
-                                  vnindex_df=vnindex_df, progress_cb=_pb_cb30,
-                                  pb_params=pb_params)
-        st.session_state["pb_results"]  = pb_sigs
-        st.session_state["pb_universe"] = "VN30"
-        prog.empty()
-
-    if do_pb100:
-        prog = st.progress(0, text="Scanning PB+BO VN100… 0 / 100")
-        def _pb_cb100(done, total):
-            prog.progress(done / total, text=f"Scanning PB+BO VN100… {done} / {total}")
-        pb_sigs, _ = run_pb_scan(VN100_STOCKS, use_cache=use_cache,
-                                  vnindex_df=vnindex_df, progress_cb=_pb_cb100,
-                                  pb_params=pb_params)
-        st.session_state["pb_results"]  = pb_sigs
-        st.session_state["pb_universe"] = "VN100"
-        prog.empty()
-
-    pb_results  = st.session_state.get("pb_results", [])
-    pb_universe = st.session_state.get("pb_universe", "")
-
-    if pb_results:
-        st.subheader(f"PB+BO {pb_universe} — {len(pb_results)} tín hiệu 📈 Long")
-        _render_pb_results(pb_results, use_cache, key="pb_table_main")
-
-    elif not do_pb30 and not do_pb100:
-        st.caption("Nhấn Scan PB+BO để bắt đầu. Cấu hình tham số trong sidebar.")
-
-    # ══════════════════════════════════════════════════════════════
     # MEAN REVERSION RANGE SCAN
     # ══════════════════════════════════════════════════════════════
     st.divider()
@@ -2318,22 +2016,6 @@ def main() -> None:
         c4.metric("EMA50 slope", f"{mr_sel.get('ema50_slope', '')}%")
         show_chart(mr_sel["symbol"], sig=mr_sel, use_cache=use_cache)
 
-    # PB chart panel — outside tabs
-    pb_sel = st.session_state.get("pb_sel")
-    if pb_sel:
-        st.divider()
-        direction = pb_sel.get("direction", "")
-        st.subheader(f"Chart — {pb_sel['symbol']} ({pb_sel['signal']}) "
-                     f"| PB {pb_sel.get('pullback_pct', '')}% | "
-                     f"Consol {pb_sel.get('consol_range_pct', '')}%")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Consol High", pb_sel.get("consol_high", ""))
-        c1.metric("Consol Low",  pb_sel.get("consol_low", ""))
-        c2.metric("SL", pb_sel.get("sl", ""))
-        c2.metric("TP", pb_sel.get("tp", ""))
-        c3.metric("R:R",      pb_sel.get("rr", ""))
-        c3.metric("Pullback", f"{pb_sel.get('pullback_pct', '')}%")
-        show_chart(pb_sel["symbol"], sig=pb_sel, use_cache=use_cache)
 
 
 if __name__ == "__main__":
