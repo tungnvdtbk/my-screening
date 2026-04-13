@@ -1671,6 +1671,940 @@ def scan_mean_reversion(df: pd.DataFrame, vnindex_df=None, config: dict | None =
     }
 
 
+# ============================================================
+# SWING FILTER — Professional Swing Scanner (per swing_scanner_rules_pro_v_2.md)
+# ============================================================
+
+def compute_swing_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute all indicators required by the Swing Filter spec (Section 5)."""
+    d = df.copy()
+    close = d["Close"]
+    high = d["High"]
+    low = d["Low"]
+    volume = d["Volume"]
+    open_ = d["Open"]
+
+    d["sw_ma20"] = close.rolling(20).mean()
+    d["sw_ma50"] = close.rolling(50).mean()
+    d["sw_vol_ma20"] = volume.rolling(20).mean()
+    d["sw_vol_ma5"] = volume.rolling(5).mean()
+    d["sw_ret_5d"] = close.pct_change(5)
+    d["sw_ret_2d"] = close.pct_change(2)
+    d["sw_volatility10"] = close.pct_change().rolling(10).std()
+    d["sw_distance_ma20"] = close / d["sw_ma20"]
+    d["sw_volume_spike"] = volume / d["sw_vol_ma20"]
+    d["sw_value"] = close * volume
+    d["sw_high_20d"] = high.rolling(20).max()
+    candle_range = (high - low).replace(0, 1e-9)
+    d["sw_body_ratio"] = (close - open_).abs() / candle_range
+    d["sw_range_pct"] = candle_range / close.replace(0, 1e-9)
+
+    # RSI(14) — Wilder Smoothing
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
+    loss = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+    rs = gain / loss.replace(0, 1e-9)
+    d["sw_rsi"] = 100 - (100 / (1 + rs))
+
+    # Momentum Acceleration
+    d["sw_mom_accel"] = (d["sw_ret_2d"] - (d["sw_ret_5d"] / 2)).clip(-0.30, 0.30)
+
+    # Pivot high: shift(1).rolling(10).max — previous 10 bars' max high
+    d["sw_pivot_high"] = high.shift(1).rolling(10).max()
+
+    # Buildup components
+    d["sw_tightness"] = close.rolling(8).std() / close.replace(0, 1e-9)
+    d["sw_vol_dryup"] = d["sw_vol_ma5"] < d["sw_vol_ma20"] * 0.80
+    d["sw_near_ma20"] = close.between(d["sw_ma20"] * 0.99, d["sw_ma20"] * 1.02)
+    d["sw_higher_low"] = low > low.shift(3)
+    d["sw_small_body"] = d["sw_body_ratio"].rolling(5).mean() < 0.50
+    d["sw_range_contract"] = d["sw_range_pct"].rolling(5).mean() < d["sw_range_pct"].rolling(15).mean()
+
+    down_day = close < open_
+    distribution_day = down_day & (volume > d["sw_vol_ma20"] * 1.20)
+    d["sw_no_distribution"] = distribution_day.rolling(5).sum() <= 1
+
+    # Buildup score
+    d["sw_buildup_score"] = (
+        (d["sw_tightness"] < 0.025).astype(int)
+        + d["sw_vol_dryup"].astype(int)
+        + d["sw_near_ma20"].astype(int)
+        + d["sw_higher_low"].astype(int)
+        + d["sw_small_body"].astype(int)
+        + d["sw_range_contract"].astype(int)
+        + d["sw_no_distribution"].astype(int)
+    )
+
+    # Buildup definition
+    d["sw_is_buildup"] = (
+        (d["sw_tightness"] < 0.025)
+        & d["sw_near_ma20"]
+        & d["sw_no_distribution"]
+        & (d["sw_buildup_score"] >= 4)
+    )
+
+    # Buildup persistence
+    d["sw_buildup_days"] = d["sw_is_buildup"].astype(float).rolling(5).sum()
+
+    # ATR(10) for adaptive TP/SL
+    tr = pd.concat([
+        high - low,
+        (high - close.shift(1)).abs(),
+        (low - close.shift(1)).abs(),
+    ], axis=1).max(axis=1)
+    d["sw_atr10"] = tr.rolling(10).mean()
+
+    # Recent low for tighter SL
+    d["sw_low_5d"] = low.rolling(5).min()
+
+    return d
+
+
+def swing_market_regime_ok(vnindex_df: pd.DataFrame | None) -> bool:
+    """Section 6: Market Regime Gate. All conditions on latest bar."""
+    if vnindex_df is None or len(vnindex_df) < 51:
+        return False
+    try:
+        col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+        vn_close = vnindex_df[col].dropna()
+        if len(vn_close) < 51:
+            return False
+        vn_ma20 = vn_close.rolling(20).mean()
+        vn_ma50 = vn_close.rolling(50).mean()
+        vn_ret_3d = vn_close.pct_change(3)
+        last_close = float(vn_close.iloc[-1])
+        last_ma20 = float(vn_ma20.iloc[-1])
+        last_ma50 = float(vn_ma50.iloc[-1])
+        last_ret3 = float(vn_ret_3d.iloc[-1])
+        return (
+            last_ma20 > last_ma50
+            and last_close > last_ma50 * 0.97
+            and last_ret3 > -0.03
+        )
+    except Exception:
+        return False
+
+
+def _swing_rs_vs_vni(df: pd.DataFrame, vnindex_df: pd.DataFrame | None) -> float | None:
+    """Section 7: 20-day relative strength vs VNINDEX."""
+    if vnindex_df is None or len(vnindex_df) < 21 or len(df) < 21:
+        return None
+    try:
+        stock_perf = float(df["Close"].iloc[-1] / df["Close"].iloc[-21])
+        col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+        idx_perf = float(vnindex_df[col].iloc[-1] / vnindex_df[col].iloc[-21])
+        if idx_perf == 0:
+            return None
+        return round(stock_perf / idx_perf, 4)
+    except Exception:
+        return None
+
+
+def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Swing Filter scan for a single ticker.
+    Applies hard filters (Section 8), buildup (Section 9),
+    entry trigger (Section 10), and exit levels (Section 11).
+    Returns signal dict or None.
+    """
+    if df is None or len(df) < 60:
+        return None
+
+    d = compute_swing_indicators(df)
+    row = d.iloc[-1]
+
+    required = [
+        "sw_ma20", "sw_ma50", "sw_vol_ma20", "sw_vol_ma5",
+        "sw_rsi", "sw_tightness", "sw_buildup_score",
+        "sw_buildup_days", "sw_pivot_high", "sw_value",
+        "sw_mom_accel", "sw_is_buildup", "sw_atr10", "sw_low_5d",
+    ]
+    if any(pd.isna(row.get(c, float("nan"))) for c in required):
+        return None
+
+    close = float(row["Close"])
+    high = float(row["High"])
+    low = float(row["Low"])
+    open_ = float(row["Open"])
+    volume = float(row["Volume"])
+    ma20 = float(row["sw_ma20"])
+    ma50 = float(row["sw_ma50"])
+    rsi = float(row["sw_rsi"])
+    value = float(row["sw_value"])
+    vol_ma20 = float(row["sw_vol_ma20"])
+    pivot_high = float(row["sw_pivot_high"])
+    mom_accel = float(row["sw_mom_accel"])
+    tightness = float(row["sw_tightness"])
+    buildup_score = int(row["sw_buildup_score"])
+    buildup_days = float(row["sw_buildup_days"])
+    is_buildup = bool(row["sw_is_buildup"])
+    atr10 = float(row["sw_atr10"])
+    low_5d = float(row["sw_low_5d"])
+
+    # Section 7: Relative strength
+    rs_vs_vni = _swing_rs_vs_vni(df, vnindex_df)
+
+    # Section 8: Per-Stock Hard Filters (fail-fast order)
+    if value <= 1e10:
+        return None
+    if not (close > ma50):
+        return None
+    if not (ma20 > ma50):
+        return None
+    if not (close > ma50 * 0.97):
+        return None
+    if close > ma20 * 1.05:
+        return None
+    if close > ma50 * 1.15:
+        return None
+    if rsi >= 72:
+        return None
+    if rs_vs_vni is not None and rs_vs_vni <= 1.0:
+        return None
+    if not is_buildup:
+        return None
+    if buildup_days < 3:
+        return None
+    # FIX 3: Require buildup_score >= 5 (buildup=4 had 0% WR)
+    if buildup_score < 5:
+        return None
+
+    # Section 10: Entry Trigger
+    price_break = close > pivot_high
+    vol_expand = volume > vol_ma20 * 1.5
+    candle_range = high - low
+    strong_bar = ((close - low) / max(candle_range, 1e-9)) > 0.5
+    mom_ok = mom_accel > 0
+
+    entry_confirmed = price_break and vol_expand and strong_bar
+    # FIX 4: Require mom_accel > 0 as mandatory (accelerating momentum)
+    if not mom_ok:
+        return None
+
+    if not entry_confirmed:
+        return None
+
+    trigger_score = int(price_break) + int(vol_expand) + int(strong_bar) + int(mom_ok)
+
+    # Section 11: Entry / Exit levels
+    # SL: spec base (ma50*0.97) capped at max 5% from entry
+    entry = close
+    sl_base = ma50 * 0.97
+    sl_cap = entry * 0.95
+    stop_loss = round(max(sl_base, sl_cap), 2)
+    # TP: fixed 7% / 12% (reliable across different volatility regimes)
+    target_1 = round(entry * 1.07, 2)
+    target_2 = round(entry * 1.12, 2)
+    rr_ratio = round((target_1 - entry) / max(entry - stop_loss, 1e-9), 2)
+
+    if rr_ratio < 1.5:
+        return None
+
+    # Collect all data for cross-sectional scoring later
+    return {
+        "signal": "SWING_FILTER",
+        "date": df.index[-1],
+        "close": round(close, 2),
+        "rsi": round(rsi, 1),
+        "tightness": round(tightness, 4),
+        "near_ma20": bool(row["sw_near_ma20"]),
+        "buildup_score": buildup_score,
+        "buildup_days": int(buildup_days),
+        "vol_dryup": bool(row["sw_vol_dryup"]),
+        "range_contract": bool(row["sw_range_contract"]),
+        "no_distribution": bool(row["sw_no_distribution"]),
+        "rs_vs_vni_20": rs_vs_vni,
+        "price_break": price_break,
+        "vol_expand": vol_expand,
+        "strong_bar": strong_bar,
+        "mom_accel": round(mom_accel, 4),
+        "trigger_score": trigger_score,
+        "entry_confirmed": entry_confirmed,
+        "sl": stop_loss,
+        "tp": target_1,
+        "tp2": target_2,
+        "rr": rr_ratio,
+        "atr10": round(atr10, 2),
+        "ma20": round(ma20, 2),
+        "ma50": round(ma50, 2),
+        "value": round(value, 0),
+        "volume_spike": round(float(row["sw_volume_spike"]), 2),
+        "distance_ma20": round(float(row["sw_distance_ma20"]), 4),
+        "pivot_high": round(pivot_high, 2),
+        "volume": int(volume),
+        "avg_vol20": int(vol_ma20),
+        # raw features for cross-sectional scoring
+        "_ret_5d": float(row["sw_ret_5d"]) if not pd.isna(row["sw_ret_5d"]) else 0,
+        "_volume_spike": float(row["sw_volume_spike"]) if not pd.isna(row["sw_volume_spike"]) else 0,
+        "_distance_ma20": float(row["sw_distance_ma20"]) if not pd.isna(row["sw_distance_ma20"]) else 1,
+        "_tightness": tightness,
+        "_buildup_score": buildup_score,
+        "_trigger_score": trigger_score,
+        "_rs_vs_vni_20": rs_vs_vni if rs_vs_vni is not None else 1.0,
+    }
+
+
+def _swing_cross_sectional_score(candidates: list[dict]) -> None:
+    """
+    Section 12: Cross-sectional percentile ranking and final score.
+    Mutates dicts in-place, adding 'score' field.
+    """
+    if not candidates:
+        return
+    from scipy.stats import rankdata
+
+    n = len(candidates)
+    if n == 1:
+        candidates[0]["score"] = 0.50
+        return
+
+    def pct_rank(values):
+        arr = np.array(values, dtype=float)
+        arr = np.nan_to_num(arr, nan=0.0)
+        return rankdata(arr) / len(arr)
+
+    ret_5d = [c["_ret_5d"] for c in candidates]
+    vol_spike = [c["_volume_spike"] for c in candidates]
+    dist_ma20 = [-(c["_distance_ma20"] - 1.0) if c["_distance_ma20"] > 1.0 else 0 for c in candidates]
+    tightness = [-c["_tightness"] for c in candidates]
+    buildup = [c["_buildup_score"] for c in candidates]
+    trigger = [c["_trigger_score"] for c in candidates]
+    rs = [c["_rs_vs_vni_20"] for c in candidates]
+
+    r_momentum = pct_rank(ret_5d)
+    r_vol_spike = pct_rank(vol_spike)
+    r_ma20_dist = pct_rank(dist_ma20)
+    r_tightness = pct_rank(tightness)
+    r_buildup = pct_rank(buildup)
+    r_trigger = pct_rank(trigger)
+    r_rs = pct_rank(rs)
+
+    for i, c in enumerate(candidates):
+        c["score"] = round(
+            0.20 * r_momentum[i]
+            + 0.10 * r_vol_spike[i]
+            + 0.10 * r_ma20_dist[i]
+            + 0.15 * r_tightness[i]
+            + 0.20 * r_buildup[i]
+            + 0.15 * r_trigger[i]
+            + 0.10 * r_rs[i],
+            3,
+        )
+
+
+def run_swing_scan(
+    symbols: dict[str, str],
+    use_cache: bool = True,
+    vnindex_df=None,
+    progress_cb=None,
+    bypass_market_gate: bool = False,
+) -> list[dict]:
+    """
+    Run Swing Filter across all symbols.
+    Returns top 10 candidates sorted by cross-sectional score.
+    """
+    # Section 6: Market regime gate
+    if not bypass_market_gate and not swing_market_regime_ok(vnindex_df):
+        return []
+
+    candidates: list[dict] = []
+    total = len(symbols)
+    done = 0
+
+    def _one(sym: str) -> dict | None:
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or df.empty or len(df) < 60:
+            return None
+        sig = scan_swing_filter(df, vnindex_df)
+        if sig:
+            sig["symbol"] = sym.replace(".VN", "")
+            sig["sector"] = symbols.get(sym, "")
+        return sig
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym): sym for sym in symbols}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    candidates.append(res)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
+
+    # Section 12: Cross-sectional scoring
+    _swing_cross_sectional_score(candidates)
+
+    # Section 13: Top 10 by score
+    candidates.sort(key=lambda c: -c.get("score", 0))
+    return candidates[:10]
+
+
+# ── Swing Filter results table ─────────────────────────────────────
+def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_table") -> None:
+    if not rows:
+        st.info("Khong co tin hieu Swing Filter.")
+        return
+
+    st.caption(
+        "Swing Filter — constructive buildup + breakout confirmation | "
+        "Sap xep theo Cross-Sectional Score"
+    )
+
+    table_rows = []
+    for r in rows:
+        rs = r.get("rs_vs_vni_20")
+        rs_str = f"{rs:.3f}" if rs is not None else "—"
+        table_rows.append({
+            "Ma": r["symbol"],
+            "Score": f"{r.get('score', 0):.3f}",
+            "Gia": r["close"],
+            "RSI": r.get("rsi", ""),
+            "Buildup": f"{r.get('buildup_score', '')}/7 ({r.get('buildup_days', '')}d)",
+            "Trigger": f"{r.get('trigger_score', '')}/4",
+            "Tightness": f"{r.get('tightness', 0):.4f}",
+            "RS20": rs_str,
+            "Vol Spike": f"{r.get('volume_spike', 0):.1f}x",
+            "SL": r.get("sl", ""),
+            "TP1": r.get("tp", ""),
+            "TP2": r.get("tp2", ""),
+            "R:R": r.get("rr", ""),
+            "Nganh": r.get("sector", ""),
+        })
+
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row",
+            key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["sw_sel"] = rows[sel_rows[0]]
+            st.session_state.pop("sig_sel", None)
+            st.session_state.pop("wl_sel", None)
+            st.session_state.pop("mr_sel", None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# PRICE ACTION SCANNER — Breakout & Pullback (v2.1)
+# per price_action_scanner_breakout_pullback_v2.md
+# ============================================================
+
+def compute_pa_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute all indicators for the Price Action scanner (Sections 4-6)."""
+    d = df.copy()
+    close = d["Close"]
+    high = d["High"]
+    low = d["Low"]
+    open_ = d["Open"]
+    volume = d["Volume"]
+
+    # Section 4: Core indicators
+    d["pa_ma20"] = close.rolling(20).mean()
+    d["pa_ma50"] = close.rolling(50).mean()
+    d["pa_vol_ma20"] = volume.rolling(20).mean()
+    d["pa_vol_ma5"] = volume.rolling(5).mean()
+    d["pa_value"] = close * volume
+    d["pa_value_avg5"] = d["pa_value"].rolling(5).mean()
+
+    d["pa_ma20_slope"] = d["pa_ma20"] - d["pa_ma20"].shift(5)
+    d["pa_ma50_slope"] = d["pa_ma50"] - d["pa_ma50"].shift(10)
+
+    bar_range = (high - low).replace(0, 1e-9)
+    d["pa_bar_range"] = bar_range
+    d["pa_range_pct"] = bar_range / close.replace(0, 1e-9)
+    d["pa_body_ratio"] = (close - open_).abs() / bar_range
+    d["pa_upper_tail"] = (high - close) / bar_range
+
+    d["pa_pivot_10"] = high.shift(1).rolling(10).max()
+    d["pa_pivot_20"] = high.shift(1).rolling(20).max()
+    d["pa_low_3"] = low.shift(1).rolling(3).min()
+    d["pa_low_5"] = low.shift(1).rolling(5).min()
+
+    d["pa_ma20_distance"] = close / d["pa_ma20"].replace(0, 1e-9)
+    d["pa_range_avg20"] = d["pa_range_pct"].rolling(20).mean()
+    d["pa_range_expansion"] = d["pa_range_pct"] / d["pa_range_avg20"].replace(0, 1e-9)
+
+    d["pa_ret_5d"] = close.pct_change(5)
+    d["pa_ret_2d"] = close.pct_change(2)
+
+    # RSI(14) — Wilder Smoothing
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
+    loss = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+    rs = gain / loss.replace(0, 1e-9)
+    d["pa_rsi"] = 100 - (100 / (1 + rs))
+
+    # Momentum Acceleration
+    d["pa_mom_accel"] = (d["pa_ret_2d"] - (d["pa_ret_5d"] / 2)).clip(-0.30, 0.30)
+
+    # Barrier Cluster Detection (Volman)
+    def _barrier_touches(w):
+        if len(w) == 0:
+            return 0
+        mx = w.max()
+        return ((w >= mx * 0.985) & (w <= mx)).sum()
+
+    d["pa_barrier_touches"] = high.shift(1).rolling(20).apply(_barrier_touches, raw=False)
+    d["pa_strong_barrier"] = d["pa_barrier_touches"] >= 3
+
+    # Squeeze Detection (Volman)
+    d["pa_support_rising"] = d["pa_low_5"] > d["pa_low_5"].shift(5)
+    d["pa_resist_flat"] = d["pa_pivot_20"] <= d["pa_pivot_20"].shift(5) * 1.005
+    d["pa_is_squeeze"] = d["pa_support_rising"] & d["pa_resist_flat"]
+
+    # Section 5: Trend filter
+    d["pa_trend_filter"] = (
+        (close > d["pa_ma20"])
+        & (d["pa_ma20"] > d["pa_ma50"])
+        & (d["pa_ma20_slope"] > 0)
+        & (d["pa_ma50_slope"] >= 0)
+    )
+
+    # Section 6: Buildup
+    d["pa_tightness"] = close.rolling(8).std() / close.replace(0, 1e-9)
+    d["pa_tight_closes"] = close.rolling(5).std() / close.replace(0, 1e-9)
+    d["pa_vol_dryup"] = d["pa_vol_ma5"] < d["pa_vol_ma20"] * 0.80
+    d["pa_near_ma20"] = close.between(d["pa_ma20"] * 0.99, d["pa_ma20"] * 1.02)
+    d["pa_higher_low"] = low > low.shift(3)
+    d["pa_small_body"] = d["pa_body_ratio"].rolling(5).mean() < 0.55
+    d["pa_range_contract"] = d["pa_range_pct"].rolling(5).mean() < d["pa_range_pct"].rolling(15).mean()
+    d["pa_below_pivot"] = close <= d["pa_pivot_20"] * 1.02
+
+    down_day = close < open_
+    distribution_day = down_day & (volume > d["pa_vol_ma20"] * 1.20)
+    d["pa_no_distribution"] = distribution_day.rolling(5).sum() <= 1
+
+    d["pa_buildup_score"] = (
+        (d["pa_tightness"] < 0.025).astype(int)
+        + (d["pa_tight_closes"] < 0.020).astype(int)
+        + d["pa_vol_dryup"].astype(int)
+        + d["pa_near_ma20"].astype(int)
+        + d["pa_higher_low"].astype(int)
+        + d["pa_small_body"].astype(int)
+        + d["pa_range_contract"].astype(int)
+        + d["pa_below_pivot"].astype(int)
+        + d["pa_no_distribution"].astype(int)
+        + d["pa_strong_barrier"].astype(int)
+        + d["pa_is_squeeze"].astype(int)
+    )
+
+    d["pa_is_buildup"] = (
+        d["pa_near_ma20"]
+        & d["pa_below_pivot"]
+        & d["pa_no_distribution"]
+        & (d["pa_tightness"] < 0.025)
+        & (d["pa_buildup_score"] >= 5)
+    )
+
+    d["pa_buildup_days"] = d["pa_is_buildup"].astype(float).rolling(5).sum()
+
+    # Limit-up detection (HOSE ±7%)
+    ref_price = close.shift(1)
+    ceil_price = ref_price * 1.07
+    d["pa_hit_limit_up"] = close >= ceil_price * 0.998
+    d["pa_half_day"] = volume < d["pa_vol_ma20"] * 0.50
+
+    # Pullback structure
+    d["pa_prior_push"] = close.shift(3) > close.shift(8)
+    d["pa_pullback_depth"] = (close.rolling(5).max() - low) / close.replace(0, 1e-9)
+
+    return d
+
+
+def pa_market_regime_ok(vnindex_df: pd.DataFrame | None) -> bool:
+    """Section 5.5: VNINDEX market regime gate."""
+    if vnindex_df is None or len(vnindex_df) < 51:
+        return False
+    try:
+        col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+        vn_close = vnindex_df[col].dropna()
+        if len(vn_close) < 51:
+            return False
+        vn_ma20 = vn_close.rolling(20).mean()
+        vn_ma50 = vn_close.rolling(50).mean()
+        vn_ret3d = vn_close.pct_change(3)
+        return (
+            float(vn_close.iloc[-1]) > float(vn_ma50.iloc[-1]) * 0.97
+            and float(vn_ma20.iloc[-1]) > float(vn_ma50.iloc[-1])
+            and float(vn_ret3d.iloc[-1]) > -0.03
+        )
+    except Exception:
+        return False
+
+
+def _pa_rs_vs_vni(df: pd.DataFrame, vnindex_df: pd.DataFrame | None) -> float | None:
+    """Section 4: 20-day relative strength vs VNINDEX."""
+    if vnindex_df is None or len(vnindex_df) < 21 or len(df) < 21:
+        return None
+    try:
+        stock_perf = float(df["Close"].iloc[-1] / df["Close"].iloc[-21])
+        col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+        idx_perf = float(vnindex_df[col].iloc[-1] / vnindex_df[col].iloc[-21])
+        if idx_perf == 0:
+            return None
+        return round(stock_perf / idx_perf, 4)
+    except Exception:
+        return None
+
+
+def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Price Action scan for a single ticker.
+    Returns breakout or pullback signal, or None.
+    """
+    if df is None or len(df) < 60:
+        return None
+
+    d = compute_pa_indicators(df)
+    row = d.iloc[-1]
+
+    required = [
+        "pa_ma20", "pa_ma50", "pa_vol_ma20", "pa_rsi", "pa_tightness",
+        "pa_buildup_score", "pa_buildup_days", "pa_pivot_20", "pa_value_avg5",
+        "pa_mom_accel", "pa_is_buildup", "pa_trend_filter",
+        "pa_ma20_slope", "pa_ma50_slope", "pa_range_expansion",
+    ]
+    if any(pd.isna(row.get(c, float("nan"))) for c in required):
+        return None
+
+    close = float(row["Close"])
+    high = float(row["High"])
+    low = float(row["Low"])
+    open_ = float(row["Open"])
+    volume = float(row["Volume"])
+    ma20 = float(row["pa_ma20"])
+    ma50 = float(row["pa_ma50"])
+    rsi = float(row["pa_rsi"])
+    value_avg5 = float(row["pa_value_avg5"])
+    vol_ma20 = float(row["pa_vol_ma20"])
+    pivot_20 = float(row["pa_pivot_20"])
+    mom_accel = float(row["pa_mom_accel"])
+    tightness = float(row["pa_tightness"])
+    buildup_score = int(row["pa_buildup_score"])
+    buildup_days = float(row["pa_buildup_days"])
+    is_buildup = bool(row["pa_is_buildup"])
+    trend_ok = bool(row["pa_trend_filter"])
+    bar_range = float(row["pa_bar_range"])
+    range_expansion = float(row["pa_range_expansion"])
+    upper_tail = float(row["pa_upper_tail"])
+    strong_barrier = bool(row["pa_strong_barrier"])
+    is_squeeze = bool(row["pa_is_squeeze"])
+
+    rs_vs_vni = _pa_rs_vs_vni(df, vnindex_df)
+
+    # Section 7: Hard filters
+    if not trend_ok:
+        return None
+    if value_avg5 <= 1e10:
+        return None
+    if not is_buildup:
+        return None
+    if buildup_days < 3:
+        return None
+    if close > ma20 * 1.05:
+        return None
+    if close > ma50 * 1.15:
+        return None
+    if rsi >= 72:
+        return None
+    if rs_vs_vni is not None and rs_vs_vni <= 1.0:
+        return None
+    # Limit-up / half-day rejection
+    if bool(row.get("pa_hit_limit_up", False)):
+        return None
+    if bool(row.get("pa_half_day", False)):
+        return None
+
+    # ── Try Setup A: Breakout After Buildup (Section 8) ──
+    price_break = close > pivot_20
+    break_distance = close / max(pivot_20, 1e-9)
+    clean_break = break_distance <= 1.03
+    # FIX 1: Relax vol threshold 1.5x→1.3x (VN ATC/block trades inflate avg;
+    #         1.5x was too strict — only 1 breakout in 2yr backtest)
+    vol_expand = volume > vol_ma20 * 1.30
+    strong_close = ((close - low) / max(bar_range, 1e-9)) > 0.60
+    small_upper = upper_tail < 0.35
+    # FIX 5: Relax range_expansion 2.0→2.5 (VN stocks gap frequently on news)
+    acceptable_bar = range_expansion <= 2.50
+
+    setup_breakout = (
+        price_break and clean_break and vol_expand
+        and strong_close and small_upper and acceptable_bar
+    )
+
+    # ── Try Setup B: Pullback Continuation (Section 9) ──
+    prior_push = bool(row.get("pa_prior_push", False))
+    pullback_depth = float(row.get("pa_pullback_depth", 0))
+    pullback_exists = pullback_depth > 0.02
+    # down days in last 4
+    down_days = 0
+    for i in range(1, min(5, len(d))):
+        if i < len(d) - 1 and float(d.iloc[-i]["Close"]) < float(d.iloc[-i - 1]["Close"]):
+            down_days += 1
+    down_days_ok = down_days >= 1
+    pullback_to_ma20 = low <= ma20 * 1.02
+    close_holds_ma20 = close >= ma20 * 0.99
+    shallow_pullback = close >= ma50
+    no_deep_damage = low >= ma50 * 0.98
+
+    bull_reclaim = close > float(d.iloc[-2]["High"]) if len(d) >= 2 else False
+    pb_strong_close = ((close - low) / max(bar_range, 1e-9)) > 0.55
+    reversal_bar = (close > open_) and bull_reclaim and pb_strong_close
+    # FIX 3: Pullback needs at least avg volume to confirm demand is real
+    vol_ok = volume >= vol_ma20 * 1.00
+    # FIX 2: Pullback close must exceed prev candle high (confirms strength)
+    pb_closes_above_prev = close > float(d.iloc[-2]["High"]) if len(d) >= 2 else False
+
+    setup_pullback = (
+        prior_push and pullback_exists and down_days_ok
+        and pullback_to_ma20 and close_holds_ma20
+        and shallow_pullback and no_deep_damage
+        and reversal_bar and vol_ok
+        # FIX 4: Require buildup_score >= 6 for pullback (weaker pullbacks lose)
+        and buildup_score >= 6
+    )
+
+    # Section 10: Label
+    if setup_breakout:
+        setup_type = "PA_BREAKOUT"
+    elif setup_pullback:
+        setup_type = "PA_PULLBACK"
+    else:
+        return None
+
+    # Section 8/9: Trigger score (6 points max)
+    trigger_score = (
+        int(price_break) + int(vol_expand) + int(strong_close)
+        + int(mom_accel > 0) + int(strong_barrier) + int(is_squeeze)
+    )
+    # For pullback: bonus if volume > 1.3x avg (strong demand at support)
+    pb_vol_bonus = setup_type == "PA_PULLBACK" and volume > vol_ma20 * 1.30
+    if pb_vol_bonus:
+        trigger_score = min(trigger_score + 1, 6)
+
+    # Section 12: Exit levels
+    # T+2.5 note: 58% of losses hit Day 1-2 (unsellable in VN).
+    # Use wider SL to survive early noise — position size accordingly.
+    if setup_type == "PA_BREAKOUT":
+        # SL = max(signal low, MA20 - 3%) — gives room for Day 1-2 noise
+        stop_loss = round(max(low, ma20 * 0.97), 2)
+        target_1 = round(close * 1.07, 2)
+        target_2 = round(close * 1.12, 2)
+    else:  # pullback
+        # SL = max(signal low, MA50 - 2%) for pullback
+        stop_loss = round(max(low, ma50 * 0.98), 2)
+        target_1 = round(close * 1.07, 2)
+        target_2 = round(close * 1.10, 2)
+
+    # FIX: Require trigger_score >= 3 (trigger=2 had 0% WR)
+    if trigger_score < 3:
+        return None
+
+    rr_ratio = round((target_1 - close) / max(close - stop_loss, 1e-9), 2)
+    if rr_ratio < 1.5:
+        return None
+
+    volume_spike = volume / max(vol_ma20, 1e-9)
+    barrier_touches = int(row.get("pa_barrier_touches", 0))
+
+    return {
+        "signal": setup_type,
+        "date": df.index[-1],
+        "close": round(close, 2),
+        "setup_type": setup_type,
+        "ma20": round(ma20, 2),
+        "ma50": round(ma50, 2),
+        "ma20_slope": round(float(row["pa_ma20_slope"]), 4),
+        "rsi": round(rsi, 1),
+        "rs_vs_vni": rs_vs_vni,
+        "buildup_score": buildup_score,
+        "buildup_days": int(buildup_days),
+        "tightness": round(tightness, 4),
+        "strong_barrier": strong_barrier,
+        "barrier_touches": barrier_touches,
+        "is_squeeze": is_squeeze,
+        "trigger_score": trigger_score,
+        "price_break": price_break,
+        "vol_expand": vol_expand,
+        "mom_accel": round(mom_accel, 4),
+        "sl": stop_loss,
+        "tp": target_1,
+        "tp2": target_2,
+        "rr": rr_ratio,
+        "volume": int(volume),
+        "avg_vol20": int(vol_ma20),
+        "volume_spike": round(volume_spike, 2),
+        "pivot_20": round(pivot_20, 2),
+        "range_expansion": round(range_expansion, 2),
+        "upper_tail": round(upper_tail, 2),
+        # raw features for cross-sectional scoring
+        "_ret_5d": float(row["pa_ret_5d"]) if not pd.isna(row["pa_ret_5d"]) else 0,
+        "_volume_spike": volume_spike,
+        "_buildup_score": buildup_score,
+        "_tightness": tightness,
+        "_close_quality": (close - low) / max(bar_range, 1e-9),
+        "_extension_penalty": max(float(row["pa_ma20_distance"]) - 1.0, 0),
+        "_rs_vs_vni": rs_vs_vni if rs_vs_vni is not None else 1.0,
+        "_trigger_score": trigger_score,
+    }
+
+
+def _pa_cross_sectional_score(candidates: list[dict]) -> None:
+    """Section 11: Cross-sectional percentile ranking. Mutates dicts in-place."""
+    if not candidates:
+        return
+    from scipy.stats import rankdata
+
+    n = len(candidates)
+    if n == 1:
+        candidates[0]["score"] = 0.50
+        return
+
+    def pct_rank(values):
+        arr = np.array(values, dtype=float)
+        arr = np.nan_to_num(arr, nan=0.0)
+        return rankdata(arr) / len(arr)
+
+    r_momentum = pct_rank([c["_ret_5d"] for c in candidates])
+    r_vol_spike = pct_rank([c["_volume_spike"] for c in candidates])
+    r_buildup = pct_rank([c["_buildup_score"] for c in candidates])
+    r_tightness = pct_rank([-c["_tightness"] for c in candidates])
+    r_close_q = pct_rank([c["_close_quality"] for c in candidates])
+    r_ext = pct_rank([-c["_extension_penalty"] for c in candidates])
+    r_rs = pct_rank([c["_rs_vs_vni"] for c in candidates])
+    r_trigger = pct_rank([c["_trigger_score"] for c in candidates])
+
+    for i, c in enumerate(candidates):
+        c["score"] = round(
+            0.20 * r_momentum[i]
+            + 0.10 * r_vol_spike[i]
+            + 0.15 * r_buildup[i]
+            + 0.15 * r_tightness[i]
+            + 0.10 * r_close_q[i]
+            + 0.10 * r_ext[i]
+            + 0.10 * r_rs[i]
+            + 0.10 * r_trigger[i],
+            3,
+        )
+
+
+def run_pa_scan(
+    symbols: dict[str, str],
+    use_cache: bool = True,
+    vnindex_df=None,
+    progress_cb=None,
+    bypass_market_gate: bool = False,
+) -> list[dict]:
+    """Run Price Action scanner across all symbols. Returns top 10 by score."""
+    if not bypass_market_gate and not pa_market_regime_ok(vnindex_df):
+        return []
+
+    candidates: list[dict] = []
+    total = len(symbols)
+    done = 0
+
+    def _one(sym: str) -> dict | None:
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or df.empty or len(df) < 60:
+            return None
+        sig = scan_pa(df, vnindex_df)
+        if sig:
+            sig["symbol"] = sym.replace(".VN", "")
+            sig["sector"] = symbols.get(sym, "")
+        return sig
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym): sym for sym in symbols}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    candidates.append(res)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
+
+    _pa_cross_sectional_score(candidates)
+
+    # Sector cap: max 2 per sector
+    sector_count: dict[str, int] = {}
+    result: list[dict] = []
+    for c in sorted(candidates, key=lambda x: -x.get("score", 0)):
+        sec = c.get("sector", "")
+        cnt = sector_count.get(sec, 0)
+        if cnt < 2:
+            result.append(c)
+            sector_count[sec] = cnt + 1
+        if len(result) >= 10:
+            break
+
+    return result
+
+
+def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table") -> None:
+    if not rows:
+        st.info("Khong co tin hieu Price Action.")
+        return
+
+    st.caption(
+        "Price Action — Breakout after buildup & Pullback to MA20 | "
+        "Volman barrier + squeeze detection | Sorted by Score"
+    )
+
+    table_rows = []
+    for r in rows:
+        rs = r.get("rs_vs_vni")
+        rs_str = f"{rs:.3f}" if rs is not None else "—"
+        volman_flags = []
+        if r.get("strong_barrier"):
+            volman_flags.append(f"Barrier({r.get('barrier_touches', 0)})")
+        if r.get("is_squeeze"):
+            volman_flags.append("Squeeze")
+        table_rows.append({
+            "Ma": r["symbol"],
+            "Type": r["signal"].replace("PA_", ""),
+            "Score": f"{r.get('score', 0):.3f}",
+            "Gia": r["close"],
+            "RSI": r.get("rsi", ""),
+            "Buildup": f"{r.get('buildup_score', '')}/11 ({r.get('buildup_days', '')}d)",
+            "Trigger": f"{r.get('trigger_score', '')}/6",
+            "Tightness": f"{r.get('tightness', 0):.4f}",
+            "Volman": " ".join(volman_flags) if volman_flags else "—",
+            "RS20": rs_str,
+            "Vol": f"{r.get('volume_spike', 0):.1f}x",
+            "SL": r.get("sl", ""),
+            "TP1": r.get("tp", ""),
+            "R:R": r.get("rr", ""),
+            "Nganh": r.get("sector", ""),
+        })
+
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row",
+            key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["pa_sel"] = rows[sel_rows[0]]
+            st.session_state.pop("sig_sel", None)
+            st.session_state.pop("wl_sel", None)
+            st.session_state.pop("mr_sel", None)
+            st.session_state.pop("sw_sel", None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
 def run_mr_scan(
     symbols: dict[str, str],
     use_cache: bool = True,
@@ -1780,7 +2714,7 @@ def main() -> None:
 
     # ── Header
     st.title("📈 VN Stock Screener — Swing D1")
-    st.caption("Breakout Momentum & Trend Filter | Scan sau khi nến ngày đóng cửa")
+    st.caption("Breakout Momentum & Trend Filter & Swing Filter | Scan sau khi nến ngày đóng cửa")
 
     # ── Sidebar
     with st.sidebar:
@@ -1812,6 +2746,12 @@ def main() -> None:
         risk_pct = st.slider("Risk/lệnh (%)", 0.5, 3.0, 1.0, 0.5) / 100
         st.session_state["capital"]  = capital
         st.session_state["risk_pct"] = risk_pct
+
+        st.divider()
+        st.header("Scan Options")
+        bypass_vni = st.checkbox("Bypass VNINDEX filter", value=False,
+                                  help="Bo qua dieu kien thi truong VNINDEX — scan bat ke xu huong index")
+        st.session_state["bypass_vni"] = bypass_vni
 
         st.divider()
         st.header("Mean Reversion Config")
@@ -2016,6 +2956,158 @@ def main() -> None:
         c4.metric("EMA50 slope", f"{mr_sel.get('ema50_slope', '')}%")
         show_chart(mr_sel["symbol"], sig=mr_sel, use_cache=use_cache)
 
+    # ══════════════════════════════════════════════════════════════
+    # SWING FILTER SCAN
+    # ══════════════════════════════════════════════════════════════
+    st.divider()
+    st.subheader("🎯 Swing Filter Scan")
+    st.caption("Constructive buildup near support + breakout confirmation + cross-sectional scoring")
+    if st.session_state.get("bypass_vni"):
+        st.warning("⚠️ VNINDEX filter bypassed — ket qua khong duoc bao ve boi market regime gate")
+
+    col_sw30, col_sw100 = st.columns(2)
+    with col_sw30:
+        do_sw30 = st.button("Scan Swing VN30", use_container_width=True)
+    with col_sw100:
+        do_sw100 = st.button("Scan Swing VN100", use_container_width=True)
+
+    bypass_vni = st.session_state.get("bypass_vni", False)
+
+    if do_sw30:
+        prog = st.progress(0, text="Scanning Swing VN30... 0 / 30")
+        def _sw_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning Swing VN30... {done} / {total}")
+        sw_sigs = run_swing_scan(VN30_STOCKS, use_cache=use_cache,
+                                  vnindex_df=vnindex_df, progress_cb=_sw_cb30,
+                                  bypass_market_gate=bypass_vni)
+        st.session_state["sw_results"] = sw_sigs
+        st.session_state["sw_universe"] = "VN30"
+        prog.empty()
+
+    if do_sw100:
+        prog = st.progress(0, text="Scanning Swing VN100... 0 / 100")
+        def _sw_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning Swing VN100... {done} / {total}")
+        sw_sigs = run_swing_scan(VN100_STOCKS, use_cache=use_cache,
+                                  vnindex_df=vnindex_df, progress_cb=_sw_cb100,
+                                  bypass_market_gate=bypass_vni)
+        st.session_state["sw_results"] = sw_sigs
+        st.session_state["sw_universe"] = "VN100"
+        prog.empty()
+
+    sw_results = st.session_state.get("sw_results", [])
+    sw_universe = st.session_state.get("sw_universe", "")
+
+    if sw_results:
+        st.subheader(f"Swing Filter {sw_universe} — {len(sw_results)} candidates")
+        _render_swing_results(sw_results, use_cache, key="sw_table_main")
+    elif not do_sw30 and not do_sw100:
+        st.caption("Nhan Scan Swing de bat dau.")
+
+    # Swing chart panel — outside tabs
+    sw_sel = st.session_state.get("sw_sel")
+    if sw_sel:
+        st.divider()
+        st.subheader(
+            f"Chart — {sw_sel['symbol']} | "
+            f"Swing Filter Score {sw_sel.get('score', 0):.3f} | "
+            f"Buildup {sw_sel.get('buildup_score', '')}/7 | "
+            f"Trigger {sw_sel.get('trigger_score', '')}/4"
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close", sw_sel.get("close", ""))
+        c1.metric("MA20", sw_sel.get("ma20", ""))
+        c2.metric("MA50", sw_sel.get("ma50", ""))
+        c2.metric("RSI", sw_sel.get("rsi", ""))
+        c3.metric("SL", sw_sel.get("sl", ""))
+        c3.metric("TP1", sw_sel.get("tp", ""))
+        c4.metric("TP2", sw_sel.get("tp2", ""))
+        c4.metric("R:R", sw_sel.get("rr", ""))
+        rs = sw_sel.get("rs_vs_vni_20")
+        c5.metric("RS vs VNI", f"{rs:.3f}" if rs else "—")
+        c5.metric("Tightness", f"{sw_sel.get('tightness', 0):.4f}")
+        show_chart(sw_sel["symbol"], sig=sw_sel, use_cache=use_cache)
+
+    # ══════════════════════════════════════════════════════════════
+    # PRICE ACTION SCAN
+    # ══════════════════════════════════════════════════════════════
+    st.divider()
+    st.subheader("📐 Price Action — Breakout & Pullback")
+    st.caption("Volman-style buildup+barrier detection | Breakout after buildup & Pullback to MA20")
+    if st.session_state.get("bypass_vni"):
+        st.warning("⚠️ VNINDEX filter bypassed — ket qua khong duoc bao ve boi market regime gate")
+
+    col_pa30, col_pa100 = st.columns(2)
+    with col_pa30:
+        do_pa30 = st.button("Scan PA VN30", use_container_width=True)
+    with col_pa100:
+        do_pa100 = st.button("Scan PA VN100", use_container_width=True)
+
+    if do_pa30:
+        prog = st.progress(0, text="Scanning PA VN30... 0 / 30")
+        def _pa_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning PA VN30... {done} / {total}")
+        pa_sigs = run_pa_scan(VN30_STOCKS, use_cache=use_cache,
+                               vnindex_df=vnindex_df, progress_cb=_pa_cb30,
+                               bypass_market_gate=bypass_vni)
+        st.session_state["pa_results"] = pa_sigs
+        st.session_state["pa_universe"] = "VN30"
+        prog.empty()
+
+    if do_pa100:
+        prog = st.progress(0, text="Scanning PA VN100... 0 / 100")
+        def _pa_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning PA VN100... {done} / {total}")
+        pa_sigs = run_pa_scan(VN100_STOCKS, use_cache=use_cache,
+                               vnindex_df=vnindex_df, progress_cb=_pa_cb100,
+                               bypass_market_gate=bypass_vni)
+        st.session_state["pa_results"] = pa_sigs
+        st.session_state["pa_universe"] = "VN100"
+        prog.empty()
+
+    pa_results = st.session_state.get("pa_results", [])
+    pa_universe = st.session_state.get("pa_universe", "")
+
+    if pa_results:
+        n_bo = sum(1 for r in pa_results if r["signal"] == "PA_BREAKOUT")
+        n_pb = sum(1 for r in pa_results if r["signal"] == "PA_PULLBACK")
+        st.subheader(
+            f"PA {pa_universe} — {len(pa_results)} candidates "
+            f"(Breakout {n_bo} / Pullback {n_pb})"
+        )
+        _render_pa_results(pa_results, use_cache, key="pa_table_main")
+    elif not do_pa30 and not do_pa100:
+        st.caption("Nhan Scan PA de bat dau.")
+
+    # PA chart panel
+    pa_sel = st.session_state.get("pa_sel")
+    if pa_sel:
+        st.divider()
+        volman = []
+        if pa_sel.get("strong_barrier"):
+            volman.append(f"Barrier({pa_sel.get('barrier_touches', 0)})")
+        if pa_sel.get("is_squeeze"):
+            volman.append("Squeeze")
+        st.subheader(
+            f"Chart — {pa_sel['symbol']} | "
+            f"{pa_sel['signal'].replace('PA_', '')} | "
+            f"Score {pa_sel.get('score', 0):.3f} | "
+            f"Buildup {pa_sel.get('buildup_score', '')}/11"
+            + (f" | {' '.join(volman)}" if volman else "")
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close", pa_sel.get("close", ""))
+        c1.metric("MA20", pa_sel.get("ma20", ""))
+        c2.metric("MA50", pa_sel.get("ma50", ""))
+        c2.metric("RSI", pa_sel.get("rsi", ""))
+        c3.metric("SL", pa_sel.get("sl", ""))
+        c3.metric("TP1", pa_sel.get("tp", ""))
+        c4.metric("TP2", pa_sel.get("tp2", ""))
+        c4.metric("R:R", pa_sel.get("rr", ""))
+        rs = pa_sel.get("rs_vs_vni")
+        c5.metric("RS vs VNI", f"{rs:.3f}" if rs else "—")
+        c5.metric("Trigger", f"{pa_sel.get('trigger_score', '')}/6")
+        show_chart(pa_sel["symbol"], sig=pa_sel, use_cache=use_cache)
 
 
 if __name__ == "__main__":
