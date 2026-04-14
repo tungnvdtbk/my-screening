@@ -511,7 +511,7 @@ def scan_breakout(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     vol_tier    = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
     rs4w        = compute_rs4w(df, vnindex_df)
     sl          = round(low, 2)
-    entry       = round(close, 2)
+    entry       = round(close * 1.001, 2)   # 0.1% slippage
     tp          = round(entry + 2.0 * atr10, 2)
     rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
 
@@ -623,9 +623,9 @@ def scan_nr7(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     if is_ib:                                    nr7_score += 25
     if ib_chain >= 2:                            nr7_score += 15
     if resist_atr is not None:
-        if resist_atr <= 1.0:                    nr7_score += 25
-        elif resist_atr <= 2.0:                  nr7_score += 15
-        elif resist_atr <= 3.0:                  nr7_score += 8
+        if resist_atr >= 3.0:                    nr7_score += 25   # ample room above
+        elif resist_atr >= 2.0:                  nr7_score += 15
+        elif resist_atr >= 1.0:                  nr7_score += 8
     if vol_quiet_lbl == "QUIET++":               nr7_score += 25
     elif vol_quiet_lbl == "QUIET":               nr7_score += 15
     if vol_declining:                            nr7_score += 10
@@ -644,16 +644,16 @@ def scan_nr7(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     vol_tier = _vol_tier(vol, avg_vol20, avg_vol_pre5)
     rs4w     = compute_rs4w(df, vnindex_df)
     sl       = round(low, 2)
-    entry    = round(close, 2)
+    entry    = round(close * 1.001, 2)   # 0.1% slippage
     tp       = round(entry + 2.0 * atr10, 2)
     rr       = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
     supply_overhead = has_overhead_supply(df, high, atr10)
 
     # ── Quality Tier A/B gate ──
-    # Tier A: NR7_STRONG + inside bar + score >= 60 + no overhead supply + R:R >= 2
+    # Tier A: NR7_STRONG + inside bar + score >= 60 + room above resistance + R:R >= 2
     # Tier B: NR7_STRONG + score >= 40 + R:R >= 2
     if (signal_type == "NR7_STRONG" and is_ib and nr7_score >= 60
-            and not supply_overhead and rr >= 2.0):
+            and (resist_atr is None or resist_atr >= 1.0) and rr >= 2.0):
         nr7_tier = "A"
     elif (signal_type == "NR7_STRONG" and nr7_score >= 40 and rr >= 2.0):
         nr7_tier = "B"
@@ -741,7 +741,7 @@ def scan_gap(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     vol_tier    = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
     rs4w        = compute_rs4w(df, vnindex_df)
     sl          = round(low, 2)
-    entry       = round(close, 2)
+    entry       = round(close * 1.001, 2)   # 0.1% slippage
     tp          = round(entry + 2.0 * atr10, 2)
     rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
     weekly_ok       = check_weekly_trend(df)
@@ -866,7 +866,7 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
     vol_tier = _vol_tier(vol, avg_vol20, row.get("avg_vol_pre5", float("nan")))
     rs4w     = compute_rs4w(df, vnindex_df)
-    if rs4w is not None and rs4w < 0.95:  return None   # [17]
+    if rs4w is not None and rs4w < 1.0:  return None   # [17] must outperform VNINDEX
 
     # ── Try TF_MA20 first (higher quality) ───────────────────────
     if (low <= ma20 * 1.03             # [9a] tested MA20
@@ -890,7 +890,7 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
     sl_raw = min(low, touched_ma) * 0.995
     sl     = round(sl_raw, 2)
-    entry  = round(close, 2)
+    entry  = round(close * 1.001, 2)   # 0.1% slippage
     tp     = round(entry + 2.0 * atr10, 2)
     rr     = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
     weekly_ok       = check_weekly_trend(df)
@@ -1632,7 +1632,7 @@ def _mr_is_rejected(d: pd.DataFrame, row: pd.Series, cfg: dict) -> bool:
     atr14 = float(row["mr_atr14"])
 
     # Strong downtrend
-    if close < ema50 and ema20 < ema50 and e50s < -0.02:
+    if close < ema50 and ema20 < ema50 and e50s < -0.015:
         return True
     # 10-bar drop too deep
     if len(d) >= 11:
@@ -1723,10 +1723,11 @@ def scan_mean_reversion(df: pd.DataFrame, vnindex_df=None, config: dict | None =
     range_high = float(row["mr_range_high"])
 
     # ── Quality Tier A/B gate ──
-    # Compute approximate R:R for range trade (entry=close, SL=range_low*0.98, TP=range_high)
+    # Compute R:R with 0.1% slippage (entry=close*1.001, SL=range_low*0.98, TP=range_high)
+    mr_entry = round(close * 1.001, 2)   # 0.1% slippage
     mr_sl = round(range_low * 0.98, 2)
-    mr_risk = close - mr_sl
-    mr_reward = range_high - close
+    mr_risk = mr_entry - mr_sl
+    mr_reward = range_high - mr_entry
     mr_rr = mr_reward / max(mr_risk, 1e-9) if mr_risk > 0 else 0
 
     # Tier A: strongest reversal + deep near support + oversold + R:R >= 2
@@ -1988,7 +1989,7 @@ def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
     # Section 11: Entry / Exit levels
     # SL: spec base (ma50*0.97) capped at max 5% from entry
-    entry = close
+    entry = round(close * 1.001, 2)   # 0.1% slippage
     sl_base = ma50 * 0.97
     sl_cap = entry * 0.95
     stop_loss = round(max(sl_base, sl_cap), 2)
@@ -2507,22 +2508,23 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     # Section 12: Exit levels
     # T+2.5 note: 58% of losses hit Day 1-2 (unsellable in VN).
     # Use wider SL to survive early noise — position size accordingly.
+    entry = round(close * 1.001, 2)   # 0.1% slippage
     if setup_type == "PA_BREAKOUT":
         # SL = max(signal low, MA20 - 3%) — gives room for Day 1-2 noise
         stop_loss = round(max(low, ma20 * 0.97), 2)
-        target_1 = round(close * 1.07, 2)
-        target_2 = round(close * 1.12, 2)
+        target_1 = round(entry * 1.07, 2)
+        target_2 = round(entry * 1.12, 2)
     else:  # pullback
         # SL = max(signal low, MA50 - 2%) for pullback
         stop_loss = round(max(low, ma50 * 0.98), 2)
-        target_1 = round(close * 1.07, 2)
-        target_2 = round(close * 1.10, 2)
+        target_1 = round(entry * 1.07, 2)
+        target_2 = round(entry * 1.10, 2)
 
     # FIX: Require trigger_score >= 3 (trigger=2 had 0% WR)
     if trigger_score < 3:
         return None
 
-    rr_ratio = round((target_1 - close) / max(close - stop_loss, 1e-9), 2)
+    rr_ratio = round((target_1 - entry) / max(entry - stop_loss, 1e-9), 2)
     if rr_ratio < 1.5:
         return None
 
@@ -2530,7 +2532,7 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     barrier_touches = int(row.get("pa_barrier_touches", 0))
 
     # Quality tier from backtest analysis (R:R >= 2 win rate)
-    risk_pct = (close - stop_loss) / close * 100
+    risk_pct = (entry - stop_loss) / entry * 100
     if tightness < 0.012 and volume_spike >= 2.0 and not is_squeeze:
         pa_tier = "A"   # 100% WR in backtest (tight + vol spike + no squeeze)
     elif (tightness < 0.012 and risk_pct < 3.0
@@ -3000,7 +3002,7 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
     # ── SL / TP / R:R ──
     stop_loss = round(low * 0.998, 2)  # just below reversal candle low
-    entry = close  # entry at close (PENDING confirmation will use next open)
+    entry = round(close * 1.001, 2)   # 0.1% slippage
     risk = entry - stop_loss
     if risk <= 0:
         return None
@@ -3016,12 +3018,12 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     # ── Quality tier from backtest analysis (R:R >= 2 win rate) ──
     risk_pct = (entry - stop_loss) / entry * 100
     # Tier A: deep decline + tight risk + pin bar/hammer reversal
-    # Tier B: oversold + any strong reversal + climax volume confirmed + R:R >= 2
+    # Tier B: oversold + climax vol confirmed + HAMMER/MARUBOZU only + risk < 5%
     if (decline_pct >= 0.08 and risk_pct < 2.0
             and reversal_type in ("HAMMER", "MARUBOZU")):
         cx_tier = "A"
-    elif (rsi < 35 and climax_vol_ok
-            and reversal_type in ("HAMMER", "MARUBOZU", "ENGULFING")):
+    elif (rsi < 35 and climax_vol_ok and risk_pct < 5.0
+            and reversal_type in ("HAMMER", "MARUBOZU")):
         cx_tier = "B"
     else:
         return None
