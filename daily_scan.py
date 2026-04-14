@@ -301,6 +301,7 @@ def _tg_api(method: str, data: dict = None, files: dict = None) -> dict:
     """Call Telegram Bot API. Uses urllib (stdlib) — no extra deps."""
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     url = f"https://api.telegram.org/bot{token}/{method}"
+    print(f"[Telegram] Calling {method}...")
 
     if files:
         boundary = "----PythonFormBoundary"
@@ -319,12 +320,25 @@ def _tg_api(method: str, data: dict = None, files: dict = None) -> dict:
         req = urllib.request.Request(url, data=payload,
                                      headers={"Content-Type": "application/json"})
 
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read())
+            print(f"[Telegram] {method} OK: {result.get('ok')}")
+            return result
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        print(f"[Telegram] {method} FAILED: HTTP {e.code} — {error_body}")
+        raise
+    except Exception as e:
+        print(f"[Telegram] {method} FAILED: {e}")
+        raise
 
 
 def send_telegram(summary: str, html_path: str) -> None:
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
+    print(f"[Telegram] Sending to chat_id={chat_id}")
+    print(f"[Telegram] BOT_TOKEN present: {bool(os.environ.get('TELEGRAM_BOT_TOKEN'))}")
+    print(f"[Telegram] Summary length: {len(summary)} chars")
 
     # 1. Send summary message
     _tg_api("sendMessage", {
@@ -332,10 +346,12 @@ def send_telegram(summary: str, html_path: str) -> None:
         "text": summary,
         "parse_mode": "HTML",
     })
+    print("[Telegram] Summary message sent.")
 
     # 2. Send full HTML report as document
     with open(html_path, "rb") as f:
         html_bytes = f.read()
+    print(f"[Telegram] Report file size: {len(html_bytes)} bytes")
     date_str = datetime.now().strftime("%Y-%m-%d")
     _tg_api("sendDocument", {
         "chat_id": chat_id,
@@ -343,6 +359,7 @@ def send_telegram(summary: str, html_path: str) -> None:
     }, files={
         "document": (f"vn_scan_{date_str}.html", html_bytes, "text/html"),
     })
+    print("[Telegram] Report document sent.")
 
 
 # ── Main ─────────────────────────────────────────────────────────────
@@ -356,8 +373,15 @@ if __name__ == "__main__":
     print(f"\nReport saved to {report_path}")
 
     if os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"):
-        summary = build_telegram_summary(results)
-        send_telegram(summary, report_path)
-        print(f"Telegram message sent to chat {os.environ['TELEGRAM_CHAT_ID']}")
+        try:
+            summary = build_telegram_summary(results)
+            send_telegram(summary, report_path)
+            print(f"\nTelegram message sent to chat {os.environ['TELEGRAM_CHAT_ID']}")
+        except Exception as e:
+            print(f"\nERROR sending Telegram: {e}")
+            traceback.print_exc()
+            sys.exit(1)
     else:
-        print("Telegram not configured — skipping send.")
+        print("\nTelegram not configured — skipping send.")
+        print(f"  TELEGRAM_BOT_TOKEN set: {bool(os.environ.get('TELEGRAM_BOT_TOKEN'))}")
+        print(f"  TELEGRAM_CHAT_ID set: {bool(os.environ.get('TELEGRAM_CHAT_ID'))}")
