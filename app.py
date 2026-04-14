@@ -516,10 +516,30 @@ def scan_breakout(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     tp          = round(entry + 2.0 * atr10, 2)
     rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
 
+    # Quality metrics
+    vol_char        = compute_vol_character(df)
+    tight_days      = count_tight_days(df)
+    weekly_ok       = check_weekly_trend(df)
+    supply_overhead = has_overhead_supply(df, high, atr10)
+    risk_pct        = (entry - sl) / entry * 100 if entry > 0 else 99
+
+    # ── Quality Tier A/B gate ──
+    # Tier A: BREAKOUT_STRONG + TIER1 vol + weekly trend + no overhead supply + R:R >= 2
+    # Tier B: BREAKOUT_STRONG + (TIER1 or TIER2) vol + R:R >= 2
+    if (signal_type == "BREAKOUT_STRONG" and vol_tier == "TIER1"
+            and weekly_ok and not supply_overhead and rr >= 2.0):
+        bo_tier = "A"
+    elif (signal_type == "BREAKOUT_STRONG" and vol_tier in ("TIER1", "TIER2")
+            and rr >= 2.0 and risk_pct < 5.0):
+        bo_tier = "B"
+    else:
+        return None
+
     return {
         "signal":          signal_type,
         "date":            df.index[-1],
         "close":           round(close, 2),
+        "bo_tier":         bo_tier,
         "high10":          round(high10, 2),
         "high20":          round(high20, 2),
         "atr10":           round(atr10, 2),
@@ -533,10 +553,10 @@ def scan_breakout(df: pd.DataFrame, vnindex_df=None) -> dict | None:
         "volume":          int(vol),
         "avg_vol20":       int(avg_vol20),
         # quality metrics
-        "vol_char":        compute_vol_character(df),
-        "tight_days":      count_tight_days(df),
-        "weekly_ok":       check_weekly_trend(df),
-        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "vol_char":        vol_char,
+        "tight_days":      tight_days,
+        "weekly_ok":       weekly_ok,
+        "supply_overhead": supply_overhead,
     }
 
 
@@ -628,11 +648,24 @@ def scan_nr7(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     entry    = round(close, 2)
     tp       = round(entry + 2.0 * atr10, 2)
     rr       = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+    supply_overhead = has_overhead_supply(df, high, atr10)
+
+    # ── Quality Tier A/B gate ──
+    # Tier A: NR7_STRONG + inside bar + score >= 60 + no overhead supply + R:R >= 2
+    # Tier B: NR7_STRONG + score >= 40 + R:R >= 2
+    if (signal_type == "NR7_STRONG" and is_ib and nr7_score >= 60
+            and not supply_overhead and rr >= 2.0):
+        nr7_tier = "A"
+    elif (signal_type == "NR7_STRONG" and nr7_score >= 40 and rr >= 2.0):
+        nr7_tier = "B"
+    else:
+        return None
 
     return {
         "signal":          signal_type,
         "date":            df.index[-1],
         "close":           round(close, 2),
+        "nr7_tier":        nr7_tier,
         "high10":          round(high10, 2),
         "high20":          round(high20, 2) if not pd.isna(high20) else None,
         "atr10":           round(atr10, 2),
@@ -651,7 +684,7 @@ def scan_nr7(df: pd.DataFrame, vnindex_df=None) -> dict | None:
         "vol_char":        compute_vol_character(df),
         "tight_days":      count_tight_days(df),
         "weekly_ok":       check_weekly_trend(df),
-        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "supply_overhead": supply_overhead,
         "rs4w":      rs4w,
         "volume":    int(vol),
         "avg_vol20": int(avg_vol20),
@@ -712,11 +745,27 @@ def scan_gap(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     entry       = round(close, 2)
     tp          = round(entry + 2.0 * atr10, 2)
     rr          = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+    weekly_ok       = check_weekly_trend(df)
+    supply_overhead = has_overhead_supply(df, high, atr10)
+    risk_pct        = (entry - sl) / entry * 100 if entry > 0 else 99
+
+    # ── Quality Tier A/B gate ──
+    # Tier A: GAP_STRONG + TIER1 vol + weekly trend + no overhead supply + R:R >= 2
+    # Tier B: GAP_STRONG + (TIER1 or TIER2) vol + R:R >= 2 + risk < 5%
+    if (signal_type == "GAP_STRONG" and vol_tier == "TIER1"
+            and weekly_ok and not supply_overhead and rr >= 2.0):
+        gap_tier = "A"
+    elif (signal_type == "GAP_STRONG" and vol_tier in ("TIER1", "TIER2")
+            and rr >= 2.0 and risk_pct < 5.0):
+        gap_tier = "B"
+    else:
+        return None
 
     return {
         "signal":          signal_type,
         "date":            df.index[-1],
         "close":           round(close, 2),
+        "gap_tier":        gap_tier,
         "gap_pct":         round(gap_pct * 100, 2),
         "high10":          round(high10, 2),
         "high20":          round(high20, 2) if not pd.isna(high20) else None,
@@ -728,8 +777,8 @@ def scan_gap(df: pd.DataFrame, vnindex_df=None) -> dict | None:
         "rr":              rr,
         "vol_char":        compute_vol_character(df),
         "tight_days":      count_tight_days(df),
-        "weekly_ok":       check_weekly_trend(df),
-        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "weekly_ok":       weekly_ok,
+        "supply_overhead": supply_overhead,
         "vol_tier":  vol_tier,
         "rs4w":      rs4w,
         "volume":    int(vol),
@@ -845,11 +894,31 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     entry  = round(close, 2)
     tp     = round(entry + 2.0 * atr10, 2)
     rr     = round((tp - entry) / (entry - sl), 2) if entry > sl else 0.0
+    weekly_ok       = check_weekly_trend(df)
+    supply_overhead = has_overhead_supply(df, high, atr10)
+    risk_pct        = (entry - sl) / entry * 100 if entry > 0 else 99
+
+    # ── Quality Tier A/B gate ──
+    # Tier A: TF_MA20 + TIER1/TIER2 vol + weekly trend + no overhead + R:R >= 2 + risk < 3%
+    # Tier B: TF_MA20 + vol spike + R:R >= 2 + risk < 5%
+    #         OR TF_MA50 + strong vol + weekly + R:R >= 2 + risk < 3%
+    if (signal_type == "TF_MA20" and vol_tier in ("TIER1", "TIER2")
+            and weekly_ok and not supply_overhead and rr >= 2.0 and risk_pct < 3.0):
+        tf_tier = "A"
+    elif (signal_type == "TF_MA20" and vol_tier in ("TIER1", "TIER2")
+            and rr >= 2.0 and risk_pct < 5.0):
+        tf_tier = "B"
+    elif (signal_type == "TF_MA50" and vol_tier in ("TIER1", "TIER2")
+            and weekly_ok and rr >= 2.0 and risk_pct < 3.0):
+        tf_tier = "B"
+    else:
+        return None
 
     return {
         "signal":          signal_type,
         "date":            df.index[-1],
         "close":           round(close, 2),
+        "tf_tier":         tf_tier,
         "ma20":            round(ma20, 2),
         "ma50":            round(ma50, 2),
         "ma200":           round(ma200, 2),
@@ -864,8 +933,8 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
         "volume":          int(vol),
         "avg_vol20":       int(avg_vol20),
         "vol_char":        compute_vol_character(df),
-        "weekly_ok":       check_weekly_trend(df),
-        "supply_overhead": has_overhead_supply(df, high, atr10),
+        "weekly_ok":       weekly_ok,
+        "supply_overhead": supply_overhead,
     }
 
 
@@ -1386,8 +1455,12 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         if ns is not None:   qf.append(f"S{ns}")
         quality = "·".join(qf) if qf else "—"
         touched = r.get("touched_ma", "")
+        # Tier from any of the scanners
+        tier = (r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier")
+                or r.get("tf_tier") or "")
         table_rows.append({
             "Mã":      r["symbol"],
+            "Tier":    tier,
             "Loại":    f"{sig_icon} {r['signal']}{gap_str}",
             "Giá":     r["close"],
             "SL":      r["sl"],
@@ -1643,21 +1716,45 @@ def scan_mean_reversion(df: pd.DataFrame, vnindex_df=None, config: dict | None =
 
     scores = _mr_score(row, reversal, cfg)
     rs4w   = compute_rs4w(df, vnindex_df)
+    pir    = float(row["mr_position_in_range"])
+    rsi3   = float(row["mr_rsi3"])
+    close  = float(row["Close"])
+    range_low = float(row["mr_range_low"])
+    range_high = float(row["mr_range_high"])
+
+    # ── Quality Tier A/B gate ──
+    # Compute approximate R:R for range trade (entry=close, SL=range_low*0.98, TP=range_high)
+    mr_sl = round(range_low * 0.98, 2)
+    mr_risk = close - mr_sl
+    mr_reward = range_high - close
+    mr_rr = mr_reward / max(mr_risk, 1e-9) if mr_risk > 0 else 0
+
+    # Tier A: strongest reversal + deep near support + oversold + R:R >= 2
+    # Tier B: any decent reversal + near support + R:R >= 2
+    if (reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER")
+            and pir < 0.15 and rsi3 < 20 and mr_rr >= 2.0):
+        mr_tier = "A"
+    elif (reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER", "HIGHER_CLOSE_LOWER_LOW")
+            and pir < 0.25 and mr_rr >= 2.0):
+        mr_tier = "B"
+    else:
+        return None
 
     return {
         "signal":              "MR_LONG",
         "date":                df.index[-1],
-        "close":               round(float(row["Close"]), 2),
-        "range_high":          round(float(row["mr_range_high"]), 2),
-        "range_low":           round(float(row["mr_range_low"]), 2),
+        "close":               round(close, 2),
+        "mr_tier":             mr_tier,
+        "range_high":          round(range_high, 2),
+        "range_low":           round(range_low, 2),
         "range_size_pct":      round(float(row["mr_range_size_pct"]) * 100, 1),
-        "position_in_range":   round(float(row["mr_position_in_range"]) * 100, 1),
+        "position_in_range":   round(pir * 100, 1),
         "dist_support_pct":    round(float(row["mr_dist_to_support"]) * 100, 2),
         "ema20":               round(float(row["mr_ema20"]), 2),
         "ema50":               round(float(row["mr_ema50"]), 2),
         "ema20_slope":         round(float(row["mr_ema20_slope"]) * 100, 3),
         "ema50_slope":         round(float(row["mr_ema50_slope"]) * 100, 3),
-        "rsi3":                round(float(row["mr_rsi3"]), 1),
+        "rsi3":                round(rsi3, 1),
         "atr14":               round(float(row["mr_atr14"]), 2),
         "avg_vol20":           int(row["mr_avg_vol20"]),
         "reversal_signal":     reversal,
@@ -1665,6 +1762,9 @@ def scan_mean_reversion(df: pd.DataFrame, vnindex_df=None, config: dict | None =
         "score_support":       round(scores["support"], 3),
         "score_reversal":      round(scores["reversal"], 3),
         "score_range":         round(scores["range"], 3),
+        "sl":                  mr_sl,
+        "tp":                  round(range_high, 2),
+        "rr":                  round(mr_rr, 2),
         "rs4w":                rs4w,
         "vol_tier":            _vol_tier(float(row["Volume"]), float(row["mr_avg_vol20"]),
                                          float(row.get("avg_vol_pre5", float("nan")))),
@@ -2696,15 +2796,17 @@ def _render_mr_results(rows: list[dict], use_cache: bool, key: str = "mr_table")
         rev      = r.get("reversal_signal", "")
         table_rows.append({
             "Mã":          r["symbol"],
+            "Tier":        r.get("mr_tier", ""),
             "Score":       f"{r['final_score']:.2f}",
             "Giá":         r["close"],
+            "SL":          r.get("sl", ""),
+            "TP":          r.get("tp", ""),
+            "R:R":         r.get("rr", ""),
             "Pos%":        f"{r.get('position_in_range', '')}%",
             "Dist%":       f"{r.get('dist_support_pct', '')}%",
             "Range%":      f"{r.get('range_size_pct', '')}%",
             "RSI3":        r.get("rsi3", ""),
             "Reversal":    f"{reversal_icons.get(rev, '')} {rev}",
-            "EMA20s":      f"{r.get('ema20_slope', '')}%",
-            "EMA50s":      f"{r.get('ema50_slope', '')}%",
             "RS4W":        f"{rs_icon} {rs_str}",
             "Vol":         f"{vol_icon} {r.get('vol_tier', '')}",
             "Ngành":       r.get("sector", ""),

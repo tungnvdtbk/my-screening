@@ -112,12 +112,26 @@ Trailing= sau mỗi 1*ATR10 giá đi đúng hướng, kéo SL lên theo
           // Không chốt sớm — mục tiêu giữ lệnh 5-15 ngày
 ```
 
+### Quality Tier (A / B) — Hard Gate
+
+Chỉ giữ Tier A và Tier B. Tín hiệu không đạt sẽ bị loại.
+
+```
+Tier A (target ~100% WR):
+  BREAKOUT_STRONG + TIER1 vol + weekly trend OK + không overhead supply + R:R >= 2.0
+
+Tier B (target >50% WR, R:R >= 2:1):
+  BREAKOUT_STRONG + TIER1/TIER2 vol + R:R >= 2.0 + risk < 5%
+
+Nếu không đạt A hoặc B → loại signal
+```
+
 ### Output scan
 
 ```
-Symbol | Date=[-1] | Signal=BREAKOUT_STRONG | BREAKOUT_EARLY | Close=X |
+Symbol | Date=[-1] | Signal=BREAKOUT_STRONG | Tier=A/B | Close=X |
 HIGH10=X | HIGH20=X | ATR10=X | SL=X | TP=X | RR=X |
-Volume=TIER1 | TIER2 | TIER3
+Volume=TIER1 | TIER2
 ```
 
 ---

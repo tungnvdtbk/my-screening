@@ -67,3 +67,32 @@ Close > Close[5]               (5-day upward momentum)
 - `ATR10` = average of True Range over bars [-11] to [-2]
 - `AvgVolume(20)` = average volume over bars [-21] to [-2]
 - Minimum 210 bars of history required
+
+---
+
+## Quality Tier (A / B) — Hard Gate
+
+Only Tier A and Tier B signals pass. All others are rejected.
+
+### Tier A (highest quality — target ~100% WR)
+```
+TF_MA20
+AND vol_tier in (TIER1, TIER2)
+AND weekly_ok == True
+AND supply_overhead == False
+AND R:R >= 2.0
+AND risk_pct < 3.0%
+```
+
+### Tier B (good quality — target >50% WR with R:R >= 2:1)
+```
+TF_MA20 + vol_tier in (TIER1, TIER2) + R:R >= 2.0 + risk < 5%
+OR
+TF_MA50 + vol_tier in (TIER1, TIER2) + weekly_ok + R:R >= 2.0 + risk < 3%
+```
+
+### Rejection
+```
+if not (Tier A or Tier B):
+    reject signal
+```
