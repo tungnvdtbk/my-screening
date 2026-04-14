@@ -1909,7 +1909,7 @@ def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     elif is_buildup and risk_pct < 4.0 and not higher_low:
         sw_tier = "B"   # 50% WR in backtest (buildup + moderate risk + pullback)
     else:
-        return None  # Tier C rejected — low WR (~19%)
+        return None
 
     # Collect all data for cross-sectional scoring later
     return {
@@ -2061,7 +2061,7 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         return
 
     st.caption(
-        "Swing Filter — Tier A/B/C quality | "
+        "Swing Filter — Tier A/B quality | "
         "Constructive buildup + breakout confirmation | Sorted by Score"
     )
 
@@ -2071,7 +2071,7 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         rs_str = f"{rs:.3f}" if rs is not None else "—"
         table_rows.append({
             "Ma": r["symbol"],
-            "Tier": r.get("sw_tier", "C"),
+            "Tier": r.get("sw_tier", ""),
             "Score": f"{r.get('score', 0):.3f}",
             "Gia": r["close"],
             "RSI": r.get("rsi", ""),
@@ -2435,7 +2435,7 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
           and not is_squeeze and setup_type == "PA_BREAKOUT"):
         pa_tier = "B"   # 67% WR in backtest
     else:
-        return None  # Tier C rejected — low WR (~27%)
+        return None
 
     return {
         "signal": setup_type,
@@ -2580,7 +2580,7 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         return
 
     st.caption(
-        "Price Action — Tier A/B/C quality | "
+        "Price Action — Tier A/B quality | "
         "Breakout after buildup & Pullback to MA20 | Sorted by Score"
     )
 
@@ -2596,7 +2596,7 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         table_rows.append({
             "Ma": r["symbol"],
             "Type": r["signal"].replace("PA_", ""),
-            "Tier": r.get("pa_tier", "C"),
+            "Tier": r.get("pa_tier", ""),
             "Score": f"{r.get('score', 0):.3f}",
             "Gia": r["close"],
             "RSI": r.get("rsi", ""),
@@ -2918,7 +2918,7 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     elif rsi < 35 and is_pin:
         cx_tier = "B"   # 43% WR in backtest (oversold + pin bar)
     else:
-        return None  # Tier C rejected — low WR (~20%)
+        return None
 
     return {
         "signal": "CLIMAX_REVERSAL",
@@ -3002,7 +3002,7 @@ def _render_climax_results(rows: list[dict], use_cache: bool, key: str = "cx_tab
     for r in rows:
         table_rows.append({
             "Ma": r["symbol"],
-            "Tier": r.get("cx_tier", "C"),
+            "Tier": r.get("cx_tier", ""),
             "Status": r.get("status", "PENDING"),
             "Reversal": r.get("reversal_type", ""),
             "Gia": r["close"],
@@ -3495,7 +3495,7 @@ def main() -> None:
         st.subheader(
             f"Chart — {cx_sel['symbol']} | "
             f"{cx_sel.get('reversal_type', '')} | "
-            f"Tier {cx_sel.get('cx_tier', 'C')} | "
+            f"Tier {cx_sel.get('cx_tier', '')} | "
             f"Decline {cx_sel.get('decline_pct', 0):.1f}%"
         )
         c1, c2, c3, c4, c5 = st.columns(5)
