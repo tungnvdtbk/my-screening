@@ -999,11 +999,11 @@ class TestScanSwingFilter(unittest.TestCase):
             self.assertGreaterEqual(result["rr"], 1.5)
 
     def test_sw_tier_valid(self):
-        """sw_tier must be A, B, or C."""
+        """sw_tier must be A or B (C is rejected)."""
         df = _make_swing_df(300, vol=5_000_000)
         result = app.scan_swing_filter(df)
         if result is not None:
-            self.assertIn(result["sw_tier"], ["A", "B", "C"])
+            self.assertIn(result["sw_tier"], ["A", "B"])
 
 
 class TestSwingCrossSectionalScore(unittest.TestCase):
@@ -1233,11 +1233,11 @@ class TestScanPa(unittest.TestCase):
             self.assertIn(result["signal"], ["PA_BREAKOUT", "PA_PULLBACK"])
 
     def test_pa_tier_valid(self):
-        """pa_tier must be A, B, or C."""
+        """pa_tier must be A or B (C is rejected)."""
         df = make_uptrend_df(300, vol=5_000_000)
         result = app.scan_pa(df)
         if result is not None:
-            self.assertIn(result["pa_tier"], ["A", "B", "C"])
+            self.assertIn(result["pa_tier"], ["A", "B"])
 
 
 class TestPaCrossSectionalScore(unittest.TestCase):
@@ -1385,7 +1385,7 @@ class TestScanClimax(unittest.TestCase):
         df = make_downtrend_df(300, vol=5_000_000)
         result = app.scan_climax(df)
         if result is not None:
-            self.assertIn(result["cx_tier"], ["A", "B", "C"])
+            self.assertIn(result["cx_tier"], ["A", "B"])
 
     def test_reversal_type_valid(self):
         df = make_downtrend_df(300, vol=5_000_000)

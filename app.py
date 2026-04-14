@@ -1909,7 +1909,7 @@ def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     elif is_buildup and risk_pct < 4.0 and not higher_low:
         sw_tier = "B"   # 50% WR in backtest (buildup + moderate risk + pullback)
     else:
-        sw_tier = "C"
+        return None  # Tier C rejected — low WR (~19%)
 
     # Collect all data for cross-sectional scoring later
     return {
@@ -2435,7 +2435,7 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
           and not is_squeeze and setup_type == "PA_BREAKOUT"):
         pa_tier = "B"   # 67% WR in backtest
     else:
-        pa_tier = "C"
+        return None  # Tier C rejected — low WR (~27%)
 
     return {
         "signal": setup_type,
@@ -2918,7 +2918,7 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     elif rsi < 35 and is_pin:
         cx_tier = "B"   # 43% WR in backtest (oversold + pin bar)
     else:
-        cx_tier = "C"
+        return None  # Tier C rejected — low WR (~20%)
 
     return {
         "signal": "CLIMAX_REVERSAL",
