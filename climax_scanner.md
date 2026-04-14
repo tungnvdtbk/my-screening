@@ -138,6 +138,10 @@ Sell climax thực sự phải có volume bất thường — dấu hiệu capit
 
 ## 5. SL / TP / R:R
 
+### Entry
+- `entry_plan = close * 1.001` (scan-time proxy)
+- `entry_exec = open[next_bar] * 1.001` (khớp lệnh thực tế, sau khi `CONFIRMED`)
+
 ### Stop Loss
 - `SL = low` của nến đảo chiều (reversal candle)
 - Nếu nến đảo chiều là pin bar dài: `SL = low * 0.998` (buffer nhỏ)
@@ -150,6 +154,7 @@ Sell climax thực sự phải có volume bất thường — dấu hiệu capit
 ### R:R filter
 - Chỉ lấy signal nếu `R:R >= 2.0`
 - `R:R = (TP - entry) / (entry - SL)`
+- `risk_pct = (entry - SL) / entry`
 
 ---
 
@@ -178,8 +183,9 @@ AND R:R >= 2.0
 ```
 RSI < 35
 AND climax_vol_ok (volume climax xác nhận)
-AND reversal_type in (HAMMER, MARUBOZU, ENGULFING)
+AND reversal_type in (HAMMER, MARUBOZU)
 AND R:R >= 2.0
+AND risk_pct < 5%
 ```
 
 ### Rejection

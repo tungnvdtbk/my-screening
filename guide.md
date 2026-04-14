@@ -360,6 +360,7 @@ def scan_breakout(df):
 
 def scan_reversal(df):
     results = []
+    statuses = []
     for i in range(9, len(df)):
         row  = df.iloc[i]
         prev = df.iloc[i-1]
@@ -377,8 +378,20 @@ def scan_reversal(df):
         )
         if cond:
             results.append(i)
+            if i + 1 < len(df):
+                next_row = df.iloc[i+1]
+                if next_row['close'] > row['high']:
+                    statuses.append('CONFIRMED')
+                elif next_row['close'] < row['low']:
+                    statuses.append('INVALID')
+                else:
+                    statuses.append('PENDING')
+            else:
+                statuses.append('PENDING')
 
     signals = df.iloc[results].copy()
+    signals['status'] = statuses
+    signals = signals[signals['status'] != 'INVALID']
 
     def vol_tier(row):
         if pd.isna(row['avg_vol20']): return 'NO_VOL_DATA'
@@ -399,7 +412,9 @@ def scan_reversal(df):
 ```python
 def simulate_trade(df, signal_idx, tp_multiplier=2.0, max_hold=15):
     """
-    signal_idx : index của signal candle [-1] trong df
+    signal_idx : index của nến dùng để kích hoạt lệnh
+                 - Breakout: signal candle
+                 - Reversal: chỉ dùng khi đã CONFIRMED
     Entry      : open của nến kế tiếp (signal_idx + 1)
     SL         : low của signal candle
     TP         : entry + tp_multiplier * atr10

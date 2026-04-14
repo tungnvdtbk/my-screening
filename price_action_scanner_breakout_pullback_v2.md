@@ -48,6 +48,7 @@ Required columns per ticker:
 - `close`
 - `volume`
 - `ticker`
+- `exchange` (recommended: `HOSE` / `HNX` / `UPCOM` for limit-band logic)
 
 Requirements:
 
@@ -571,31 +572,43 @@ Compute only after a ticker passes all hard filters and is classified as breakou
 ### Entry
 
 ```python
-entry = open[signal + 1] * 1.001   # next-day open + 0.1% slippage
+# Scan-time proxy (for candidate filtering/ranking on the latest closed bar)
+entry_plan = close[-1] * 1.001
+
+# Live execution (actual fill)
+entry_exec = open[signal + 1] * 1.001
 ```
 
 ### Breakout exit levels
 
 ```python
 stop_loss  = max(low[-1], ma20[-1] * 0.97)   # signal bar low or 3% below MA20
-target_1   = entry * 1.07                      # 7% — partial exit (50%)
-target_2   = entry * 1.12                      # 12% — remainder
-rr_ratio   = (target_1 - entry) / max(entry - stop_loss, 1e-9)
+target_1_plan = entry_plan * 1.07              # 7% — partial exit (50%)
+target_2_plan = entry_plan * 1.12              # 12% — remainder
+rr_plan       = (target_1_plan - entry_plan) / max(entry_plan - stop_loss, 1e-9)
+risk_pct_plan = (entry_plan - stop_loss) / max(entry_plan, 1e-9)
 ```
 
 ### Pullback exit levels
 
 ```python
 stop_loss  = max(low[-1], ma50[-1] * 0.98)   # signal bar low or 2% below MA50
-target_1   = entry * 1.07                      # 7% — partial exit (50%)
-target_2   = entry * 1.10                      # 10% — remainder
-rr_ratio   = (target_1 - entry) / max(entry - stop_loss, 1e-9)
+target_1_plan = entry_plan * 1.07            # 7% — partial exit (50%)
+target_2_plan = entry_plan * 1.10            # 10% — remainder
+rr_plan       = (target_1_plan - entry_plan) / max(entry_plan - stop_loss, 1e-9)
+risk_pct_plan = (entry_plan - stop_loss) / max(entry_plan, 1e-9)
 ```
 
 ### RR gate
 
 ```python
-rr_ratio >= 1.5   # hard requirement — skip if risk/reward is not acceptable
+rr_plan >= 1.5    # scan-time hard requirement
+
+# Recheck at execution using actual open
+target_1_exec = entry_exec * 1.07
+rr_exec = (target_1_exec - entry_exec) / max(entry_exec - stop_loss, 1e-9)
+if rr_exec < 1.5:
+    skip_entry
 ```
 
 ### Exit logic
@@ -656,9 +669,10 @@ hard_filter
 trend_filter
 market_ok
 stop_loss
-target_1
-target_2
-rr_ratio
+target_1_plan
+target_2_plan
+risk_pct_plan
+rr_plan
 ```
 
 ### Recommended extra fields
@@ -699,14 +713,21 @@ To keep the scanner valid and backtest-safe:
 - Do not rank each ticker internally; rank candidates cross-sectionally.
 ```
 
-### Limit-Up / Limit-Down Detection (HOSE ±7%)
+### Limit-Up / Limit-Down Detection (Exchange-Aware)
 
-HOSE enforces ±7% daily price limits (HNX ±10%, UPCoM ±15%). A breakout on a limit-up day is un-tradeable — you cannot buy at market next morning.
+Daily price limits differ by exchange: HOSE ±7%, HNX ±10%, UPCoM ±15%. A breakout on a limit-up day is often un-tradeable at a reasonable next-day price.
 
 ```python
 ref_price      = close.shift(1)                  # previous close as reference price
-ceil_price     = ref_price * 1.07                 # HOSE ceiling
-floor_price    = ref_price * 0.93                 # HOSE floor
+
+limit_pct = exchange.map({
+    "HOSE": 0.07,
+    "HNX": 0.10,
+    "UPCOM": 0.15,
+}).fillna(0.07)   # default fallback
+
+ceil_price     = ref_price * (1 + limit_pct)
+floor_price    = ref_price * (1 - limit_pct)
 
 hit_limit_up   = close >= ceil_price * 0.998      # within 0.2% of ceiling
 hit_limit_down = close <= floor_price * 1.002     # within 0.2% of floor
@@ -758,7 +779,7 @@ close <= ma50 * 1.15                                 # not extended above MA50
 rsi < 72                                             # not overbought
 rs_vs_vni > 1.0                                      # outperforming VNINDEX
 (setup_breakout == True) or (setup_pullback == True) # valid entry trigger
-rr_ratio >= 1.5                                      # acceptable risk/reward
+rr_plan >= 1.5                                       # acceptable risk/reward (scan-time)
 not hit_limit_up (breakout) / not hit_limit_down (pullback)  # tradeable bar
 ```
 

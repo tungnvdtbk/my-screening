@@ -51,7 +51,7 @@ resist_atr = distance to nearest swing-high resistance above signal high
              within 4 x ATR lookback of 60 bars
              Swing high: high[i] > high[i-1] AND high[i] > high[i+1]
 ```
-Closer resistance = breakout has nearby target = higher conviction.
+Farther resistance = more upside room after breakout.
 
 ### Volume Quality on NR7 Day
 ```python
@@ -96,7 +96,7 @@ if vol_quiet_lbl == "HIGH":
 
 # Drop NR7_EARLY unless score >= 50
 # NR7_EARLY (only breaks HIGH10, not HIGH20) historical WR = 17%
-if signal_type == "NR7_EARLY" and nr7_score < 50:
+if signal == "NR7_EARLY" and nr7_score < 50:
     reject
 
 # Minimum score gate
@@ -123,34 +123,41 @@ nr7_score = 0
 if is_inside_bar:                nr7_score += 25
 if ib_chain >= 2:                nr7_score += 15
 if resist_atr is not None:
-    if resist_atr <= 1.0:        nr7_score += 25   # resistance very close
-    elif resist_atr <= 2.0:      nr7_score += 15
-    elif resist_atr <= 3.0:      nr7_score += 8
+    if resist_atr >= 3.0:        nr7_score += 25   # ample room above breakout
+    elif resist_atr >= 2.0:      nr7_score += 15
+    elif resist_atr >= 1.0:      nr7_score += 8
 if vol_quiet_lbl == "QUIET++":   nr7_score += 25
 elif vol_quiet_lbl == "QUIET":   nr7_score += 15
 if vol_declining:                nr7_score += 10
 ```
 
-Maximum = 100 (inside bar + 2+ chain + near resistance + very quiet vol + declining vol).
+Maximum = 100 (inside bar + 2+ chain + ample room above resistance + very quiet vol + declining vol).
 
 ---
 
 ## 9. Entry / SL / TP
 
 ```python
-Entry = close (signal candle)
-SL    = low (signal candle)
-TP    = entry + 2.0 * ATR10
-R:R   = (TP - entry) / (entry - SL)
+# Scan-time proxy
+entry_plan    = close * 1.001
+sl            = low
+tp_plan       = entry_plan + 2.0 * atr10
+rr_plan       = (tp_plan - entry_plan) / max(entry_plan - sl, 1e-9)
+risk_pct_plan = (entry_plan - sl) / max(entry_plan, 1e-9)
+
+# Live execution
+entry_exec    = open[next_bar] * 1.001
+tp_exec       = entry_exec + 2.0 * atr10
+rr_exec       = (tp_exec - entry_exec) / max(entry_exec - sl, 1e-9)
 ```
 
 ---
 
-## 10. Volume Tier (same as Breakout)
+## 10. Volume Tier (NR7-specific quiet-coil logic)
 
 ```python
-TIER1 = vol > 2.0x avg_vol20 AND avg_vol_pre5 < 0.75x avg_vol20
-TIER2 = vol > 2.0x avg_vol20
+TIER1 = vol_quiet_lbl in ("QUIET++", "QUIET") AND vol_declining
+TIER2 = vol_quiet_lbl in ("QUIET++", "QUIET")
 TIER3 = neither
 ```
 
@@ -161,11 +168,10 @@ TIER3 = neither
 ```python
 signal          # NR7_STRONG or NR7_EARLY
 date, close, high10, high20, atr10, ma50
-is_inside_bar, ib_chain, resist_atr, vol_quiet
+is_inside_bar, ib_chain, resist_atr, vol_quiet_lbl
 nr7_score       # composite quality score (0-100)
-sl, tp, rr
-vol_tier, vol_char, tight_days, weekly_ok, supply_overhead
-rs4w, volume, avg_vol20
+entry_plan, sl, tp_plan, rr_plan, risk_pct_plan
+vol_tier, volume, avg_vol20
 ```
 
 ---
@@ -176,22 +182,29 @@ Only Tier A and Tier B signals pass. All others are rejected.
 
 ### Tier A (highest quality — target ~100% WR)
 ```python
-signal_type == "NR7_STRONG"
+signal == "NR7_STRONG"
 AND is_inside_bar == True
 AND nr7_score >= 60
-AND supply_overhead == False
-AND rr >= 2.0
+AND (resist_atr is None OR resist_atr >= 1.0)
+AND rr_plan >= 2.0
 ```
 
 ### Tier B (good quality — target >50% WR with R:R >= 2:1)
 ```python
-signal_type == "NR7_STRONG"
+signal == "NR7_STRONG"
 AND nr7_score >= 40
-AND rr >= 2.0
+AND rr_plan >= 2.0
 ```
 
 ### Rejection
 ```python
 if not (Tier A or Tier B):
     return None   # signal rejected
+```
+
+At execution time:
+
+```python
+if rr_exec < 2.0:
+    skip_entry
 ```

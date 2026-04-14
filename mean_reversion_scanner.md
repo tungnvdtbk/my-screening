@@ -112,7 +112,7 @@ Priority order: first match wins. At least one must be present.
 
 ```python
 # Strong downtrend
-if close < ema50 AND ema20 < ema50 AND ema50_slope < -2%:
+if close < ema50 AND ema20 < ema50 AND ema50_slope < -1.5%:
     reject
 
 # 10-bar drop too deep (> 10%)
@@ -134,9 +134,15 @@ reversal_score = {CLOSE_ABOVE_PREV_HIGH: 1.0, HAMMER: 0.9, RSI3_BOUNCE: 0.85,
                   HIGHER_CLOSE_LOWER_LOW: 0.75, TWO_HIGHER_CLOSES: 0.70}
 range_score    = flatness of EMAs (flatter = better)
 rsi_score      = more oversold RSI3 = higher
-liq_score      = log10(avg_traded_value) / 13
+liq_score      = log10(avg_traded_val20) / 13
 
-final_score = 0.30 * support + 0.30 * reversal + 0.20 * range + 0.10 * rsi + 0.10 * liq
+final_score = (
+    0.30 * support_score +
+    0.30 * reversal_score +
+    0.20 * range_score +
+    0.10 * rsi_score +
+    0.10 * liq_score
+)
 ```
 
 ---
@@ -146,13 +152,12 @@ final_score = 0.30 * support + 0.30 * reversal + 0.20 * range + 0.10 * rsi + 0.1
 ```python
 signal             # MR_LONG
 date, close
-range_high, range_low, range_size_pct, position_in_range, dist_support_pct
+range_high, range_low, range_size_pct, position_in_range, dist_to_support
 ema20, ema50, ema20_slope, ema50_slope
 rsi3, atr14, avg_vol20
 reversal_signal    # which pattern triggered
 final_score
 score_support, score_reversal, score_range
-rs4w, vol_tier
 ```
 
 ---
@@ -163,9 +168,16 @@ Only Tier A and Tier B signals pass. All others are rejected.
 
 ### SL / TP for tier evaluation
 ```python
-SL    = range_low * 0.98
-TP    = range_high
-R:R   = (TP - entry) / (entry - SL)
+# Scan-time proxy
+entry_plan    = close * 1.001
+sl            = range_low * 0.98
+tp_plan       = range_high
+rr_plan       = (tp_plan - entry_plan) / max(entry_plan - sl, 1e-9)
+risk_pct_plan = (entry_plan - sl) / max(entry_plan, 1e-9)
+
+# Live execution
+entry_exec    = open[next_bar] * 1.001
+rr_exec       = (tp_plan - entry_exec) / max(entry_exec - sl, 1e-9)
 ```
 
 ### Tier A (highest quality — target ~100% WR)
@@ -173,18 +185,25 @@ R:R   = (TP - entry) / (entry - SL)
 reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER")
 AND position_in_range < 0.15
 AND rsi3 < 20
-AND rr >= 2.0
+AND rr_plan >= 2.0
 ```
 
 ### Tier B (good quality — target >50% WR with R:R >= 2:1)
 ```python
 reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER", "HIGHER_CLOSE_LOWER_LOW")
 AND position_in_range < 0.25
-AND rr >= 2.0
+AND rr_plan >= 2.0
 ```
 
 ### Rejection
 ```python
 if not (Tier A or Tier B):
     return None   # signal rejected
+```
+
+At execution time:
+
+```python
+if rr_exec < 2.0:
+    skip_entry
 ```

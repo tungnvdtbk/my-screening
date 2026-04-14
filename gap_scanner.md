@@ -60,10 +60,18 @@ GAP_EARLY  = high > high10 but NOT > high20
 ## 6. Entry / SL / TP
 
 ```python
-Entry = close (signal candle)
-SL    = low (signal candle)
-TP    = entry + 2.0 * ATR10
-R:R   = (TP - entry) / (entry - SL)
+# Scan-time proxy (for filtering/ranking on the latest closed bar)
+entry_plan    = close * 1.001
+sl            = low
+tp_plan       = entry_plan + 2.0 * atr10
+rr_plan       = (tp_plan - entry_plan) / max(entry_plan - sl, 1e-9)
+risk_pct_plan = (entry_plan - sl) / max(entry_plan, 1e-9)
+
+# Live execution
+entry_exec    = open[next_bar] * 1.001
+tp_exec       = entry_exec + 2.0 * atr10
+rr_exec       = (tp_exec - entry_exec) / max(entry_exec - sl, 1e-9)
+risk_pct_exec = (entry_exec - sl) / max(entry_exec, 1e-9)
 ```
 
 ---
@@ -83,9 +91,9 @@ TIER3 = neither
 ```python
 signal          # GAP_STRONG or GAP_EARLY
 date, close, gap_pct, high10, high20, atr10, ma50
-sl, tp, rr
-vol_tier, vol_char, tight_days, weekly_ok, supply_overhead
-rs4w, volume, avg_vol20
+entry_plan, sl, tp_plan, rr_plan, risk_pct_plan
+vol_tier, weekly_ok, supply_overhead
+volume, avg_vol20
 ```
 
 ---
@@ -94,25 +102,38 @@ rs4w, volume, avg_vol20
 
 Only Tier A and Tier B signals pass. All others are rejected.
 
+### Shared quality fields (define explicitly)
+```python
+weekly_ok = (weekly_close > weekly_ma20) and (weekly_ma20 > weekly_ma50)
+supply_overhead = nearest_resistance_atr <= 1.0
+```
+
 ### Tier A (highest quality — target ~100% WR)
 ```python
-signal_type == "GAP_STRONG"
+signal == "GAP_STRONG"
 AND vol_tier == "TIER1"
 AND weekly_ok == True
 AND supply_overhead == False
-AND rr >= 2.0
+AND rr_plan >= 2.0
 ```
 
 ### Tier B (good quality — target >50% WR with R:R >= 2:1)
 ```python
-signal_type == "GAP_STRONG"
+signal == "GAP_STRONG"
 AND vol_tier in ("TIER1", "TIER2")
-AND rr >= 2.0
-AND risk_pct < 5.0%
+AND rr_plan >= 2.0
+AND risk_pct_plan < 5.0%
 ```
 
 ### Rejection
 ```python
 if not (Tier A or Tier B):
     return None   # signal rejected
+```
+
+At execution time, recheck with actual open:
+
+```python
+if rr_exec < 2.0 or risk_pct_exec >= 0.05:
+    skip_entry
 ```

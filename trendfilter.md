@@ -19,7 +19,7 @@ Close > Open
 (Close - MA50) / MA50 <= 0.08
 AvgVolume(20) >= 100,000
 (High - Low) > 0.8 × ATR10
-RS4W >= 0.95
+RS4W >= 1.0
 ```
 
 ---
@@ -36,7 +36,7 @@ Volume > 1.2 × AvgVolume(20)   (buying spike)
 ```
 
 - SL = min(Low, MA20) × 0.995
-- TP = Close + 2 × ATR10
+- TP = entry + 2 × ATR10
 
 ---
 
@@ -53,7 +53,23 @@ Close > Close[5]               (5-day upward momentum)
 ```
 
 - SL = min(Low, MA50) × 0.995
-- TP = Close + 2 × ATR10
+- TP = entry + 2 × ATR10
+
+---
+
+## Entry / Risk Model
+
+```python
+# Scan-time proxy
+entry_plan = close * 1.001
+risk_pct_plan = (entry_plan - sl) / max(entry_plan, 1e-9)
+rr_plan = (tp - entry_plan) / max(entry_plan - sl, 1e-9)
+
+# Live execution
+entry_exec = open[next_bar] * 1.001
+risk_pct_exec = (entry_exec - sl) / max(entry_exec, 1e-9)
+rr_exec = (tp - entry_exec) / max(entry_exec - sl, 1e-9)
+```
 
 ---
 
@@ -74,25 +90,48 @@ Close > Close[5]               (5-day upward momentum)
 
 Only Tier A and Tier B signals pass. All others are rejected.
 
+Shared quality fields:
+
+```python
+weekly_ok = (weekly_close > weekly_ma20) and (weekly_ma20 > weekly_ma50)
+supply_overhead = nearest_resistance_atr <= 1.0
+```
+
 ### Tier A (highest quality — target ~100% WR)
 ```
 TF_MA20
 AND vol_spike >= 1.5x avg (strong buying)
 AND weekly_ok == True
 AND supply_overhead == False
-AND R:R >= 2.0
-AND risk_pct < 3.0%
+AND rr_plan >= 2.0
+AND risk_pct_plan < 3.0%
 ```
 
 ### Tier B (good quality — target >50% WR with R:R >= 2:1)
 ```
-TF_MA20 + R:R >= 2.0 + risk < 5% (vol already >= 1.2x from scanner gate)
+(
+  TF_MA20
+  AND rr_plan >= 2.0
+  AND risk_pct_plan < 5.0%
+)
 OR
-TF_MA50 + weekly_ok + R:R >= 2.0 + risk < 3% (vol already >= 1.5x from scanner gate)
+(
+  TF_MA50
+  AND weekly_ok == True
+  AND rr_plan >= 2.0
+  AND risk_pct_plan < 3.0%
+)
 ```
 
 ### Rejection
 ```
 if not (Tier A or Tier B):
     reject signal
+```
+
+At execution time:
+
+```python
+if rr_exec < 2.0:
+    skip_entry
 ```

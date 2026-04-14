@@ -151,13 +151,12 @@ Apply in fail-fast order. Skip ticker on first failure.
 9. is_buildup == True
 10. buildup_days >= 3
 11. entry_confirmed == True
-12. rr_ratio >= 1.5
 ```
 
 ### Notes
 - `value > 1e10` is preferred over weaker liquidity thresholds for more professional execution quality.
 - Filters 5 and 6 prevent chasing extended names.
-- `rr_ratio` must be computed using the actual entry bar and stop reference.
+- `rr_ratio` is applied after risk levels are computed (Section 11), not before.
 
 ---
 
@@ -254,7 +253,7 @@ entry_confirmed = price_break and vol_expand and strong_bar
 buildup_score >= 4
 buildup_days >= 3
 entry_confirmed == True
-rr_ratio >= 1.5
+rr_plan >= 1.5
 ```
 
 ---
@@ -264,16 +263,33 @@ Compute only after ticker passes all hard filters.
 
 ### Entry
 ```python
-entry = last.close
+# Scan-time proxy for candidate filtering and ranking
+entry_plan = last.close * 1.001
+
+# Live execution (actual fill)
+entry_exec = open[next_bar] * 1.001
 ```
 
 ### Base Risk Levels
 ```python
-stop_loss     = last.ma50 * 0.97
-trailing_stop = entry * 0.95
-target_1      = entry * 1.07
-target_2      = entry * 1.12
-rr_ratio      = (target_1 - entry) / max(entry - stop_loss, 1e-9)
+stop_loss      = last.ma50 * 0.97
+trailing_stop  = entry_plan * 0.95
+target_1_plan  = entry_plan * 1.07
+target_2_plan  = entry_plan * 1.12
+
+risk_pct_plan  = (entry_plan - stop_loss) / max(entry_plan, 1e-9)
+rr_plan        = (target_1_plan - entry_plan) / max(entry_plan - stop_loss, 1e-9)
+```
+
+### Execution-time Recheck
+```python
+target_1_exec = entry_exec * 1.07
+target_2_exec = entry_exec * 1.12
+rr_exec       = (target_1_exec - entry_exec) / max(entry_exec - stop_loss, 1e-9)
+risk_pct_exec = (entry_exec - stop_loss) / max(entry_exec, 1e-9)
+
+if rr_exec < 1.5:
+    skip_entry
 ```
 
 ### Exit Logic
@@ -367,10 +383,12 @@ strong_bar
 mom_accel
 trigger_score
 entry_confirmed
+entry_plan
 stop_loss
-target_1
-target_2
-rr_ratio
+target_1_plan
+target_2_plan
+risk_pct_plan
+rr_plan
 ```
 
 Recommended additional columns:
@@ -390,7 +408,8 @@ To avoid hidden bugs and false backtests:
 
 ```python
 - Never use future bars in any rolling calculation.
-- All entry decisions must be based on latest fully closed bar only.
+- Signal decisions must be based on latest fully closed bar only.
+- Execution uses next-day open (`open[next_bar]`) with slippage.
 - pivot_high must use high.shift(1), not current high.
 - Do not compute score using rows that failed hard filters.
 - Do not rank each ticker internally; rank candidates cross-sectionally across the same scan date.
@@ -430,7 +449,7 @@ rs_vs_vni_20 > 1.0
 is_buildup == True
 buildup_days >= 3
 entry_confirmed == True
-rr_ratio >= 1.5
+rr_plan >= 1.5
 ```
 
 If multiple tickers qualify, prioritize by `score` descending.
@@ -444,20 +463,20 @@ Only Tier A and Tier B signals pass. All others are rejected.
 ### Tier A (target ~100% WR)
 ```python
 is_buildup == True
-AND risk_pct < 2.5%
+AND risk_pct_plan < 2.5%
 AND range_contract == True
 AND vol_dryup == True
 AND higher_low == True
-AND rr_ratio >= 2.0
+AND rr_plan >= 2.0
 ```
 Tightest buildup: low risk + contraction + volume dryup + higher lows.
 
 ### Tier B (target >50% WR, R:R >= 2:1)
 ```python
 is_buildup == True
-AND risk_pct < 4.0%
+AND risk_pct_plan < 4.0%
 AND range_contract == True
-AND rr_ratio >= 2.0
+AND rr_plan >= 2.0
 ```
 
 ### Rejection
@@ -476,5 +495,4 @@ After implementation, validate this rule in three separate market environments:
 
 Do not trust aggregate backtests alone.
 This rule is regime-sensitive by design.
-
 
