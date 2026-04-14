@@ -148,8 +148,7 @@ def load_price_data(symbol: str, use_cache: bool = True) -> pd.DataFrame | None:
 
     if cached is not None and not cached.empty:
         last_date = cached.index.max()
-        if last_date >= today - pd.Timedelta(days=3):
-            return cached
+        # Always fetch from last cached date to now — ensures today's bar is included
         start_str = (last_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         try:
             new_df = strip_tz(yf.Ticker(symbol).history(start=start_str))
@@ -3054,15 +3053,11 @@ def run_climax_scan(
     progress_cb=None,
 ) -> list[dict]:
     """Scan all symbols for Climax Reversal signals."""
-    from concurrent.futures import ThreadPoolExecutor
-
     candidates: list[dict] = []
-    done_count = 0
     total = len(symbols)
+    done = 0
 
-    def _scan_one(sym_sector):
-        nonlocal done_count
-        sym, sector = sym_sector
+    def _one(sym: str, sector: str) -> dict | None:
         try:
             df_price = load_price_data(sym, use_cache=use_cache)
             if df_price is None or len(df_price) < 60:
@@ -3074,16 +3069,19 @@ def run_climax_scan(
             return sig
         except Exception:
             return None
-        finally:
-            done_count += 1
-            if progress_cb:
-                progress_cb(done_count, total)
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        results = pool.map(_scan_one, symbols.items())
-        for sig in results:
-            if sig:
-                candidates.append(sig)
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym, sec): sym for sym, sec in symbols.items()}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    candidates.append(res)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
 
     # Sort by decline depth (deeper = more extreme = potentially better reversal)
     candidates.sort(key=lambda r: -r.get("decline_pct", 0))
