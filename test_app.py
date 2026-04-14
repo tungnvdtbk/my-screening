@@ -1207,7 +1207,7 @@ class TestScanPa(unittest.TestCase):
             for key in [
                 "signal", "close", "setup_type", "rsi", "buildup_score",
                 "buildup_days", "tightness", "strong_barrier", "is_squeeze",
-                "trigger_score", "sl", "tp", "tp2", "rr",
+                "trigger_score", "sl", "tp", "tp2", "rr", "pa_tier",
             ]:
                 self.assertIn(key, result, f"Missing key: {key}")
 
@@ -1224,6 +1224,13 @@ class TestScanPa(unittest.TestCase):
         result = app.scan_pa(df)
         if result is not None:
             self.assertIn(result["signal"], ["PA_BREAKOUT", "PA_PULLBACK"])
+
+    def test_pa_tier_valid(self):
+        """pa_tier must be A, B, or C."""
+        df = make_uptrend_df(300, vol=5_000_000)
+        result = app.scan_pa(df)
+        if result is not None:
+            self.assertIn(result["pa_tier"], ["A", "B", "C"])
 
 
 class TestPaCrossSectionalScore(unittest.TestCase):

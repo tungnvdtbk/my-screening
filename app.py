@@ -2414,11 +2414,22 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     volume_spike = volume / max(vol_ma20, 1e-9)
     barrier_touches = int(row.get("pa_barrier_touches", 0))
 
+    # Quality tier from backtest analysis (R:R >= 2 win rate)
+    risk_pct = (close - stop_loss) / close * 100
+    if tightness < 0.012 and volume_spike >= 2.0 and not is_squeeze:
+        pa_tier = "A"   # 100% WR in backtest (tight + vol spike + no squeeze)
+    elif (tightness < 0.012 and risk_pct < 3.0
+          and not is_squeeze and setup_type == "PA_BREAKOUT"):
+        pa_tier = "B"   # 67% WR in backtest
+    else:
+        pa_tier = "C"
+
     return {
         "signal": setup_type,
         "date": df.index[-1],
         "close": round(close, 2),
         "setup_type": setup_type,
+        "pa_tier": pa_tier,
         "ma20": round(ma20, 2),
         "ma50": round(ma50, 2),
         "ma20_slope": round(float(row["pa_ma20_slope"]), 4),
@@ -2556,8 +2567,8 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         return
 
     st.caption(
-        "Price Action — Breakout after buildup & Pullback to MA20 | "
-        "Volman barrier + squeeze detection | Sorted by Score"
+        "Price Action — Tier A/B/C quality | "
+        "Breakout after buildup & Pullback to MA20 | Sorted by Score"
     )
 
     table_rows = []
@@ -2572,6 +2583,7 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         table_rows.append({
             "Ma": r["symbol"],
             "Type": r["signal"].replace("PA_", ""),
+            "Tier": r.get("pa_tier", "C"),
             "Score": f"{r.get('score', 0):.3f}",
             "Gia": r["close"],
             "RSI": r.get("rsi", ""),
