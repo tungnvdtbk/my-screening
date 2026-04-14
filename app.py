@@ -1900,11 +1900,23 @@ def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     if rr_ratio < 1.5:
         return None
 
+    # Quality tier from backtest analysis (R:R >= 2 win rate)
+    risk_pct = (entry - stop_loss) / entry * 100
+    higher_low = bool(row["sw_higher_low"])
+    range_contract = bool(row["sw_range_contract"])
+    if is_buildup and risk_pct < 3.0 and range_contract:
+        sw_tier = "A"   # 67% WR in backtest (buildup + low risk + contraction)
+    elif is_buildup and risk_pct < 4.0 and not higher_low:
+        sw_tier = "B"   # 50% WR in backtest (buildup + moderate risk + pullback)
+    else:
+        sw_tier = "C"
+
     # Collect all data for cross-sectional scoring later
     return {
         "signal": "SWING_FILTER",
         "date": df.index[-1],
         "close": round(close, 2),
+        "sw_tier": sw_tier,
         "rsi": round(rsi, 1),
         "tightness": round(tightness, 4),
         "near_ma20": bool(row["sw_near_ma20"]),
@@ -2049,8 +2061,8 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         return
 
     st.caption(
-        "Swing Filter — constructive buildup + breakout confirmation | "
-        "Sap xep theo Cross-Sectional Score"
+        "Swing Filter — Tier A/B/C quality | "
+        "Constructive buildup + breakout confirmation | Sorted by Score"
     )
 
     table_rows = []
@@ -2059,6 +2071,7 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         rs_str = f"{rs:.3f}" if rs is not None else "—"
         table_rows.append({
             "Ma": r["symbol"],
+            "Tier": r.get("sw_tier", "C"),
             "Score": f"{r.get('score', 0):.3f}",
             "Gia": r["close"],
             "RSI": r.get("rsi", ""),

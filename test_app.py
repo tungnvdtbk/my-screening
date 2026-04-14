@@ -970,7 +970,7 @@ class TestScanSwingFilter(unittest.TestCase):
                 "signal", "close", "rsi", "tightness", "buildup_score",
                 "buildup_days", "rs_vs_vni_20", "price_break", "vol_expand",
                 "strong_bar", "mom_accel", "trigger_score", "entry_confirmed",
-                "sl", "tp", "tp2", "rr", "ma20", "ma50", "score",
+                "sl", "tp", "tp2", "rr", "ma20", "ma50", "sw_tier", "score",
             ]
             # score is added by cross-sectional scoring, not by scan_swing_filter
             for key in required_keys:
@@ -997,6 +997,13 @@ class TestScanSwingFilter(unittest.TestCase):
         result = app.scan_swing_filter(df)
         if result is not None:
             self.assertGreaterEqual(result["rr"], 1.5)
+
+    def test_sw_tier_valid(self):
+        """sw_tier must be A, B, or C."""
+        df = _make_swing_df(300, vol=5_000_000)
+        result = app.scan_swing_filter(df)
+        if result is not None:
+            self.assertIn(result["sw_tier"], ["A", "B", "C"])
 
 
 class TestSwingCrossSectionalScore(unittest.TestCase):
