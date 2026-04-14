@@ -437,7 +437,38 @@ If multiple tickers qualify, prioritize by `score` descending.
 
 ---
 
-## 17) Recommended Next Step
+## 17) Quality Tier (A / B) — Hard Gate
+
+Only Tier A and Tier B signals pass. All others are rejected.
+
+### Tier A (target ~100% WR)
+```python
+is_buildup == True
+AND risk_pct < 2.5%
+AND range_contract == True
+AND vol_dryup == True
+AND higher_low == True
+AND rr_ratio >= 2.0
+```
+Tightest buildup: low risk + contraction + volume dryup + higher lows.
+
+### Tier B (target >50% WR, R:R >= 2:1)
+```python
+is_buildup == True
+AND risk_pct < 4.0%
+AND range_contract == True
+AND rr_ratio >= 2.0
+```
+
+### Rejection
+```python
+if not (Tier A or Tier B):
+    return None
+```
+
+---
+
+## 18) Recommended Next Step
 After implementation, validate this rule in three separate market environments:
 1. strong uptrend market,
 2. sideways market,

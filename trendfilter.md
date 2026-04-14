@@ -77,7 +77,7 @@ Only Tier A and Tier B signals pass. All others are rejected.
 ### Tier A (highest quality — target ~100% WR)
 ```
 TF_MA20
-AND vol_tier in (TIER1, TIER2)
+AND vol_spike >= 1.5x avg (strong buying)
 AND weekly_ok == True
 AND supply_overhead == False
 AND R:R >= 2.0
@@ -86,9 +86,9 @@ AND risk_pct < 3.0%
 
 ### Tier B (good quality — target >50% WR with R:R >= 2:1)
 ```
-TF_MA20 + vol_tier in (TIER1, TIER2) + R:R >= 2.0 + risk < 5%
+TF_MA20 + R:R >= 2.0 + risk < 5% (vol already >= 1.2x from scanner gate)
 OR
-TF_MA50 + vol_tier in (TIER1, TIER2) + weekly_ok + R:R >= 2.0 + risk < 3%
+TF_MA50 + weekly_ok + R:R >= 2.0 + risk < 3% (vol already >= 1.5x from scanner gate)
 ```
 
 ### Rejection

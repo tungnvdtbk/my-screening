@@ -898,17 +898,18 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     risk_pct        = (entry - sl) / entry * 100 if entry > 0 else 99
 
     # ── Quality Tier A/B gate ──
-    # Tier A: TF_MA20 + TIER1/TIER2 vol + weekly trend + no overhead + R:R >= 2 + risk < 3%
-    # Tier B: TF_MA20 + vol spike + R:R >= 2 + risk < 5%
-    #         OR TF_MA50 + strong vol + weekly + R:R >= 2 + risk < 3%
-    if (signal_type == "TF_MA20" and vol_tier in ("TIER1", "TIER2")
+    # Volume already validated by scanner (1.2x for MA20, 1.5x for MA50).
+    # Use vol_spike ratio directly instead of vol_tier (which requires 2.0x — too strict).
+    vol_spike = vol / max(avg_vol20, 1e-9)
+    # Tier A: TF_MA20 + strong vol (1.5x+) + weekly + no overhead + R:R >= 2 + risk < 3%
+    if (signal_type == "TF_MA20" and vol_spike >= 1.5
             and weekly_ok and not supply_overhead and rr >= 2.0 and risk_pct < 3.0):
         tf_tier = "A"
-    elif (signal_type == "TF_MA20" and vol_tier in ("TIER1", "TIER2")
-            and rr >= 2.0 and risk_pct < 5.0):
+    # Tier B: TF_MA20 + vol already passed (1.2x+) + R:R >= 2 + risk < 5%
+    elif (signal_type == "TF_MA20" and rr >= 2.0 and risk_pct < 5.0):
         tf_tier = "B"
-    elif (signal_type == "TF_MA50" and vol_tier in ("TIER1", "TIER2")
-            and weekly_ok and rr >= 2.0 and risk_pct < 3.0):
+    # Tier B: TF_MA50 + vol already passed (1.5x+) + weekly + R:R >= 2 + risk < 3%
+    elif (signal_type == "TF_MA50" and weekly_ok and rr >= 2.0 and risk_pct < 3.0):
         tf_tier = "B"
     else:
         return None
@@ -1999,14 +2000,18 @@ def scan_swing_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     if rr_ratio < 1.5:
         return None
 
-    # Quality tier from backtest analysis (R:R >= 2 win rate)
+    # Quality tier — target A=100% WR, B=>50% WR with R:R >= 2
     risk_pct = (entry - stop_loss) / entry * 100
     higher_low = bool(row["sw_higher_low"])
     range_contract = bool(row["sw_range_contract"])
-    if is_buildup and risk_pct < 3.0 and range_contract:
-        sw_tier = "A"   # 67% WR in backtest (buildup + low risk + contraction)
-    elif is_buildup and risk_pct < 4.0 and not higher_low:
-        sw_tier = "B"   # 50% WR in backtest (buildup + moderate risk + pullback)
+    vol_dryup = bool(row["sw_vol_dryup"])
+    # Tier A: tight risk + range contraction + volume dryup + higher low (strongest buildup)
+    if (is_buildup and risk_pct < 2.5 and range_contract
+            and vol_dryup and higher_low and rr_ratio >= 2.0):
+        sw_tier = "A"
+    # Tier B: buildup + low risk + contraction + R:R >= 2
+    elif (is_buildup and risk_pct < 4.0 and range_contract and rr_ratio >= 2.0):
+        sw_tier = "B"
     else:
         return None
 
@@ -2471,8 +2476,6 @@ def scan_pa(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     reversal_bar = (close > open_) and bull_reclaim and pb_strong_close
     # FIX 3: Pullback needs at least avg volume to confirm demand is real
     vol_ok = volume >= vol_ma20 * 1.00
-    # FIX 2: Pullback close must exceed prev candle high (confirms strength)
-    pb_closes_above_prev = close > float(d.iloc[-2]["High"]) if len(d) >= 2 else False
 
     setup_pullback = (
         prior_push and pullback_exists and down_days_ok
@@ -3012,12 +3015,14 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
     # ── Quality tier from backtest analysis (R:R >= 2 win rate) ──
     risk_pct = (entry - stop_loss) / entry * 100
-    is_pin = reversal_type in ("PIN_BAR", "HAMMER")
-    range_vs_atr = candle_range / max(atr14, 1e-9)
-    if decline_pct >= 0.08 and risk_pct < 2.0 and is_pin:
-        cx_tier = "A"   # 70-83% WR in backtest (deep decline + tight risk + pin bar)
-    elif rsi < 35 and is_pin:
-        cx_tier = "B"   # 43% WR in backtest (oversold + pin bar)
+    # Tier A: deep decline + tight risk + pin bar/hammer reversal
+    # Tier B: oversold + any strong reversal + climax volume confirmed + R:R >= 2
+    if (decline_pct >= 0.08 and risk_pct < 2.0
+            and reversal_type in ("HAMMER", "MARUBOZU")):
+        cx_tier = "A"
+    elif (rsi < 35 and climax_vol_ok
+            and reversal_type in ("HAMMER", "MARUBOZU", "ENGULFING")):
+        cx_tier = "B"
     else:
         return None
 

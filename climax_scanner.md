@@ -159,3 +159,31 @@ Sell climax thực sự phải có volume bất thường — dấu hiệu capit
 - Khi nến tiếp theo đóng cửa > high nến đảo chiều → status = `CONFIRMED`
 - Chỉ entry khi `CONFIRMED`
 - Nếu nến tiếp theo đóng cửa < low nến đảo chiều → huỷ signal
+
+---
+
+## 7. Quality Tier (A / B) — Hard Gate
+
+Chỉ giữ Tier A và Tier B. Tín hiệu không đạt sẽ bị loại.
+
+### Tier A (target ~100% WR)
+```
+decline_pct >= 8%
+AND risk_pct < 2%
+AND reversal_type in (HAMMER, MARUBOZU)
+AND R:R >= 2.0
+```
+
+### Tier B (target >50% WR, R:R >= 2:1)
+```
+RSI < 35
+AND climax_vol_ok (volume climax xác nhận)
+AND reversal_type in (HAMMER, MARUBOZU, ENGULFING)
+AND R:R >= 2.0
+```
+
+### Rejection
+```
+if not (Tier A or Tier B):
+    reject signal
+```
