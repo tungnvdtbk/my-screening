@@ -2728,6 +2728,315 @@ def _render_mr_results(rows: list[dict], use_cache: bool, key: str = "mr_table")
 
 
 # ============================================================
+# CLIMAX SCANNER — Sell Climax + False Break Support + Reversal
+# ============================================================
+
+def compute_climax_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute indicators for the Climax reversal scanner."""
+    d = df.copy()
+    close = d["Close"]
+    high = d["High"]
+    low = d["Low"]
+    open_ = d["Open"]
+    volume = d["Volume"]
+
+    d["cx_ma20"] = close.rolling(20).mean()
+    d["cx_ma20_prev5"] = d["cx_ma20"].shift(5)
+    d["cx_ma20_slope_down"] = d["cx_ma20"] < d["cx_ma20_prev5"]
+    d["cx_vol_ma20"] = volume.rolling(20).mean()
+
+    # ATR(14) for climax candle sizing
+    tr = pd.concat([
+        high - low,
+        (high - close.shift(1)).abs(),
+        (low - close.shift(1)).abs(),
+    ], axis=1).max(axis=1)
+    d["cx_atr14"] = tr.rolling(14).mean()
+
+    # Candle anatomy
+    candle_range = (high - low).replace(0, 1e-9)
+    d["cx_range"] = candle_range
+    body = (close - open_).abs()
+    d["cx_body"] = body
+    d["cx_body_ratio"] = body / candle_range
+    d["cx_upper_wick"] = high - close.where(close >= open_, open_)
+    d["cx_lower_wick"] = close.where(close < open_, open_) - low
+    d["cx_upper_wick_ratio"] = d["cx_upper_wick"] / candle_range
+    d["cx_lower_wick_ratio"] = d["cx_lower_wick"] / candle_range
+
+    # Bearish wide-range candle
+    d["cx_bearish_wide"] = (
+        (close < open_)
+        & (candle_range > 1.5 * d["cx_atr14"])
+        & (d["cx_body_ratio"] >= 0.65)
+    )
+
+    # Support: lowest low of previous 15 bars
+    d["cx_support"] = low.shift(1).rolling(15).min()
+
+    # Swing high for decline measurement
+    d["cx_swing_high_10"] = high.shift(1).rolling(10).max()
+    d["cx_decline_pct"] = (d["cx_swing_high_10"] - close) / d["cx_swing_high_10"].replace(0, 1e-9)
+
+    # Red candle count in last 7 bars
+    d["cx_red_count_7"] = (close < open_).astype(int).rolling(7).sum()
+
+    # RSI(14)
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
+    loss_s = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+    rs = gain / loss_s.replace(0, 1e-9)
+    d["cx_rsi"] = 100 - (100 / (1 + rs))
+
+    # Value
+    d["cx_value_avg5"] = (close * volume).rolling(5).mean()
+
+    return d
+
+
+def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Sell Climax + False Break Support + Reversal Buy scanner.
+    Returns signal dict or None. Status = PENDING (needs confirmation).
+    """
+    if df is None or len(df) < 60:
+        return None
+
+    d = compute_climax_indicators(df)
+    row = d.iloc[-1]
+
+    required = [
+        "cx_ma20", "cx_ma20_slope_down", "cx_vol_ma20", "cx_atr14",
+        "cx_support", "cx_decline_pct", "cx_rsi", "cx_range",
+    ]
+    if any(pd.isna(row.get(c, float("nan"))) for c in required):
+        return None
+
+    close = float(row["Close"])
+    high = float(row["High"])
+    low = float(row["Low"])
+    open_ = float(row["Open"])
+    volume = float(row["Volume"])
+    ma20 = float(row["cx_ma20"])
+    vol_ma20 = float(row["cx_vol_ma20"])
+    atr14 = float(row["cx_atr14"])
+    support = float(row["cx_support"])
+    decline_pct = float(row["cx_decline_pct"])
+    rsi = float(row["cx_rsi"])
+    candle_range = float(row["cx_range"])
+    body = float(row["cx_body"])
+    body_ratio = float(row["cx_body_ratio"])
+    upper_wick = float(row["cx_upper_wick"])
+    lower_wick = float(row["cx_lower_wick"])
+    red_count = int(row["cx_red_count_7"])
+
+    # ── A. Downtrend context ──
+    if close >= ma20:
+        return None
+    if not bool(row["cx_ma20_slope_down"]):
+        return None
+    if decline_pct < 0.06:  # need >= 6% decline
+        return None
+    if red_count < 4:  # need >= 60% red in 7 bars
+        return None
+
+    # ── B. Sell climax: check last 3 bars for strong bearish candles ──
+    climax_count = 0
+    climax_vol_ok = False
+    for j in range(1, min(4, len(d))):
+        prev = d.iloc[-j]
+        if bool(prev.get("cx_bearish_wide", False)):
+            climax_count += 1
+            if float(prev["Volume"]) >= float(prev["cx_vol_ma20"]) * 1.3:
+                climax_vol_ok = True
+    if climax_count < 1:
+        return None
+
+    # ── C. False break of support ──
+    buffer = 0.005  # 0.5%
+    broke_support = low < support * (1 - buffer)
+    close_recovered = close >= support
+    if not (broke_support and close_recovered):
+        return None
+
+    # ── D. Reversal candle detection ──
+    if close <= open_:  # must be bullish
+        return None
+
+    reversal_type = None
+
+    # Check bullish marubozu
+    if (body_ratio >= 0.8
+            and upper_wick <= 0.1 * candle_range
+            and lower_wick <= 0.15 * candle_range):
+        reversal_type = "MARUBOZU"
+
+    # Check bullish hammer / pin bar
+    if reversal_type is None:
+        if (lower_wick >= 2 * body
+                and upper_wick <= 0.3 * max(body, 1e-9)
+                and close >= low + 0.66 * candle_range):
+            reversal_type = "HAMMER"
+
+    # Check strong bullish engulfing (close near high, large range)
+    if reversal_type is None:
+        if (candle_range > 1.0 * atr14
+                and body_ratio >= 0.65
+                and close >= high - 0.15 * candle_range):
+            reversal_type = "ENGULFING"
+
+    if reversal_type is None:
+        return None
+
+    # ── E. Volume check ──
+    vol_spike = volume / max(vol_ma20, 1e-9)
+    # Reversal or climax must have elevated volume
+    if vol_spike < 1.0 and not climax_vol_ok:
+        return None
+
+    # ── SL / TP / R:R ──
+    stop_loss = round(low * 0.998, 2)  # just below reversal candle low
+    entry = close  # entry at close (PENDING confirmation will use next open)
+    risk = entry - stop_loss
+    if risk <= 0:
+        return None
+
+    tp_ma20 = round(ma20, 2)  # mean reversion target
+    tp_rr2 = round(entry + 2 * risk, 2)  # R:R = 2 target
+    target = max(tp_ma20, tp_rr2)  # take the higher target
+    rr_ratio = round((target - entry) / max(risk, 1e-9), 2)
+
+    if rr_ratio < 2.0:
+        return None
+
+    # ── Quality tier ──
+    # A: strong volume + deep decline + marubozu
+    # B: moderate quality
+    if (vol_spike >= 1.5 and decline_pct >= 0.10
+            and reversal_type == "MARUBOZU"):
+        cx_tier = "A"
+    elif vol_spike >= 1.3 and decline_pct >= 0.08:
+        cx_tier = "B"
+    else:
+        cx_tier = "C"
+
+    return {
+        "signal": "CLIMAX_REVERSAL",
+        "date": df.index[-1],
+        "close": round(close, 2),
+        "status": "PENDING",
+        "cx_tier": cx_tier,
+        "reversal_type": reversal_type,
+        "rsi": round(rsi, 1),
+        "decline_pct": round(decline_pct * 100, 1),
+        "support": round(support, 2),
+        "red_count_7": red_count,
+        "climax_count": climax_count,
+        "climax_vol_ok": climax_vol_ok,
+        "vol_spike": round(vol_spike, 2),
+        "sl": stop_loss,
+        "tp": target,
+        "tp_ma20": tp_ma20,
+        "rr": rr_ratio,
+        "ma20": round(ma20, 2),
+        "atr14": round(atr14, 2),
+        "volume": int(volume),
+        "avg_vol20": int(vol_ma20),
+    }
+
+
+def run_climax_scan(
+    symbols: dict[str, str],
+    use_cache: bool = True,
+    vnindex_df=None,
+    progress_cb=None,
+) -> list[dict]:
+    """Scan all symbols for Climax Reversal signals."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    candidates: list[dict] = []
+    done_count = 0
+    total = len(symbols)
+
+    def _scan_one(sym_sector):
+        nonlocal done_count
+        sym, sector = sym_sector
+        try:
+            df_price = load_price_data(sym, use_cache=use_cache)
+            if df_price is None or len(df_price) < 60:
+                return None
+            sig = scan_climax(df_price, vnindex_df)
+            if sig:
+                sig["symbol"] = sym.replace(".VN", "")
+                sig["sector"] = sector
+            return sig
+        except Exception:
+            return None
+        finally:
+            done_count += 1
+            if progress_cb:
+                progress_cb(done_count, total)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = pool.map(_scan_one, symbols.items())
+        for sig in results:
+            if sig:
+                candidates.append(sig)
+
+    # Sort by decline depth (deeper = more extreme = potentially better reversal)
+    candidates.sort(key=lambda r: -r.get("decline_pct", 0))
+    return candidates[:10]
+
+
+def _render_climax_results(rows: list[dict], use_cache: bool, key: str = "cx_table") -> None:
+    if not rows:
+        st.info("Khong co tin hieu Climax Reversal.")
+        return
+
+    st.caption(
+        "Sell Climax — False break support + Reversal candle | "
+        "Status PENDING = cho xac nhan"
+    )
+
+    table_rows = []
+    for r in rows:
+        table_rows.append({
+            "Ma": r["symbol"],
+            "Tier": r.get("cx_tier", "C"),
+            "Status": r.get("status", "PENDING"),
+            "Reversal": r.get("reversal_type", ""),
+            "Gia": r["close"],
+            "RSI": r.get("rsi", ""),
+            "Decline": f"{r.get('decline_pct', 0):.1f}%",
+            "Support": r.get("support", ""),
+            "Climax": f"{r.get('climax_count', 0)} bar",
+            "Vol": f"{r.get('vol_spike', 0):.1f}x",
+            "SL": r.get("sl", ""),
+            "TP": r.get("tp", ""),
+            "R:R": r.get("rr", ""),
+            "Nganh": r.get("sector", ""),
+        })
+
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row",
+            key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["cx_sel"] = rows[sel_rows[0]]
+            st.session_state.pop("sig_sel", None)
+            st.session_state.pop("wl_sel", None)
+            st.session_state.pop("pa_sel", None)
+            st.session_state.pop("sw_sel", None)
+            st.session_state.pop("mr_sel", None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
 # STREAMLIT APP
 # ============================================================
 def main() -> None:
@@ -3133,6 +3442,74 @@ def main() -> None:
         c5.metric("RS vs VNI", f"{rs:.3f}" if rs else "—")
         c5.metric("Trigger", f"{pa_sel.get('trigger_score', '')}/6")
         show_chart(pa_sel["symbol"], sig=pa_sel, use_cache=use_cache)
+
+    # ── Section E: Climax Reversal Scan ──────────────────────────
+    st.divider()
+    st.subheader("🔻 Climax Reversal — Sell Climax + False Break + Reversal")
+    st.caption(
+        "Tim co phieu bi ban thao manh, thung support gia, "
+        "xuat hien nen dao chieu (PENDING = cho xac nhan)"
+    )
+
+    col_cx30, col_cx100 = st.columns(2)
+    with col_cx30:
+        do_cx30 = st.button("Scan Climax VN30", use_container_width=True)
+    with col_cx100:
+        do_cx100 = st.button("Scan Climax VN100", use_container_width=True)
+
+    if do_cx30:
+        prog = st.progress(0, text="Scanning Climax VN30... 0 / 30")
+        def _cx_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning Climax VN30... {done} / {total}")
+        cx_sigs = run_climax_scan(VN30_STOCKS, use_cache=use_cache,
+                                   vnindex_df=vnindex_df, progress_cb=_cx_cb30)
+        st.session_state["cx_results"] = cx_sigs
+        st.session_state["cx_universe"] = "VN30"
+        prog.empty()
+
+    if do_cx100:
+        prog = st.progress(0, text="Scanning Climax VN100... 0 / 100")
+        def _cx_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning Climax VN100... {done} / {total}")
+        cx_sigs = run_climax_scan(VN100_STOCKS, use_cache=use_cache,
+                                   vnindex_df=vnindex_df, progress_cb=_cx_cb100)
+        st.session_state["cx_results"] = cx_sigs
+        st.session_state["cx_universe"] = "VN100"
+        prog.empty()
+
+    cx_results = st.session_state.get("cx_results", [])
+    cx_universe = st.session_state.get("cx_universe", "")
+
+    if cx_results:
+        st.subheader(
+            f"Climax {cx_universe} — {len(cx_results)} candidates"
+        )
+        _render_climax_results(cx_results, use_cache, key="cx_table_main")
+    elif not do_cx30 and not do_cx100:
+        st.caption("Nhan Scan Climax de bat dau.")
+
+    # Climax chart panel
+    cx_sel = st.session_state.get("cx_sel")
+    if cx_sel:
+        st.divider()
+        st.subheader(
+            f"Chart — {cx_sel['symbol']} | "
+            f"{cx_sel.get('reversal_type', '')} | "
+            f"Tier {cx_sel.get('cx_tier', 'C')} | "
+            f"Decline {cx_sel.get('decline_pct', 0):.1f}%"
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close", cx_sel.get("close", ""))
+        c1.metric("Support", cx_sel.get("support", ""))
+        c2.metric("RSI", cx_sel.get("rsi", ""))
+        c2.metric("Decline", f"{cx_sel.get('decline_pct', 0):.1f}%")
+        c3.metric("SL", cx_sel.get("sl", ""))
+        c3.metric("TP", cx_sel.get("tp", ""))
+        c4.metric("R:R", cx_sel.get("rr", ""))
+        c4.metric("Vol", f"{cx_sel.get('vol_spike', 0):.1f}x")
+        c5.metric("Status", cx_sel.get("status", "PENDING"))
+        c5.metric("Climax bars", cx_sel.get("climax_count", ""))
+        show_chart(cx_sel["symbol"], sig=cx_sel, use_cache=use_cache)
 
 
 if __name__ == "__main__":

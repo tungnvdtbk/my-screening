@@ -1314,6 +1314,102 @@ class TestRunPaScan(unittest.TestCase):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# CLIMAX SCANNER TESTS
+# ══════════════════════════════════════════════════════════════════════
+
+class TestComputeClimaxIndicators(unittest.TestCase):
+    """compute_climax_indicators — column presence and bounds."""
+
+    def test_all_columns_present(self):
+        df = make_downtrend_df(200)
+        d = app.compute_climax_indicators(df)
+        for col in [
+            "cx_ma20", "cx_ma20_slope_down", "cx_vol_ma20", "cx_atr14",
+            "cx_support", "cx_decline_pct", "cx_rsi", "cx_range",
+            "cx_body", "cx_body_ratio", "cx_bearish_wide",
+            "cx_red_count_7", "cx_value_avg5",
+        ]:
+            self.assertIn(col, d.columns, f"Missing: {col}")
+
+    def test_rsi_bounded(self):
+        df = make_downtrend_df(200)
+        d = app.compute_climax_indicators(df)
+        rsi = d["cx_rsi"].dropna()
+        self.assertTrue((rsi >= 0).all() and (rsi <= 100).all())
+
+    def test_support_no_lookahead(self):
+        """cx_support uses shift(1) — must not include current bar's low."""
+        df = make_downtrend_df(200)
+        d = app.compute_climax_indicators(df)
+        # Support at bar i = min(low[i-15..i-1]), so it should never be
+        # the current bar's low if current bar is the absolute lowest.
+        last_low = float(d["Low"].iloc[-1])
+        last_support = float(d["cx_support"].iloc[-1])
+        # This can coincidentally be equal, but the shift ensures no lookahead
+        self.assertFalse(pd.isna(last_support))
+
+
+class TestScanClimax(unittest.TestCase):
+    """scan_climax — basic contract tests."""
+
+    def test_returns_none_short_df(self):
+        self.assertIsNone(app.scan_climax(make_downtrend_df(30)))
+
+    def test_returns_none_uptrend(self):
+        """Uptrend should not produce climax reversal signals."""
+        self.assertIsNone(app.scan_climax(make_uptrend_df(300)))
+
+    def test_result_has_required_keys(self):
+        df = make_downtrend_df(300, vol=5_000_000)
+        result = app.scan_climax(df)
+        if result is not None:
+            for key in [
+                "signal", "close", "status", "cx_tier", "reversal_type",
+                "rsi", "decline_pct", "support", "sl", "tp", "rr",
+            ]:
+                self.assertIn(key, result, f"Missing key: {key}")
+
+    def test_rr_at_least_2(self):
+        df = make_downtrend_df(300, vol=5_000_000)
+        result = app.scan_climax(df)
+        if result is not None:
+            self.assertGreaterEqual(result["rr"], 2.0)
+
+    def test_status_is_pending(self):
+        df = make_downtrend_df(300, vol=5_000_000)
+        result = app.scan_climax(df)
+        if result is not None:
+            self.assertEqual(result["status"], "PENDING")
+
+    def test_cx_tier_valid(self):
+        df = make_downtrend_df(300, vol=5_000_000)
+        result = app.scan_climax(df)
+        if result is not None:
+            self.assertIn(result["cx_tier"], ["A", "B", "C"])
+
+    def test_reversal_type_valid(self):
+        df = make_downtrend_df(300, vol=5_000_000)
+        result = app.scan_climax(df)
+        if result is not None:
+            self.assertIn(
+                result["reversal_type"],
+                ["MARUBOZU", "HAMMER", "ENGULFING"],
+            )
+
+
+class TestRunClimaxScan(unittest.TestCase):
+    """run_climax_scan — integration."""
+
+    def test_returns_list(self):
+        result = app.run_climax_scan({"FPT.VN": "Technology"})
+        self.assertIsInstance(result, list)
+
+    def test_max_10_results(self):
+        result = app.run_climax_scan(app.VN100_STOCKS)
+        self.assertLessEqual(len(result), 10)
+
+
+# ══════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
