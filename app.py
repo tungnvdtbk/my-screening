@@ -2909,14 +2909,14 @@ def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     if rr_ratio < 2.0:
         return None
 
-    # ── Quality tier ──
-    # A: strong volume + deep decline + marubozu
-    # B: moderate quality
-    if (vol_spike >= 1.5 and decline_pct >= 0.10
-            and reversal_type == "MARUBOZU"):
-        cx_tier = "A"
-    elif vol_spike >= 1.3 and decline_pct >= 0.08:
-        cx_tier = "B"
+    # ── Quality tier from backtest analysis (R:R >= 2 win rate) ──
+    risk_pct = (entry - stop_loss) / entry * 100
+    is_pin = reversal_type in ("PIN_BAR", "HAMMER")
+    range_vs_atr = candle_range / max(atr14, 1e-9)
+    if decline_pct >= 0.08 and risk_pct < 2.0 and is_pin:
+        cx_tier = "A"   # 70-83% WR in backtest (deep decline + tight risk + pin bar)
+    elif rsi < 35 and is_pin:
+        cx_tier = "B"   # 43% WR in backtest (oversold + pin bar)
     else:
         cx_tier = "C"
 
