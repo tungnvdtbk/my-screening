@@ -69,7 +69,7 @@ SCANNERS = [
 ]
 
 TIER_FIELDS = {
-    "main":   lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("tf_tier") or "",
+    "main":   lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("pin_tier") or r.get("tf_tier") or "",
     "swing":  lambda r: r.get("sw_tier", ""),
     "pa":     lambda r: r.get("pa_tier", ""),
     "mr":     lambda r: r.get("mr_tier", ""),
@@ -140,12 +140,20 @@ def run_all_scans() -> dict:
 # ── HTML report builder ──────────────────────────────────────────────
 def _signal_row(sig: dict, key: str) -> str:
     tier = TIER_FIELDS[key](sig)
-    tier_color = "#00e676" if tier == "Tier A" else "#ffca28" if tier == "Tier B" else "#888"
+    tier_color = "#00e676" if tier in ("A", "Tier A") else "#ffca28" if tier in ("B", "Tier B") else "#888"
     symbol = sig.get("symbol", "?").replace(".VN", "")
+    # Pin bar quality extras
+    extras = ""
+    ps = sig.get("pin_score")
+    if ps is not None:
+        extras += f' <span style="color:#90caf9">[Q{ps}/13]</span>'
+        sd = sig.get("score_detail", "")
+        if sd:
+            extras += f' <span style="color:#666;font-size:12px">{sd}</span>'
     return (
         f'<tr>'
         f'<td style="font-weight:bold">{symbol}</td>'
-        f'<td>{sig.get("signal", "")}</td>'
+        f'<td>{sig.get("signal", "")}{extras}</td>'
         f'<td style="color:{tier_color}">{tier}</td>'
         f'<td style="text-align:right">{sig.get("close", 0):.2f}</td>'
         f'<td style="text-align:right">{sig.get("sl", 0):.2f}</td>'
@@ -249,7 +257,15 @@ def build_telegram_summary(results: dict) -> str:
             tier = TIER_FIELDS[key](s)
             rr = s.get("rr", 0)
             sig_type = s.get("signal", "")
-            lines.append(f"  <code>{sym:6s}</code> {sig_type}  {tier}  R:R {rr:.1f}")
+            # Pin bar quality score
+            pb_extra = ""
+            ps = s.get("pin_score")
+            if ps is not None:
+                pb_extra = f"  Q{ps}/13"
+                sd = s.get("score_detail", "")
+                if sd:
+                    pb_extra += f" ({sd})"
+            lines.append(f"  <code>{sym:6s}</code> {sig_type}  {tier}  R:R {rr:.1f}{pb_extra}")
         lines.append("")
 
     if results.get("errors"):
