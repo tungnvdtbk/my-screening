@@ -278,6 +278,8 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     d["nr7"]          = d["candle_range"] <= d["candle_range"].rolling(7).min()
     # Gap vs prior close
     d["gap_pct"]      = (d["Open"] - d["Close"].shift(1)) / d["Close"].shift(1)
+    # Swing low on [-21] to [-2] — horizontal support for pin bar context
+    d["swing_low20"]  = d["Low"].shift(2).rolling(20).min()
     return d
 
 
@@ -939,177 +941,148 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
 
 
 # ============================================================
-# DEVELOPING SETUP SCORER (watchlist — not yet triggered)
+# SCAN — Pin Bar at Context (Price Action Rejection)
 # ============================================================
-def score_developing(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+def scan_pinbar(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     """
-    Score how close a stock is to triggering a signal.
-    Covers two scenarios:
-      - BREAKOUT developing: uptrend, approaching HIGH10/HIGH20
-      - REVERSAL developing: downtrend, near MA200 or approaching MA50 reclaim
-    Returns a scored dict (0–100) or None if not interesting.
+    Detect bullish pin bar at a meaningful support level.
+    Pin bar: long lower wick (>=60%), small body (<=33%), short upper wick (<=25%).
+    Context: must touch MA20, MA50, MA200, or 20-bar swing low.
     """
     if df is None or len(df) < 60:
         return None
     row = df.iloc[-1]
 
-    required = ["atr10", "avg_vol20", "high10", "high20", "ma50", "ma50_prev5", "avg_vol_pre5"]
+    required = ["atr10", "avg_vol20", "ma20", "ma50", "ma50_prev5", "swing_low20"]
     if any(pd.isna(row[c]) for c in required):
         return None
 
-    close        = row["Close"]
-    ma50         = row["ma50"]
+    close  = row["Close"]; open_ = row["Open"]
+    high   = row["High"];  low   = row["Low"]
+    vol    = row["Volume"]
+    atr10  = row["atr10"]
+    ma20   = row["ma20"]
+    ma50   = row["ma50"]
+    ma200  = row.get("ma200", float("nan"))
     ma50_prev5   = row["ma50_prev5"]
-    high10       = row["high10"]
-    high20       = row["high20"]
-    atr10        = row["atr10"]
     avg_vol20    = row["avg_vol20"]
-    avg_vol_pre5 = row["avg_vol_pre5"]
-    ma200        = row.get("ma200", float("nan"))
-    vol          = row["Volume"]
-    rs4w         = compute_rs4w(df, vnindex_df)
+    avg_vol_pre5 = row.get("avg_vol_pre5", float("nan"))
+    swing_low20  = row["swing_low20"]
 
-    vol_ratio = avg_vol_pre5 / avg_vol20 if avg_vol20 > 0 else 1.0
-    vol_tier  = _vol_tier(vol, avg_vol20, avg_vol_pre5)
+    candle_range = high - low
+    if candle_range <= 0:
+        return None
 
-    # ── Scenario A: BREAKOUT developing (uptrend, approaching high) ──
-    if close > ma50 and not (close > high10) and close <= ma50 * 1.08:
-        pct_from_high10 = (high10 - close) / close * 100
-        pct_from_high20 = (high20 - close) / close * 100
-        if pct_from_high10 > 8.0:
-            return None
+    body        = abs(close - open_)
+    lower_wick  = min(open_, close) - low
+    upper_wick  = high - max(open_, close)
 
-        score = 0
-        notes = []
-        score += 20 if ma50 > ma50_prev5 else 5
-        if ma50 > ma50_prev5: notes.append("MA50↑")
+    # ── Pin bar shape detection ──
+    if not (lower_wick >= 0.60 * candle_range):  return None   # [1] long lower wick
+    if not (body <= 0.33 * candle_range):         return None   # [2] small body
+    if not (upper_wick <= 0.25 * candle_range):   return None   # [3] short upper wick
+    if not (candle_range >= 0.5 * atr10):         return None   # [4] minimum size
 
-        if pct_from_high10 <= 2.0:   score += 40; notes.append(f"{pct_from_high10:.1f}% to H10")
-        elif pct_from_high10 <= 4.0: score += 28; notes.append(f"{pct_from_high10:.1f}% to H10")
-        elif pct_from_high10 <= 6.0: score += 15; notes.append(f"{pct_from_high10:.1f}% to H10")
-        else:                        score += 5;  notes.append(f"{pct_from_high10:.1f}% to H10")
+    # ── Safety filters ──
+    if not pd.isna(ma200) and close < ma200 * 0.88:
+        return None   # [X1] freefall — too far below MA200
 
-        if vol_ratio < 0.70:   score += 25; notes.append("vol coil")
-        elif vol_ratio < 0.80: score += 15; notes.append("vol↓")
-        elif vol_ratio < 0.90: score += 8
+    # ── Context conditions — at least one must match ──
+    proximity = 0.5 * atr10
+    contexts = []
 
-        if rs4w and rs4w >= 1.10:  score += 15; notes.append(f"RS {rs4w:.2f}")
-        elif rs4w and rs4w >= 1.05: score += 10; notes.append(f"RS {rs4w:.2f}")
+    # [C1] AT_MA20 — pullback in uptrend
+    if (abs(low - ma20) <= proximity
+            and close > ma20
+            and ma50 > ma50_prev5
+            and close <= ma50 * 1.10):
+        contexts.append("MA20")
 
-        if score < 35:
-            return None
-        dev_type = "→ STRONG" if pct_from_high20 <= 3.0 else "→ EARLY"
+    # [C2] AT_MA50
+    if abs(low - ma50) <= proximity and close > ma50 * 0.98:
+        contexts.append("MA50")
 
-        explain_parts = [
-            f"✅ Uptrend: giá ({close:,.0f}) trên MA50 ({ma50:,.0f})" +
-            (" — MA50 đang dốc lên." if ma50 > ma50_prev5 else "."),
-            f"📍 Cách đỉnh {10 if pct_from_high10 <= 8 else 20} ngày {pct_from_high10:.1f}% "
-            f"(HIGH10={high10:,.0f}). Chưa phá — chờ nến breakout.",
-        ]
-        if vol_ratio < 0.80:
-            explain_parts.append(
-                f"🔇 Volume 5 ngày gần nhất ({vol_ratio*100:.0f}% baseline) — "
-                "thị trường đang tích lũy lặng lẽ, bên bán yếu dần."
-            )
-        if rs4w and rs4w >= 1.05:
-            explain_parts.append(
-                f"💪 RS4W = {rs4w:.2f} — cổ phiếu mạnh hơn thị trường 4 tuần qua."
-            )
-        explain_parts.append(
-            "⏳ Trigger khi: nến ngày đóng > đỉnh 10/20 ngày + volume tăng."
-        )
+    # [C3] AT_MA200
+    if not pd.isna(ma200):
+        if abs(low - ma200) <= proximity and close >= ma200 * 0.98:
+            contexts.append("MA200")
 
-        return {
-            "signal": "WATCH", "dev_type": dev_type, "score": score,
-            "notes": ", ".join(notes), "explain": "\n".join(explain_parts),
-            "date": df.index[-1],
-            "close": round(close, 2), "high10": round(high10, 2),
-            "high20": round(high20, 2), "pct_from_high10": round(pct_from_high10, 1),
-            "pct_from_high20": round(pct_from_high20, 1),
-            "atr10": round(atr10, 2), "ma50": round(ma50, 2),
-            "vol_tier": vol_tier, "rs4w": rs4w, "volume": int(vol), "avg_vol20": int(avg_vol20),
-        }
+    # [C4] AT_SWING — 20-bar swing low
+    if abs(low - swing_low20) <= proximity and close > swing_low20:
+        contexts.append("SWING")
 
-    # ── Scenario B: REVERSAL developing (downtrend, near support) ──
-    if close < ma50 and not pd.isna(ma200) and close >= ma200 * 0.88:
-        pct_from_ma50  = (ma50  - close) / close * 100
-        pct_from_ma200 = (ma200 - close) / close * 100   # negative = price above MA200
-        atr_dist_ma200 = abs(close - ma200) / atr10 if atr10 > 0 else 99
+    if not contexts:
+        return None   # no context = no signal
 
-        score = 0
-        notes = []
+    context_count = len(contexts)
 
-        # Proximity to MA50 reclaim (max 35) — closer = higher score
-        if pct_from_ma50 <= 1.0:   score += 35; notes.append(f"{pct_from_ma50:.1f}% to MA50")
-        elif pct_from_ma50 <= 3.0: score += 25; notes.append(f"{pct_from_ma50:.1f}% to MA50")
-        elif pct_from_ma50 <= 5.0: score += 15; notes.append(f"{pct_from_ma50:.1f}% to MA50")
-        elif pct_from_ma50 <= 8.0: score += 8;  notes.append(f"{pct_from_ma50:.1f}% to MA50")
-        else:                      score += 0
+    # ── Signal type — priority: MA200 > MA50 > MA20 > SWING ──
+    _ctx_priority = {"MA200": 0, "MA50": 1, "MA20": 2, "SWING": 3}
+    primary_ctx = min(contexts, key=lambda c: _ctx_priority[c])
+    signal_type = f"PINBAR_{primary_ctx}"
 
-        # Near MA200 support (max 30)
-        if atr_dist_ma200 <= 1.0:   score += 30; notes.append("at MA200")
-        elif atr_dist_ma200 <= 2.0: score += 20; notes.append(f"{atr_dist_ma200:.1f}ATR to MA200")
-        elif atr_dist_ma200 <= 3.0: score += 10; notes.append(f"{atr_dist_ma200:.1f}ATR to MA200")
-        # Price already above MA200 is also interesting (support held)
-        if pct_from_ma200 < 0:
-            score += 10; notes.append("above MA200")
+    # ── Volume tier ──
+    vol_tier = _vol_tier(vol, avg_vol20, avg_vol_pre5)
 
-        # Volume declining = sellers exhausting (max 20)
-        if vol_ratio < 0.70:   score += 20; notes.append("vol↓↓")
-        elif vol_ratio < 0.85: score += 12; notes.append("vol↓")
+    # ── SL / TP / R:R ──
+    sl    = round(low, 2)
+    entry = round(close * 1.001, 2)   # 0.1% slippage
+    risk  = entry - sl
+    if risk <= 0:
+        return None
 
-        # RS4W improving even if < 1.0 (max 15)
-        if rs4w and rs4w >= 1.05:  score += 15; notes.append(f"RS {rs4w:.2f}")
-        elif rs4w and rs4w >= 0.95: score += 8; notes.append(f"RS {rs4w:.2f}")
+    # TP1 = MA50 (if price below MA50)
+    tp_ma50 = round(ma50, 2) if close < ma50 else 0
+    # TP2 = entry + 2 × ATR10
+    tp_rr2  = round(entry + 2.0 * atr10, 2)
+    tp      = max(tp_ma50, tp_rr2)
+    rr      = round((tp - entry) / risk, 2)
 
-        if score < 30:
-            return None
+    if rr < 2.0:
+        return None
 
-        dev_type = "→ REVERSAL"
+    risk_pct  = round(risk / entry * 100, 2) if entry > 0 else 99
+    bull_close = close > open_
+    rs4w       = compute_rs4w(df, vnindex_df)
 
-        explain_parts = [
-            f"📉 Downtrend: giá ({close:,.0f}) dưới MA50 ({ma50:,.0f}), "
-            f"cách MA50 {pct_from_ma50:.1f}%.",
-        ]
-        if atr_dist_ma200 <= 2.0:
-            if pct_from_ma200 < 0:
-                explain_parts.append(
-                    f"🛡️ Giá đang trên MA200 ({ma200:,.0f}) — vùng hỗ trợ dài hạn đang giữ."
-                )
-            else:
-                explain_parts.append(
-                    f"🛡️ Giá cách MA200 ({ma200:,.0f}) chỉ {atr_dist_ma200:.1f}× ATR — "
-                    "đang tiếp cận vùng hỗ trợ dài hạn."
-                )
-        if pct_from_ma50 <= 3.0:
-            explain_parts.append(
-                f"🔑 Chỉ cần tăng {pct_from_ma50:.1f}% là reclaim MA50 — "
-                "tín hiệu chuyển trend tiềm năng."
-            )
-        if vol_ratio < 0.85:
-            explain_parts.append(
-                f"🔇 Volume 5 ngày giảm còn {vol_ratio*100:.0f}% baseline — "
-                "áp lực bán đang kiệt dần."
-            )
-        if rs4w and rs4w >= 0.95:
-            explain_parts.append(f"📊 RS4W = {rs4w:.2f} vs thị trường.")
-        explain_parts.append(
-            "⏳ Trigger khi: nến tăng mạnh từ vùng MA200, đóng gần đỉnh, "
-            "volume bùng nổ → scan_reversal bắt tín hiệu."
-        )
+    # ── Quality Tier A/B gate ──
+    # Tier A: confluence (>=2 contexts) + vol confirmed + bull close + R:R >= 2.5 + risk < 5%
+    if (context_count >= 2 and vol_tier in ("TIER1", "TIER2")
+            and bull_close and rr >= 2.5 and risk_pct < 5.0):
+        pin_tier = "A"
+    # Tier B: at least one context + R:R >= 2 + risk < 7% + not (weak vol + single ctx)
+    elif (context_count >= 1 and rr >= 2.0 and risk_pct < 7.0
+            and not (vol_tier == "TIER3" and context_count == 1)):
+        pin_tier = "B"
+    else:
+        return None
 
-        return {
-            "signal": "WATCH", "dev_type": dev_type, "score": score,
-            "notes": ", ".join(notes), "explain": "\n".join(explain_parts),
-            "date": df.index[-1],
-            "close": round(close, 2), "high10": round(high10, 2),
-            "high20": round(high20, 2), "pct_from_high10": round(pct_from_ma50, 1),
-            "pct_from_high20": round(pct_from_ma200, 1),
-            "atr10": round(atr10, 2), "ma50": round(ma50, 2), "ma200": round(ma200, 2),
-            "vol_tier": vol_tier, "rs4w": rs4w, "volume": int(vol), "avg_vol20": int(avg_vol20),
-        }
+    wick_ratio = round(lower_wick / candle_range, 2)
+    body_ratio = round(body / candle_range, 2)
+    context_str = "+".join(contexts)
 
-    return None
+    return {
+        "signal":          signal_type,
+        "date":            df.index[-1],
+        "close":           round(close, 2),
+        "status":          "PENDING",
+        "pin_tier":        pin_tier,
+        "context":         context_str,
+        "context_count":   context_count,
+        "wick_ratio":      wick_ratio,
+        "body_ratio":      body_ratio,
+        "ma20":            round(ma20, 2),
+        "ma50":            round(ma50, 2),
+        "ma200":           round(ma200, 2) if not pd.isna(ma200) else None,
+        "sl":              sl,
+        "tp":              tp,
+        "rr":              rr,
+        "atr10":           round(atr10, 2),
+        "vol_tier":        vol_tier,
+        "rs4w":            rs4w,
+        "volume":          int(vol),
+        "avg_vol20":       int(avg_vol20),
+    }
 
 
 # ============================================================
@@ -1122,8 +1095,12 @@ _SIGNAL_PRIORITY = {
     "BREAKOUT_EARLY":  3,
     "GAP_EARLY":       4,
     "NR7_EARLY":       5,
-    "TF_MA20":         6,
-    "TF_MA50":         7,
+    "PINBAR_MA200":    6,
+    "PINBAR_MA50":     7,
+    "PINBAR_MA20":     8,
+    "PINBAR_SWING":    9,
+    "TF_MA20":         10,
+    "TF_MA50":         11,
 }
 
 def run_scan(
@@ -1131,15 +1108,12 @@ def run_scan(
     use_cache: bool = True,
     vnindex_df=None,
     progress_cb=None,
-    watchlist_top: int = 5,
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], bool]:
     """
     Scan all symbols in parallel.
-    Returns (signals, watchlist) where watchlist = top developing setups
-    for stocks that didn't trigger any signal.
+    Returns (signals, market_downtrend).
     """
-    signals:   list[dict] = []
-    watchlist: list[dict] = []
+    signals: list[dict] = []
     total = len(symbols)
     done  = 0
 
@@ -1152,18 +1126,13 @@ def run_scan(
             scan_breakout(df, vnindex_df)     or
             scan_gap(df, vnindex_df)           or
             scan_nr7(df, vnindex_df)           or
+            scan_pinbar(df, vnindex_df)        or
             scan_trend_filter(df, vnindex_df)
         )
         if sig:
             sig["symbol"] = sym.replace(".VN", "")
             sig["sector"] = symbols.get(sym, "")
             return ("signal", sig)
-        # No trigger — score for watchlist
-        cand = score_developing(df, vnindex_df)
-        if cand:
-            cand["symbol"] = sym.replace(".VN", "")
-            cand["sector"] = symbols.get(sym, "")
-            return ("watch", cand)
         return None
 
     with ThreadPoolExecutor(max_workers=8) as ex:
@@ -1175,8 +1144,6 @@ def run_scan(
                     kind, data = res
                     if kind == "signal":
                         signals.append(data)
-                    else:
-                        watchlist.append(data)
             except Exception:
                 pass
             done += 1
@@ -1202,19 +1169,16 @@ def run_scan(
         signals = [s for s in signals if s["signal"] not in _BREAKOUT_TYPES]
 
     def _sig_sort(r: dict):
-        sig_order  = _SIGNAL_PRIORITY.get(r["signal"], 9)
+        sig_order  = _SIGNAL_PRIORITY.get(r["signal"], 99)
         vol_order  = {"TIER1": 0, "TIER2": 1, "TIER3": 2}.get(r.get("vol_tier", ""), 3)
         rs_order   = 0 if (r.get("rs4w") or 0) >= 1.05 else 1
         supply_pen = 1 if r.get("supply_overhead") else 0
         nr7_rank   = -r.get("nr7_score", 0)   # higher score = earlier in list
         return (sig_order, supply_pen, nr7_rank, vol_order, rs_order, r["symbol"])
 
-    watchlist_sorted = sorted(watchlist, key=lambda x: -x["score"])[:watchlist_top]
+    _assign_rs_pct(signals)
 
-    # RS percentile ranking within the combined signal + watchlist universe
-    _assign_rs_pct(signals + watchlist_sorted)
-
-    return sorted(signals, key=_sig_sort), watchlist_sorted, market_downtrend
+    return sorted(signals, key=_sig_sort), market_downtrend
 
 
 # ============================================================
@@ -1338,6 +1302,10 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
         if ra is not None: qf.append(f"Resist {ra:.1f}ATR above")
         vq = sig.get("vol_quiet", "")
         if vq in ("QUIET", "QUIET++"): qf.append(f"Vol {vq}")
+        ctx = sig.get("context", "")
+        if ctx: qf.append(f"@{ctx}")
+        wr = sig.get("wick_ratio")
+        if wr is not None: qf.append(f"Wick {wr:.0%}")
         c4.metric("Quality", " · ".join(qf) if qf else "—")
         ns = sig.get("nr7_score")
         if ns is not None:
@@ -1359,59 +1327,6 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
 
 
 # ============================================================
-# WATCHLIST TABLE
-# ============================================================
-def _render_watchlist(rows: list[dict], use_cache: bool) -> None:
-    if not rows:
-        st.info("Không có cổ phiếu đang phát triển pattern.")
-        return
-
-    st.caption("Chưa trigger — đang tiếp cận vùng breakout. Sắp xếp theo điểm tiềm năng.")
-
-    table_rows = []
-    for r in rows:
-        rs4w    = r.get("rs4w")
-        rs_str  = f"{rs4w:.2f}" if rs4w is not None else "—"
-        rs_icon = "🟢" if rs4w and rs4w >= 1.05 else ""
-        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
-        dev_type = r.get("dev_type", "")
-        if "REVERSAL" in dev_type:
-            key_pct = f"{r.get('pct_from_high10', '')}% to MA50"
-        else:
-            key_pct = f"{r.get('pct_from_high10', '')}% to H10"
-        table_rows.append({
-            "Mã":       r["symbol"],
-            "Điểm":     r["score"],
-            "Loại":     dev_type,
-            "Giá":      r["close"],
-            "Key %":    key_pct,
-            "MA50":     r.get("ma50", ""),
-            "MA200":    r.get("ma200", ""),
-            "Vol":      f"{vol_icon} {r.get('vol_tier', '')}",
-            "RS4W":     f"{rs_icon} {rs_str}",
-            "Ghi chú":  r.get("notes", ""),
-            "Ngành":    r.get("sector", ""),
-        })
-
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display,
-            use_container_width=True,
-            hide_index=True,
-            on_select="rerun",
-            selection_mode="single-row",
-            key="wl_table",
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["wl_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("sig_sel", None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
-# ============================================================
 # RESULTS TABLE
 # ============================================================
 def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -> None:
@@ -1426,6 +1341,8 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             "BREAKOUT_STRONG": "🚀", "BREAKOUT_EARLY": "📊",
             "NR7_STRONG": "🔩",     "NR7_EARLY": "🔧",
             "GAP_STRONG": "⚡",     "GAP_EARLY": "🌩",
+            "PINBAR_MA200": "📍", "PINBAR_MA50": "📍",
+            "PINBAR_MA20": "📍",  "PINBAR_SWING": "📍",
             "TF_MA20": "🎯", "TF_MA50": "📌",
         }.get(r["signal"], "")
         rs4w     = r.get("rs4w")
@@ -1453,11 +1370,20 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         elif vq == "QUIET":  qf.append("Q")
         ns = r.get("nr7_score")
         if ns is not None:   qf.append(f"S{ns}")
+        # Pin bar-specific flags
+        ctx = r.get("context", "")
+        if ctx:
+            qf.append(ctx)
+        wr = r.get("wick_ratio")
+        if wr is not None:
+            qf.append(f"W{wr:.0%}")
+        if r.get("status") == "PENDING":
+            qf.append("PEND")
         quality = "·".join(qf) if qf else "—"
         touched = r.get("touched_ma", "")
         # Tier from any of the scanners
         tier = (r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier")
-                or r.get("tf_tier") or "")
+                or r.get("pin_tier") or r.get("tf_tier") or "")
         table_rows.append({
             "Mã":      r["symbol"],
             "Tier":    tier,
@@ -1487,7 +1413,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
         if sel_rows:
             st.session_state["sig_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("wl_sel", None)
+
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
@@ -2203,7 +2129,7 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         if sel_rows:
             st.session_state["sw_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-            st.session_state.pop("wl_sel", None)
+
             st.session_state.pop("mr_sel", None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -2727,7 +2653,7 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         if sel_rows:
             st.session_state["pa_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-            st.session_state.pop("wl_sel", None)
+
             st.session_state.pop("mr_sel", None)
             st.session_state.pop("sw_sel", None)
     except TypeError:
@@ -2827,7 +2753,7 @@ def _render_mr_results(rows: list[dict], use_cache: bool, key: str = "mr_table")
         if sel_rows:
             st.session_state["mr_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-            st.session_state.pop("wl_sel",  None)
+            st.session_state.pop("pa_sel", None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
@@ -3135,7 +3061,7 @@ def _render_climax_results(rows: list[dict], use_cache: bool, key: str = "cx_tab
         if sel_rows:
             st.session_state["cx_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-            st.session_state.pop("wl_sel", None)
+
             st.session_state.pop("pa_sel", None)
             st.session_state.pop("sw_sel", None)
             st.session_state.pop("mr_sel", None)
@@ -3249,9 +3175,8 @@ def main() -> None:
         prog = st.progress(0, text="Scanning VN30… 0 / 30")
         def _cb30(done, total):
             prog.progress(done / total, text=f"Scanning VN30… {done} / {total}")
-        sigs, watch, mkt_down = run_scan(VN30_STOCKS,  use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb30)
+        sigs, mkt_down = run_scan(VN30_STOCKS,  use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb30)
         st.session_state["scan_results"]       = sigs
-        st.session_state["scan_watchlist"]     = watch
         st.session_state["scan_universe"]      = "VN30"
         st.session_state["market_downtrend"]   = mkt_down
         prog.empty()
@@ -3260,9 +3185,8 @@ def main() -> None:
         prog = st.progress(0, text="Scanning VN100… 0 / 100")
         def _cb100(done, total):
             prog.progress(done / total, text=f"Scanning VN100… {done} / {total}")
-        sigs, watch, mkt_down = run_scan(VN100_STOCKS, use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb100)
+        sigs, mkt_down = run_scan(VN100_STOCKS, use_cache=use_cache, vnindex_df=vnindex_df, progress_cb=_cb100)
         st.session_state["scan_results"]       = sigs
-        st.session_state["scan_watchlist"]     = watch
         st.session_state["scan_universe"]      = "VN100"
         st.session_state["market_downtrend"]   = mkt_down
         prog.empty()
@@ -3271,32 +3195,33 @@ def main() -> None:
     if st.session_state.get("market_downtrend"):
         st.warning(
             "⚠️ Thị trường downtrend (VNIndex < MA50) — "
-            "Breakout signals đã bị tắt. Chỉ hiển thị Trend Filter & Watchlist."
+            "Breakout signals đã bị tắt. Chỉ hiển thị Trend Filter & Pin Bar."
         )
 
     # ── Results
-    results   = st.session_state.get("scan_results", [])
-    watchlist = st.session_state.get("scan_watchlist", [])
-    universe  = st.session_state.get("scan_universe", "")
+    results  = st.session_state.get("scan_results", [])
+    universe = st.session_state.get("scan_universe", "")
 
-    if results or watchlist:
+    if results:
+        _PINBAR_TYPES = {"PINBAR_MA200", "PINBAR_MA50", "PINBAR_MA20", "PINBAR_SWING"}
         n_bo  = sum(1 for r in results if r["signal"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY"))
         n_nr7 = sum(1 for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY"))
         n_gap = sum(1 for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY"))
+        n_pb  = sum(1 for r in results if r["signal"] in _PINBAR_TYPES)
         n_tf  = sum(1 for r in results if r["signal"] in ("TF_MA20", "TF_MA50"))
         n_rs  = sum(1 for r in results if (r.get("rs4w") or 0) >= 1.05)
         st.subheader(
             f"Kết quả {universe} — {len(results)} tín hiệu "
-            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 🎯{n_tf} · 🟢RS{n_rs})"
+            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 📍{n_pb} · 🎯{n_tf} · 🟢RS{n_rs})"
         )
 
-        tab_all, tab_bo, tab_nr7, tab_gap, tab_tf, tab_watch = st.tabs([
+        tab_all, tab_bo, tab_nr7, tab_gap, tab_pb, tab_tf = st.tabs([
             f"Tất cả ({len(results)})",
             f"🚀 Breakout ({n_bo})",
             f"🔩 NR7 ({n_nr7})",
             f"⚡ Gap ({n_gap})",
+            f"📍 Pin Bar ({n_pb})",
             f"🎯 Trend Filter ({n_tf})",
-            f"👀 Watchlist ({len(watchlist)})",
         ])
         with tab_all:
             _render_results(results, use_cache, key="tab_all")
@@ -3306,28 +3231,20 @@ def main() -> None:
             _render_results([r for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY")], use_cache, key="tab_nr7")
         with tab_gap:
             _render_results([r for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY")], use_cache, key="tab_gap")
+        with tab_pb:
+            _render_results([r for r in results if r["signal"] in _PINBAR_TYPES], use_cache, key="tab_pb")
         with tab_tf:
             _render_results([r for r in results if r["signal"] in ("TF_MA20", "TF_MA50")], use_cache, key="tab_tf")
-        with tab_watch:
-            _render_watchlist(watchlist, use_cache)
 
     # ── Chart panel — rendered OUTSIDE tabs so rerun never hides it ──
-    wl_sel  = st.session_state.get("wl_sel")
     sig_sel = st.session_state.get("sig_sel")
 
-    if wl_sel:
-        st.divider()
-        st.subheader(f"{wl_sel['symbol']} — {wl_sel.get('dev_type', '')}  (Score: {wl_sel['score']})")
-        for line in wl_sel.get("explain", "").split("\n"):
-            st.markdown(line)
-        st.divider()
-        show_chart(wl_sel["symbol"], sig=None, use_cache=use_cache)
-    elif sig_sel:
+    if sig_sel:
         st.divider()
         st.subheader(f"Chart — {sig_sel['symbol']}")
         show_chart(sig_sel["symbol"], sig=sig_sel, use_cache=use_cache)
 
-    if not results and not watchlist and not do_vn30 and not do_vn100 and not wl_sel and not sig_sel:
+    if not results and not do_vn30 and not do_vn100 and not sig_sel:
         st.info("Nhấn Scan VN30 hoặc Scan VN100 để bắt đầu.")
 
     # ══════════════════════════════════════════════════════════════

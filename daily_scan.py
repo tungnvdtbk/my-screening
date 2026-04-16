@@ -83,18 +83,17 @@ def run_all_scans() -> dict:
     vnindex_df = get_vnindex_data()
 
     results = {
-        "main": [], "watchlist": [], "swing": [], "pa": [], "mr": [],
+        "main": [], "swing": [], "pa": [], "mr": [],
         "climax": [], "market_down": False, "errors": [],
     }
 
-    # 1. Main scan (breakout, gap, NR7, trend filter)
+    # 1. Main scan (breakout, gap, NR7, pin bar, trend filter)
     try:
-        print("Running main scan (Breakout/Gap/NR7/TrendFilter)...")
-        sigs, watch, mkt_down = run_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
+        print("Running main scan (Breakout/Gap/NR7/PinBar/TrendFilter)...")
+        sigs, mkt_down = run_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
         results["main"] = sigs
-        results["watchlist"] = watch
         results["market_down"] = mkt_down
-        print(f"  -> {len(sigs)} signals, {len(watch)} watchlist")
+        print(f"  -> {len(sigs)} signals")
     except Exception as e:
         results["errors"].append(f"Main scan: {e}")
         traceback.print_exc()
@@ -157,18 +156,6 @@ def _signal_row(sig: dict, key: str) -> str:
     )
 
 
-def _watchlist_row(sig: dict) -> str:
-    symbol = sig.get("symbol", "?").replace(".VN", "")
-    return (
-        f'<tr>'
-        f'<td style="font-weight:bold">{symbol}</td>'
-        f'<td>{sig.get("dev_type", "")}</td>'
-        f'<td style="text-align:right">{sig.get("score", 0):.0f}</td>'
-        f'<td>{sig.get("notes", "")}</td>'
-        f'</tr>'
-    )
-
-
 def build_html_report(results: dict) -> str:
     date_str = datetime.now().strftime("%A, %d %B %Y")
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
@@ -206,21 +193,6 @@ def build_html_report(results: dict) -> str:
                 f'<table style="width:100%;border-collapse:collapse;font-size:14px">'
                 f'{th}{rows}</table>'
             )
-
-    # Watchlist
-    watch = results.get("watchlist", [])
-    if watch:
-        watch_rows = "".join(_watchlist_row(w) for w in watch)
-        sections += (
-            f'<h2 style="color:#90caf9;margin-top:28px">Watchlist ({len(watch)})</h2>'
-            f'<table style="width:100%;border-collapse:collapse;font-size:14px">'
-            f'<tr style="border-bottom:2px solid #333">'
-            f'<th style="text-align:left">Symbol</th>'
-            f'<th style="text-align:left">Type</th>'
-            f'<th style="text-align:right">Score</th>'
-            f'<th style="text-align:left">Notes</th>'
-            f'</tr>{watch_rows}</table>'
-        )
 
     # Errors
     err_html = ""
@@ -278,14 +250,6 @@ def build_telegram_summary(results: dict) -> str:
             rr = s.get("rr", 0)
             sig_type = s.get("signal", "")
             lines.append(f"  <code>{sym:6s}</code> {sig_type}  {tier}  R:R {rr:.1f}")
-        lines.append("")
-
-    watch = results.get("watchlist", [])
-    if watch:
-        lines.append(f"<b>Watchlist ({len(watch)})</b>")
-        for w in watch:
-            sym = w.get("symbol", "?").replace(".VN", "")
-            lines.append(f"  <code>{sym:6s}</code> {w.get('dev_type', '')}  score {w.get('score', 0):.0f}")
         lines.append("")
 
     if results.get("errors"):

@@ -1,7 +1,7 @@
 # CLAUDE.md — VN Stock Screener (Swing D1)
 
 ## Project overview
-Streamlit app that scans Vietnamese stocks (VN30 / VN100) for Swing Trading signals on the Daily timeframe. Two signal types: **Breakout Momentum** and **Reversal Hunter**, defined in `guide.md`.
+Streamlit app that scans Vietnamese stocks (VN30 / VN100) for Swing Trading signals on the Daily timeframe. Five scanner types: **Breakout Momentum**, **NR7**, **Gap-Up**, **Pin Bar at Context**, and **Trend Filter**.
 
 ## Key files
 
@@ -9,6 +9,7 @@ Streamlit app that scans Vietnamese stocks (VN30 / VN100) for Swing Trading sign
 |---|---|
 | `app.py` | Main Streamlit app (~750 lines) — all logic in one file |
 | `guide.md` | Canonical rule definitions for Breakout & Reversal signals |
+| `pinbar_scanner.md` | Pin Bar at Context scanner spec — replaces watchlist |
 | `generate_backtest.py` | Generates ~30 PNG backtest charts into `data/backtest/` |
 | `requirements.txt` | `streamlit yfinance pandas numpy matplotlib pyarrow plotly vnstock3 openpyxl tqdm` |
 | `data/cache/` | Parquet files (one per symbol), incremental price cache |
@@ -35,16 +36,20 @@ d["high20"]       = d["High"].shift(2).rolling(20).max()
 d["ma50"]         = d["Close"].rolling(50).mean()
 d["ma200"]        = d["Close"].rolling(200).mean()
 d["ma50_prev5"]   = d["ma50"].shift(5)
+d["swing_low20"]  = d["Low"].shift(2).rolling(20).min()   # horizontal support
 ```
 
 ### Scan logic
-- `scan_breakout(df)` — returns dict or None; signal candle = `df.iloc[-1]`
-- `scan_reversal(df)` — returns dict or None; status always `PENDING`
-- `run_scan(symbols)` — ThreadPoolExecutor (8 workers), tries breakout first then reversal per symbol
+- `scan_breakout(df)` — Breakout Momentum; returns dict or None
+- `scan_gap(df)` — Gap-Up Breakout; returns dict or None
+- `scan_nr7(df)` — NR7 narrow range coil; returns dict or None
+- `scan_pinbar(df)` — Pin Bar at Context (MA20/MA50/MA200/swing low); status always `PENDING`
+- `scan_trend_filter(df)` — Trend Filter pullback; returns dict or None
+- `run_scan(symbols)` — ThreadPoolExecutor (8 workers), tries scanners in priority order per symbol
 
 ### UI
 - Two scan buttons: **Scan VN30** and **Scan VN100** — no general "Scan Now"
-- Results shown in 3 tabs: All / Breakout / Reversal
+- Results shown in 6 tabs: All / Breakout / NR7 / Gap / Pin Bar / Trend Filter
 - Click a row → interactive Plotly chart with SL/TP lines
 - Backtest PNGs grid at bottom (up to 30, 3 per row)
 - Sidebar: VNINDEX market filter, cache controls, strategy description
@@ -60,15 +65,16 @@ d["ma50_prev5"]   = d["ma50"].shift(5)
 - Filter: `close <= MA50 * 1.08` (not over-extended)
 - SL = low[-1], TP = entry + 2× ATR10
 
-### Reversal Hunter
-1. `close < MA50` (downtrend)
-2. `abs(close - MA200) <= 1.0 × ATR10` (near MA200 support)
-3. `low < prev_low` (rejection — tested lower)
-4. `close > open` (bull candle)
-5. `close >= high * 0.998` (close near high)
-6. `(high - low) > 1.5 × ATR10` (large candle)
-- Filter: `close >= MA200 * 0.92` (not in freefall)
-- SL = low[-1], TP1 = MA50, TP2 = entry + 2× ATR10
+### Pin Bar at Context (see pinbar_scanner.md)
+1. `lower_wick >= 0.60 * candle_range` (long rejection wick)
+2. `body <= 0.33 * candle_range` (small body)
+3. `upper_wick <= 0.25 * candle_range` (short upper wick)
+4. `candle_range >= 0.5 * ATR10` (minimum size)
+- Context: must touch at least one of MA20, MA50, MA200, or swing_low20
+- Signal types: `PINBAR_MA200` > `PINBAR_MA50` > `PINBAR_MA20` > `PINBAR_SWING`
+- Tier A: 2+ contexts + volume + bull close + R:R >= 2.5
+- Tier B: 1+ context + R:R >= 2.0 + risk < 7%
+- SL = low[-1], TP = max(MA50, entry + 2× ATR10)
 - Status always `PENDING` (confirm when next candle closes > high[-1])
 
 ### Volume tags
@@ -103,6 +109,7 @@ docker cp ai_trading_project_v2-app-1:/app/data/backtest/. c:/code_demo/my-scree
 
 ## What NOT to do
 - Do not restore old pattern detection code (VCP, Flat Base, Pullback MA20, chart_patterns module)
+- Do not restore the watchlist / developing setup scorer (`score_developing`) — replaced by pin bar scanner
 - Do not add a general "Scan Now" button — only VN30 and VN100 buttons
 - Do not add `BEAR_COUNT` or `BULL_COUNT` to scan rules — removed intentionally
 - Do not use `df.iloc[-1]` data when computing rolling indicators (use `shift(2)`)
