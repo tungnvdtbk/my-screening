@@ -62,7 +62,7 @@ from app import (                   # noqa: E402
 
 # ── Scanner definitions ──────────────────────────────────────────────
 SCANNERS = [
-    ("Breakout / NR7 / Gap / TrendFilter", "main"),
+    ("Breakout / NR7 / Gap / PinBar / TrendFilter", "main"),
     ("Swing Filter",                        "swing"),
     ("Price Action",                        "pa"),
     ("Mean Reversion",                      "mr"),
