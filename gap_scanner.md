@@ -108,7 +108,7 @@ weekly_ok = (weekly_close > weekly_ma20) and (weekly_ma20 > weekly_ma50)
 supply_overhead = nearest_resistance_atr <= 1.0
 ```
 
-### Tier A (highest quality — target ~100% WR)
+### Tier A (highest quality)
 ```python
 signal == "GAP_STRONG"
 AND vol_tier == "TIER1"
@@ -117,7 +117,7 @@ AND supply_overhead == False
 AND rr_plan >= 2.0
 ```
 
-### Tier B (good quality — target >50% WR with R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```python
 signal == "GAP_STRONG"
 AND vol_tier in ("TIER1", "TIER2")

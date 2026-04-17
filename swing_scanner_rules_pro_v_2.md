@@ -460,7 +460,7 @@ If multiple tickers qualify, prioritize by `score` descending.
 
 Only Tier A and Tier B signals pass. All others are rejected.
 
-### Tier A (target ~100% WR)
+### Tier A (highest quality)
 ```python
 is_buildup == True
 AND risk_pct_plan < 2.5%
@@ -471,7 +471,7 @@ AND rr_plan >= 2.0
 ```
 Tightest buildup: low risk + contraction + volume dryup + higher lows.
 
-### Tier B (target >50% WR, R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```python
 is_buildup == True
 AND risk_pct_plan < 4.0%
@@ -495,4 +495,3 @@ After implementation, validate this rule in three separate market environments:
 
 Do not trust aggregate backtests alone.
 This rule is regime-sensitive by design.
-

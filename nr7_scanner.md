@@ -180,7 +180,7 @@ vol_tier, volume, avg_vol20
 
 Only Tier A and Tier B signals pass. All others are rejected.
 
-### Tier A (highest quality — target ~100% WR)
+### Tier A (highest quality)
 ```python
 signal == "NR7_STRONG"
 AND is_inside_bar == True
@@ -189,7 +189,7 @@ AND (resist_atr is None OR resist_atr >= 1.0)
 AND rr_plan >= 2.0
 ```
 
-### Tier B (good quality — target >50% WR with R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```python
 signal == "NR7_STRONG"
 AND nr7_score >= 40

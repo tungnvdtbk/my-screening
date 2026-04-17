@@ -1,6 +1,11 @@
 # Swing Trading Scan Rules — Breakout & Reversal
 ### Khung thời gian: Daily (D1) | Kiểu giao dịch: Swing Trading
 
+> **Status:**
+> Đây là tài liệu tham chiếu tập trung cho framework breakout / reversal gốc trên D1.
+> Nó **không phải** là mô tả đầy đủ của toàn bộ app hiện tại.
+> Để xem các scanner đang hoạt động trong repo, ưu tiên `README.md` và các file spec riêng như `gap_scanner.md`, `nr7_scanner.md`, `pinbar_scanner.md`, `trendfilter.md`, `mean_reversion_scanner.md`, `climax_scanner.md`, `swing_scanner_rules_pro_v_2.md`, và `price_action_scanner_breakout_pullback_v2.md`.
+
 > **Tổng quan chiến lược:**
 > Swing trading trên khung D1 — giữ lệnh từ **3 đến 15 ngày**, bắt các nhịp swing rõ ràng.
 > Scan chạy **sau khi nến ngày đóng cửa** (thường 00:00 UTC hoặc theo giờ đóng cửa thị trường).
@@ -117,10 +122,10 @@ Trailing= sau mỗi 1*ATR10 giá đi đúng hướng, kéo SL lên theo
 Chỉ giữ Tier A và Tier B. Tín hiệu không đạt sẽ bị loại.
 
 ```
-Tier A (target ~100% WR):
+Tier A (highest quality):
   BREAKOUT_STRONG + TIER1 vol + weekly trend OK + không overhead supply + R:R >= 2.0
 
-Tier B (target >50% WR, R:R >= 2:1):
+Tier B (tradeable quality, R:R >= 2:1):
   BREAKOUT_STRONG + TIER1/TIER2 vol + R:R >= 2.0 + risk < 5%
 
 Nếu không đạt A hoặc B → loại signal

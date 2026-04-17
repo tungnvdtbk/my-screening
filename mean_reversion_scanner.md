@@ -180,7 +180,7 @@ entry_exec    = open[next_bar] * 1.001
 rr_exec       = (tp_plan - entry_exec) / max(entry_exec - sl, 1e-9)
 ```
 
-### Tier A (highest quality — target ~100% WR)
+### Tier A (highest quality)
 ```python
 reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER")
 AND position_in_range < 0.15
@@ -188,7 +188,7 @@ AND rsi3 < 20
 AND rr_plan >= 2.0
 ```
 
-### Tier B (good quality — target >50% WR with R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```python
 reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER", "HIGHER_CLOSE_LOWER_LOW")
 AND position_in_range < 0.25

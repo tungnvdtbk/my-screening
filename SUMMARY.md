@@ -1,156 +1,105 @@
-# VN HOSE Stock Scanner — System Summary
+# VN Stock Screener — Current System Summary
 
-Streamlit app that scans toàn sàn HOSE theo hệ thống **Trend Following** (từ `he-thong-trading-vn.html`).
+This summary reflects the current app structure in `app.py`. It is a high-level overview, not the per-scanner source of truth.
 
----
+## Main Sections
 
-## Tính năng chính
+### 1. Daily multi-signal scan
 
-### 🚦 Tín hiệu thị trường (Traffic Light)
-Đánh giá sức khoẻ thị trường chung mỗi lần scan:
+The top section scans `VN30` or `VN100` and returns one prioritized daily signal per symbol from this chain:
 
-| Đèn | Điều kiện | Hành động |
-|-----|-----------|-----------|
-| 🟢 Xanh | VN-Index > MA50 **và** MA20 > MA50 **và** Breadth ≥ 55% | Giao dịch đầy đủ |
-| 🟡 Vàng | Điều kiện trung gian (Breadth 40–55%) | Giảm exposure 50%, chỉ RS ≥ 85 |
-| 🔴 Đỏ | VN-Index < MA50 **hoặc** MA20 < MA50 **hoặc** Breadth < 40% | Không mở vị thế mới |
-
-- **Market Breadth** = % cổ phiếu HOSE đang trên MA50 của chúng (tính từ dữ liệu scan)
-- **VN-Index** lấy từ vnstock3 (VCI/TCBS) hoặc fallback yfinance
-
----
-
-### 📋 Trend Template — 10 tiêu chí bắt buộc
-Mỗi cổ phiếu phải qua đủ 10/10 để vào watchlist:
-
-| # | Tiêu chí |
-|---|----------|
-| 1 | Giá đóng cửa > MA50 daily |
-| 2 | Giá đóng cửa > MA150 daily |
-| 3 | MA50 > MA150 |
-| 4 | MA150 tăng liên tục ≥ 4 tuần |
-| 5 | Giá ≥ 25% trên đáy 52 tuần |
-| 6 | Giá trong phạm vi 30% so với đỉnh 52 tuần |
-| 7 | KLGD trung bình 20 phiên ≥ 200,000 cổ |
-| 8 | Giá ≥ 15,000 VNĐ |
-| 9 | Relative Strength ≥ 80 percentile (so với toàn sàn HOSE) |
-| 10 | Không có dấu hiệu phân phối (3 phiên liên tiếp: giá giảm + khối lượng tăng) |
-
----
-
-### 💪 Relative Strength (RS)
-Xếp hạng sức mạnh tương đối so với **toàn sàn HOSE** (không phải chỉ VN30):
-
-```
-RS_raw = Perf_1M × 0.25 + Perf_3M × 0.35 + Perf_6M × 0.25 + Perf_12M × 0.15
+```text
+Breakout -> Gap -> NR7 -> Pin Bar -> Trend Filter
 ```
 
-- Percentile ranking toàn sàn → RS 90+ = ★★★ (top 10%), RS 80–89 = ★★, RS 70–79 = ★
-- Đèn vàng: tự động nâng ngưỡng lên RS ≥ 85
+Key behavior:
 
----
+- Uses the shared daily cache from `data/cache/`
+- Sorts results by signal priority and quality fields
+- Shows results in tabs: All / Breakout / NR7 / Gap / Pin Bar / Trend Filter
+- If `VNINDEX < MA50`, breakout-style signals are suppressed and only non-breakout signals remain
 
-### 🏆 Top 5 cổ phiếu
-Hiển thị nổi bật 5 mã thoả mãn đủ 10 tiêu chí + RS cao nhất, kèm:
-- Giá hiện tại, RS score + sao
-- MA50, MA150, khối lượng trung bình
-- **Stop Loss**: giá + % (mặc định −5%)
-- **Target**: giá + % (mặc định +10%)
+### 2. Mean Reversion Range
 
----
+Separate long-only range scanner for sideways markets:
 
-### 🛑 Stop Loss & 🎯 Target
-Tính từ giá hiện tại, hiển thị cả giá tuyệt đối và phần trăm:
+- Buys near support inside a validated range
+- Sidebar exposes MR-specific parameters such as range size, support tolerance, bottom-zone threshold, and target R:R
+- Results are sorted by `final_score`
 
-| | Công thức | Mặc định | Hiển thị ví dụ |
-|--|-----------|----------|----------------|
-| Stop Loss | `price × (1 − sl%)` | 5% | `47.5 (−5%)` |
-| Target    | `price × (1 + tgt%)` | 10% | `55.0 (+10%)` |
+### 3. Swing Filter
 
-Sidebar cho phép điều chỉnh: **Stop Loss 3–15%**, **Target 5–50%**.
+Cross-sectional scanner based on `swing_scanner_rules_pro_v_2.md`:
 
----
+- Requires constructive buildup plus breakout confirmation
+- Uses a VNINDEX market-regime gate by default
+- Returns top candidates sorted by score
 
-### 💾 Cache dữ liệu giá (Incremental)
-- Mỗi mã lưu vào `./data/cache/<SYMBOL>.parquet` (fallback CSV nếu thiếu pyarrow)
-- Lần sau chỉ tải dữ liệu từ ngày cuối cùng trở đi → **scan nhanh hơn đáng kể**
-- Docker volume mount `./data:/app/data` đảm bảo cache không mất khi restart
+### 4. Price Action — Breakout & Pullback
 
----
+Volman-style continuation scanner based on `price_action_scanner_breakout_pullback_v2.md`:
 
-### 📊 Bảng kết quả đầy đủ
-Cột hiển thị: Mã, Giá, **Stoploss**, **Target**, MA50, MA150, Đỉnh/Đáy 52T, Vol(20), Score(/9), RS%, Trạng thái, và 9 cột tiêu chí riêng lẻ (✓/✗).
+- Detects breakout-after-buildup and pullback-to-MA20 setups
+- Uses barrier clustering, squeeze detection, RS vs VNINDEX, and sector-cap logic
+- Returns top candidates sorted by cross-sectional score
 
-Bộ lọc:
-- **Hiển thị**: Chỉ Pass / Gần pass (score ≥ 7) / Tất cả
-- **Score tối thiểu**: slider 0–9
-- **Export Excel** (.xlsx)
+### 5. Climax Reversal
 
----
+Reversal scanner for sell-climax / false-break setups:
 
-### 📈 Chart Viewer
-- Chọn bất kỳ mã trong kết quả để xem biểu đồ giá + MA20 + MA50 + MA150 (252 phiên gần nhất)
-- Expander **"Chi tiết 10 tiêu chí"**: hiển thị ✅/❌ cho từng tiêu chí của mã đang xem
+- Looks for sharp prior decline, support violation, and reversal candle
+- Tracks `PENDING` / `CONFIRMED` style state fields and reversal type
 
----
+### 6. Pin Bar 4H
 
-## Tuỳ chọn & cấu hình
+Intraday pin-bar scanner over recent 4H candles:
 
-| Tham số | Vị trí | Mặc định |
-|---------|--------|----------|
-| Danh sách mã | Sidebar radio | HOSE (toàn sàn ~400 mã) hoặc VN30 |
-| Dùng cache giá | Sidebar checkbox | Bật |
-| Stop Loss % | Sidebar slider | 5% |
-| Target % | Sidebar slider | 10% |
-| Hiển thị kết quả | Dropdown | Chỉ Pass |
-| Score tối thiểu | Slider | 0 |
+- Fetches 1H data, resamples to 4H
+- Uses D1 trend alignment as a multi-timeframe filter
+- Scans a short recent lookback window instead of only the latest bar
 
----
+## Sidebar Controls
 
-## Luồng hoạt động
+Current sidebar groups:
 
-```
-[Scan Now]
-    │
-    ├─ Lấy danh sách HOSE (vnstock3 → file cache → VN30 fallback)
-    ├─ Lấy VN-Index (vnstock3 VCI/TCBS → yfinance fallback)
-    │
-    ├─ For each symbol [progress bar]:
-    │       ├─ Load giá (parquet cache, append mới nếu cần)
-    │       ├─ Trend Template 9 tiêu chí kỹ thuật
-    │       └─ Tính RS_raw
-    │
-    ├─ Tính Market Breadth → Traffic Light 🟢/🟡/🔴
-    ├─ Rank RS percentile toàn sàn
-    │
-    ├─ Top 5 (Trend Template pass + RS ≥ 80)
-    ├─ Bảng đầy đủ (filter + export)
-    └─ Chart viewer
-```
+- Market status (`VNINDEX`, MA20, MA50)
+- Cache management
+- Capital and risk-per-trade inputs
+- Scan options, including optional VNINDEX bypass for Swing / Price Action
+- Mean Reversion configuration
+- Strategy cheat-sheet text
 
----
+## Data and Caching
 
-## Triển khai
+- Daily data is cached incrementally to `data/cache/<SYMBOL>.parquet` with CSV fallback
+- `get_vnindex_data()` is cached in Streamlit for 1 hour
+- 4H price data is fetched fresh and resampled from 1H data
+- Chart panels load the selected symbol again and render Plotly candles plus signal overlays
+
+## Universes
+
+- `VN30_STOCKS` — 30 symbols
+- `VNMID_STOCKS` — mid-cap basket
+- `VN100_STOCKS` — merged universe used by most scan sections
+
+## Run and Validate
 
 ```bash
-# Docker (khuyến nghị)
-docker compose up --build
-# → http://localhost:8000
-
-# Local
+# local
 pip install -r requirements.txt
 streamlit run app.py
+
+# docker
+docker compose up --build
+
+# tests / validation
+python test_app.py
+python -m py_compile app.py
 ```
 
-Cache dữ liệu lưu tại `./data/cache/` — được mount vào container qua `docker-compose.yml`.
+## Documentation Roles
 
----
-
-## Tests
-
-```bash
-docker exec ai_trading_project_v2-app-1 python test_app.py
-# Ran 59 tests in 0.3s — OK
-```
-
-59 unit tests bao phủ: RS stars, RS ranking, RS raw formula, market filter, Trend Template (9 criteria + stoploss/target), cache helpers.
+- Use the scanner-specific markdown files for rule details
+- Use `README.md` for onboarding
+- Use `CLAUDE.md` for contributor context
+- Treat `guide.md` and `instruction.md` as reference material, not the full current system spec

@@ -171,7 +171,7 @@ Sell climax thực sự phải có volume bất thường — dấu hiệu capit
 
 Chỉ giữ Tier A và Tier B. Tín hiệu không đạt sẽ bị loại.
 
-### Tier A (target ~100% WR)
+### Tier A (highest quality)
 ```
 decline_pct >= 8%
 AND risk_pct < 2%
@@ -179,7 +179,7 @@ AND reversal_type in (HAMMER, MARUBOZU)
 AND R:R >= 2.0
 ```
 
-### Tier B (target >50% WR, R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```
 RSI < 35
 AND climax_vol_ok (volume climax xác nhận)

@@ -97,7 +97,7 @@ weekly_ok = (weekly_close > weekly_ma20) and (weekly_ma20 > weekly_ma50)
 supply_overhead = nearest_resistance_atr <= 1.0
 ```
 
-### Tier A (highest quality — target ~100% WR)
+### Tier A (highest quality)
 ```
 TF_MA20
 AND vol_spike >= 1.5x avg (strong buying)
@@ -107,7 +107,7 @@ AND rr_plan >= 2.0
 AND risk_pct_plan < 3.0%
 ```
 
-### Tier B (good quality — target >50% WR with R:R >= 2:1)
+### Tier B (tradeable quality, R:R >= 2:1)
 ```
 (
   TF_MA20

@@ -1,3 +1,11 @@
+# instruction.md — Prompt Template Reference
+
+> **Status:** Generic prompt/reference material.
+> This file is not an implemented project spec and is not kept in sync with `app.py`.
+> Use the scanner-specific markdown files plus `app.py` when you need the actual behavior of this repository.
+
+## Original Prompt
+
 Write Python code for a trading strategy with these strict rules:
 
 1. Goal

@@ -1,95 +1,101 @@
-# AI Trading Project v2
+# VN Stock Screener — Swing D1
 
-A Streamlit-based AI trading dashboard for analyzing Vietnamese stock market data with technical analysis and automated trading signals.
+Streamlit app for scanning Vietnamese stocks (`VN30` / `VN100`) with multiple rule-based swing, range, and reversal workflows. The current repo supports a combined daily signal scan plus separate sections for mean reversion, swing filter, Volman-style price action, climax reversal, and 4H pin bars.
+
+## Current Scanners
+
+- Daily multi-signal scan: Breakout Momentum, NR7, Gap-Up Breakout, Pin Bar at Context, Trend Filter
+- Mean Reversion Range
+- Swing Filter
+- Price Action — Breakout & Pullback
+- Climax Reversal
+- Pin Bar 4H
+
+## Core Features
+
+- VN30 and VN100 universes with sector labels
+- VNINDEX market filter in the sidebar
+- Incremental daily price cache in `data/cache/`
+- Interactive Plotly chart panels with SL/TP overlays
+- Capital and risk-per-trade inputs
+- Separate scan runners for trend, range, continuation, and reversal styles
 
 ## Tech Stack
 
-- **Python 3.11**
-- **Streamlit** — interactive web dashboard
-- **yfinance** — stock market data
-- **vnstock3** — Vietnamese market data (VNINDEX)
-- **SQLAlchemy + SQLite** — trade logging
-- **pandas / numpy** — data analysis
+- Python 3.11
+- Streamlit
+- pandas / numpy
+- plotly / matplotlib
+- yfinance
+- vnstock3
+- pyarrow
+- openpyxl
+- tqdm
 
-## Prerequisites
-
-- Python 3.11+
-- pip
-- (Optional) Docker & Docker Compose
-
-## Installation
+## Run Locally
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Running the App
-
-### Local Development
-
-```bash
 streamlit run app.py
 ```
 
-The dashboard will be available at **http://localhost:8501**.
+Local Streamlit uses the default port: `http://localhost:8501`.
 
-### Docker
-
-```bash
-docker-compose up
-```
-
-This will:
-- Build the image from the Dockerfile
-- Map port **8501** to your host
-- Auto-restart unless stopped
-
-To run in detached mode:
+## Run with Docker
 
 ```bash
-docker-compose up -d
+docker compose up --build
 ```
 
-### Deploy on Streamlit Community Cloud (Free, No Credit Card)
+Docker runs the app on port `8000`: `http://localhost:8000`.
 
-1. Go to **https://share.streamlit.io** and sign in with your **GitHub account**.
+Detached mode:
 
-2. Click **New app**.
+```bash
+docker compose up -d
+```
 
-3. Select repo **tungnvdtbk/my-screening**, branch **main**, file **app.py**.
+## Validate
 
-4. Click **Deploy** — app will be live in ~2 minutes.
-
-5. Your app URL: `https://<your-app>.streamlit.app`
+```bash
+python test_app.py
+python -m py_compile app.py
+```
 
 ## Project Structure
 
+```text
+app.py                                  # Main Streamlit application
+requirements.txt                        # Python dependencies
+Dockerfile                              # Container image
+docker-compose.yml                      # Local container orchestration
+test_app.py                             # Unit tests for scanners/helpers
+generate_backtest.py                    # Backtest chart generation
+gen_pb4h_charts.py                      # Pin Bar 4H chart utilities
+data/cache/                             # Daily price cache
+data/backtest/                          # Generated backtest images
+README.md                               # Start here
+SUMMARY.md                              # High-level system summary
+CLAUDE.md                               # Contributor-facing codebase notes
 ```
-├── app.py               # Main Streamlit application
-├── requirements.txt     # Python dependencies
-├── Dockerfile           # Docker image definition
-├── docker-compose.yml   # Docker orchestration
-├── symbols.json         # Custom stock watchlist
-├── .dockerignore        # Docker build exclusions
-└── data/                # SQLite database (auto-created)
-```
 
-## Features
+## Documentation Map
 
-- **Market Trend Filter** — uses VNINDEX MA50 to determine overall market direction
-- **VN30 Stock Analysis** — pre-loaded with 30+ Vietnamese stocks by sector
-- **Custom Watchlist** — add/remove symbols via `symbols.json` or the UI
-- **Technical Indicators** — MA20, MA50, MA100, RSI(14), volume analysis
-- **Trading Signals** — BUY, WATCH, HOLD, TAKE PROFIT, CUT LOSS, NO TRADE
-- **Trade Logging** — all signals saved to SQLite (`data/trades.db`)
+- `README.md` — onboarding and run instructions
+- `SUMMARY.md` — current high-level system summary
+- `CLAUDE.md` — contributor-oriented architecture notes
+- `gap_scanner.md` — Gap-Up Breakout scanner spec
+- `nr7_scanner.md` — NR7 scanner spec
+- `pinbar_scanner.md` — daily Pin Bar at Context spec
+- `pinbar_4h_scanner.md` — 4H pin bar spec
+- `trendfilter.md` — Trend Filter spec
+- `mean_reversion_scanner.md` — Mean Reversion scanner spec
+- `climax_scanner.md` — Climax reversal scanner spec
+- `swing_scanner_rules_pro_v_2.md` — Swing Filter spec
+- `price_action_scanner_breakout_pullback_v2.md` — Price Action spec
+- `guide.md` — focused reference for the original D1 breakout/reversal framework; not the full system spec
+- `instruction.md` — generic prompt/reference material; not synced to runtime behavior
 
-## Trading Logic
+## Source of Truth
 
-| Signal | Condition |
-|---|---|
-| **BUY** | Price pulls back into MA20–MA50 zone, RSI < 45, high volume, market UP |
-| **WATCH** | Pullback zone, RSI < 50 |
-| **TAKE PROFIT** | Price ≥ 20% above entry |
-| **CUT LOSS** | Price falls below MA100 (with 7% buffer) |
-| **HOLD** | Currently holding position |
-| **NO TRADE** | Not in uptrend or market is DOWN |
+Runtime behavior lives in `app.py`. When scanner logic changes, update the matching scanner spec and the top-level docs above.
