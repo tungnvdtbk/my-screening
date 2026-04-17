@@ -1,7 +1,7 @@
 """
 daily_scan.py — Headless daily stock scan for all VN100 symbols.
 
-Runs all 5 scanners, builds an HTML report, and sends it via Telegram.
+Runs all 6 scanners, builds an HTML report, and sends it via Telegram.
 Can also be run locally: `python daily_scan.py` (saves HTML without sending).
 
 Environment variables (set as GitHub secrets for CI):
@@ -57,6 +57,7 @@ from app import (                   # noqa: E402
     run_pa_scan,
     run_mr_scan,
     run_climax_scan,
+    run_pinbar_4h_scan,
 )
 
 # ── Scanner definitions ──────────────────────────────────────────────
@@ -66,14 +67,16 @@ SCANNERS = [
     ("Price Action",                        "pa"),
     ("Mean Reversion",                      "mr"),
     ("Climax Reversal",                     "climax"),
+    ("Pin Bar 4H",                          "pinbar4h"),
 ]
 
 TIER_FIELDS = {
-    "main":   lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("pin_tier") or r.get("tf_tier") or "",
-    "swing":  lambda r: r.get("sw_tier", ""),
-    "pa":     lambda r: r.get("pa_tier", ""),
-    "mr":     lambda r: r.get("mr_tier", ""),
-    "climax": lambda r: r.get("cx_tier", ""),
+    "main":      lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("pin_tier") or r.get("tf_tier") or "",
+    "swing":     lambda r: r.get("sw_tier", ""),
+    "pa":        lambda r: r.get("pa_tier", ""),
+    "mr":        lambda r: r.get("mr_tier", ""),
+    "climax":    lambda r: r.get("cx_tier", ""),
+    "pinbar4h":  lambda r: r.get("pin_tier", ""),
 }
 
 
@@ -84,7 +87,7 @@ def run_all_scans() -> dict:
 
     results = {
         "main": [], "swing": [], "pa": [], "mr": [],
-        "climax": [], "market_down": False, "errors": [],
+        "climax": [], "pinbar4h": [], "market_down": False, "errors": [],
     }
 
     # 1. Main scan (breakout, gap, NR7, pin bar, trend filter)
@@ -134,6 +137,15 @@ def run_all_scans() -> dict:
         results["errors"].append(f"Climax scan: {e}")
         traceback.print_exc()
 
+    # 6. Pin Bar 4H
+    try:
+        print("Running Pin Bar 4H scan...")
+        results["pinbar4h"] = run_pinbar_4h_scan(VN100_STOCKS, vnindex_df=vnindex_df)
+        print(f"  -> {len(results['pinbar4h'])} signals")
+    except Exception as e:
+        results["errors"].append(f"Pin Bar 4H scan: {e}")
+        traceback.print_exc()
+
     return results
 
 
@@ -169,7 +181,7 @@ def build_html_report(results: dict) -> str:
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
     market_color = "#ef5350" if results["market_down"] else "#00e676"
 
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h"))
 
     # Table header
     th = (
@@ -238,7 +250,7 @@ def build_html_report(results: dict) -> str:
 def build_telegram_summary(results: dict) -> str:
     date_str = datetime.now().strftime("%Y-%m-%d (%A)")
     market = "BEARISH" if results["market_down"] else "BULLISH"
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h"))
 
     lines = [
         f"<b>VN Stock Daily Scan — {date_str}</b>",
