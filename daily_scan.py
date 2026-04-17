@@ -58,6 +58,7 @@ from app import (                   # noqa: E402
     run_mr_scan,
     run_climax_scan,
     run_pinbar_4h_scan,
+    run_pinbar_v2_scan,
 )
 
 # ── Scanner definitions ──────────────────────────────────────────────
@@ -68,6 +69,7 @@ SCANNERS = [
     ("Mean Reversion",                      "mr"),
     ("Climax Reversal",                     "climax"),
     ("Pin Bar 4H",                          "pinbar4h"),
+    ("Pin Bar v2 (D1 + 4H)",                "pinbarv2"),
 ]
 
 TIER_FIELDS = {
@@ -77,6 +79,7 @@ TIER_FIELDS = {
     "mr":        lambda r: r.get("mr_tier", ""),
     "climax":    lambda r: r.get("cx_tier", ""),
     "pinbar4h":  lambda r: r.get("pin_tier", ""),
+    "pinbarv2":  lambda r: r.get("pin_tier", ""),
 }
 
 
@@ -87,7 +90,8 @@ def run_all_scans() -> dict:
 
     results = {
         "main": [], "swing": [], "pa": [], "mr": [],
-        "climax": [], "pinbar4h": [], "market_down": False, "errors": [],
+        "climax": [], "pinbar4h": [], "pinbarv2": [],
+        "market_down": False, "errors": [],
     }
 
     # 1. Main scan (breakout, gap, NR7, pin bar, trend filter)
@@ -146,6 +150,15 @@ def run_all_scans() -> dict:
         results["errors"].append(f"Pin Bar 4H scan: {e}")
         traceback.print_exc()
 
+    # 7. Pin Bar v2 — D1+4H buy-only signal (no confirmation gate)
+    try:
+        print("Running Pin Bar v2 (D1+4H) scan...")
+        results["pinbarv2"] = run_pinbar_v2_scan(VN100_STOCKS, vnindex_df=vnindex_df)
+        print(f"  -> {len(results['pinbarv2'])} signals")
+    except Exception as e:
+        results["errors"].append(f"Pin Bar v2 scan: {e}")
+        traceback.print_exc()
+
     return results
 
 
@@ -156,6 +169,12 @@ def _signal_row(sig: dict, key: str) -> str:
     symbol = sig.get("symbol", "?").replace(".VN", "")
     # Pin bar quality extras
     extras = ""
+    tf = sig.get("timeframe")
+    prio = sig.get("priority")
+    if tf:
+        tf_color = "#00e676" if tf == "D1" else "#ffca28"
+        label = f"{tf}" + (f"·{prio}" if prio and prio != "primary" else "")
+        extras += f' <span style="color:{tf_color}">[{label}]</span>'
     ps = sig.get("pin_score")
     if ps is not None:
         extras += f' <span style="color:#90caf9">[Q{ps}/13]</span>'
@@ -181,7 +200,7 @@ def build_html_report(results: dict) -> str:
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
     market_color = "#ef5350" if results["market_down"] else "#00e676"
 
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2"))
 
     # Table header
     th = (
@@ -250,7 +269,7 @@ def build_html_report(results: dict) -> str:
 def build_telegram_summary(results: dict) -> str:
     date_str = datetime.now().strftime("%Y-%m-%d (%A)")
     market = "BEARISH" if results["market_down"] else "BULLISH"
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2"))
 
     lines = [
         f"<b>VN Stock Daily Scan — {date_str}</b>",
@@ -269,11 +288,18 @@ def build_telegram_summary(results: dict) -> str:
             tier = TIER_FIELDS[key](s)
             rr = s.get("rr", 0)
             sig_type = s.get("signal", "")
-            # Pin bar quality score
+            # Pin bar quality score + timeframe/priority (v2)
             pb_extra = ""
+            tf = s.get("timeframe")
+            prio = s.get("priority")
+            if tf:
+                pb_extra += f" [{tf}"
+                if prio and prio != "primary":
+                    pb_extra += f"·{prio}"
+                pb_extra += "]"
             ps = s.get("pin_score")
             if ps is not None:
-                pb_extra = f"  Q{ps}/13"
+                pb_extra += f"  Q{ps}/13"
                 sd = s.get("score_detail", "")
                 if sd:
                     pb_extra += f" ({sd})"

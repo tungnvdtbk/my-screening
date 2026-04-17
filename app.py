@@ -3357,6 +3357,163 @@ def _render_pinbar4h_results(rows: list[dict], use_cache: bool,
 
 
 # ============================================================
+# PIN BAR v2 — Confirmed buy-only (D1 + 4H, per pinbar_scanner_v2.md)
+# ============================================================
+
+def _check_d1_trend_v2(sym: str, use_cache: bool = True) -> bool | None:
+    """HTF filter for 4H v2: D1 close > MA50 OR MA50 rising (weaker than v1 AND)."""
+    try:
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or len(df) < 55:
+            return None
+        ma50 = df["Close"].rolling(50).mean()
+        ma50_prev5 = ma50.shift(5)
+        c = df["Close"].iloc[-1]
+        m50 = ma50.iloc[-1]
+        m50p = ma50_prev5.iloc[-1]
+        if pd.isna(m50) or pd.isna(m50p):
+            return None
+        return bool(c > m50 or m50 > m50p)
+    except Exception:
+        return None
+
+
+def scan_pinbar_v2(df: pd.DataFrame, vnindex_df=None,
+                    d1_trend_up: bool | None = None) -> dict | None:
+    """
+    Buy-only bullish pin bar at support — v2 (signal-only, no confirmation gate).
+
+    Delegates shape/context/volume/scoring/RR to scan_pinbar.  v2 differs from
+    the v1 chain only in its orchestration: it's run in a dedicated scanner
+    combining D1 and 4H, with a weaker 4H HTF filter (see run_pinbar_v2_scan).
+    """
+    return scan_pinbar(df, vnindex_df, d1_trend_up=d1_trend_up)
+
+
+def run_pinbar_v2_scan(symbols: dict[str, str], vnindex_df=None,
+                       progress_cb=None) -> list[dict]:
+    """
+    Buy-only confirmed pin bar scan across D1 and 4H.
+
+    Priority rules (per pinbar_scanner_v2.md):
+      - D1 hits are primary.
+      - 4H hits require HTF trend filter (D1 close>MA50 OR MA50 rising).
+      - If both timeframes hit for the same symbol, D1 = primary, 4H = alt
+        (earlier/refined entry).
+    """
+    candidates: list[dict] = []
+    total = len(symbols)
+    done  = 0
+
+    def _one(sym: str, sector: str) -> list[dict]:
+        out: list[dict] = []
+        d1_trend = _check_d1_trend_v2(sym)
+
+        # ── D1 scan ──
+        try:
+            df_d1 = load_price_data(sym, use_cache=True)
+            if df_d1 is not None and len(df_d1) >= 60:
+                df_d1 = compute_indicators(df_d1)
+                sig = scan_pinbar_v2(df_d1, vnindex_df, d1_trend_up=d1_trend)
+                if sig:
+                    sig["symbol"]    = sym.replace(".VN", "")
+                    sig["sector"]    = sector
+                    sig["timeframe"] = "D1"
+                    sig["priority"]  = "primary"
+                    out.append(sig)
+        except Exception:
+            pass
+
+        # ── 4H scan (gated by HTF filter) ──
+        if d1_trend is True:
+            try:
+                df_4h = load_price_data_4h(sym)
+                if df_4h is not None and len(df_4h) >= 60:
+                    df_4h = compute_indicators(df_4h)
+                    sig = scan_pinbar_v2(df_4h, vnindex_df, d1_trend_up=d1_trend)
+                    if sig:
+                        sig["symbol"]    = sym.replace(".VN", "")
+                        sig["sector"]    = sector
+                        sig["timeframe"] = "4H"
+                        has_d1 = any(r["timeframe"] == "D1" for r in out)
+                        sig["priority"]  = "alt" if has_d1 else "primary"
+                        out.append(sig)
+            except Exception:
+                pass
+        return out
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym, sec): sym for sym, sec in symbols.items()}
+        for fut in as_completed(futures):
+            try:
+                candidates.extend(fut.result())
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
+
+    candidates.sort(key=lambda r: (
+        0 if r.get("priority") == "primary" else 1,
+        0 if r.get("timeframe")  == "D1"      else 1,
+        0 if r.get("pin_tier")   == "A"       else 1,
+        -r.get("pin_score", 0),
+        -r.get("rr", 0),
+    ))
+    return candidates
+
+
+def _render_pinbar_v2_results(rows: list[dict], use_cache: bool,
+                               key: str = "pbv2_table") -> None:
+    if not rows:
+        st.info("Khong co Pin Bar v2 nao.")
+        return
+    st.caption(
+        "Pin Bar v2 — buy-only pin bar tai support (D1 + 4H) | "
+        "D1 = primary, 4H = refined entry | HTF filter: D1 close>MA50 OR MA50 rising"
+    )
+    table_rows = []
+    for r in rows:
+        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
+        wr       = r.get("wick_ratio")
+        date_str = str(r.get("date", ""))[:16]
+        score    = r.get("pin_score", "")
+        rsi      = r.get("rsi14")
+        rsi_str  = f"{rsi:.0f}" if rsi is not None else ""
+        table_rows.append({
+            "Ma":       r["symbol"],
+            "TF":       r.get("timeframe", ""),
+            "Prio":     r.get("priority", ""),
+            "Tier":     r.get("pin_tier", ""),
+            "Score":    f"{score}/13" if score != "" else "",
+            "Signal":   r.get("signal", ""),
+            "Date":     date_str,
+            "Close":    r.get("close", ""),
+            "Context":  r.get("context", ""),
+            "Wick":     f"{wr:.0%}" if wr is not None else "",
+            "RSI":      rsi_str,
+            "SL":       r.get("sl", ""),
+            "TP":       r.get("tp", ""),
+            "R:R":      r.get("rr", ""),
+            "Volume":   f"{vol_icon} {r.get('vol_tier', '')}",
+            "Nganh":    r.get("sector", ""),
+        })
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row", key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["pbv2_sel"] = rows[sel_rows[0]]
+            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel", "pb4h_sel"):
+                st.session_state.pop(k, None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
 # STREAMLIT APP
 # ============================================================
 def main() -> None:
@@ -3891,6 +4048,76 @@ def main() -> None:
         c5.metric("Vol", pb4h_sel.get("vol_tier", ""))
         c5.metric("Score", pb4h_sel.get("score_detail", ""))
         show_chart(pb4h_sel["symbol"], sig=pb4h_sel, use_cache=use_cache)
+
+    # ══════════════════════════════════════════════════════════════
+    # PIN BAR v2 — Buy-only pin bar signal (D1 + 4H)
+    # ══════════════════════════════════════════════════════════════
+    st.divider()
+    st.subheader("🎯 Pin Bar v2 — Buy-only signal (D1 + 4H)")
+    st.caption(
+        "Buy-only pin bar tai support — signal khi nen hinh thanh (khong yeu cau confirm) | "
+        "D1 = primary, 4H = refined/earlier entry | HTF filter 4H: D1 close>MA50 OR MA50 rising"
+    )
+
+    col_pbv2_30, col_pbv2_100 = st.columns(2)
+    with col_pbv2_30:
+        do_pbv2_30 = st.button("Scan PBv2 VN30", use_container_width=True)
+    with col_pbv2_100:
+        do_pbv2_100 = st.button("Scan PBv2 VN100", use_container_width=True)
+
+    if do_pbv2_30:
+        prog = st.progress(0, text="Scanning Pin Bar v2 VN30... 0 / 30")
+        def _pbv2_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning Pin Bar v2 VN30... {done} / {total}")
+        pbv2_sigs = run_pinbar_v2_scan(VN30_STOCKS, vnindex_df=vnindex_df,
+                                        progress_cb=_pbv2_cb30)
+        st.session_state["pbv2_results"]  = pbv2_sigs
+        st.session_state["pbv2_universe"] = "VN30"
+        prog.empty()
+
+    if do_pbv2_100:
+        prog = st.progress(0, text="Scanning Pin Bar v2 VN100... 0 / 100")
+        def _pbv2_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning Pin Bar v2 VN100... {done} / {total}")
+        pbv2_sigs = run_pinbar_v2_scan(VN100_STOCKS, vnindex_df=vnindex_df,
+                                        progress_cb=_pbv2_cb100)
+        st.session_state["pbv2_results"]  = pbv2_sigs
+        st.session_state["pbv2_universe"] = "VN100"
+        prog.empty()
+
+    pbv2_results  = st.session_state.get("pbv2_results", [])
+    pbv2_universe = st.session_state.get("pbv2_universe", "")
+
+    if pbv2_results:
+        st.subheader(f"Pin Bar v2 {pbv2_universe} — {len(pbv2_results)} tin hieu")
+        _render_pinbar_v2_results(pbv2_results, use_cache, key="pbv2_table_main")
+    elif not do_pbv2_30 and not do_pbv2_100:
+        st.caption("Nhan Scan PBv2 de bat dau.")
+
+    # PBv2 chart panel
+    pbv2_sel = st.session_state.get("pbv2_sel")
+    if pbv2_sel:
+        st.divider()
+        score = pbv2_sel.get("pin_score", "")
+        st.subheader(
+            f"Chart — {pbv2_sel['symbol']} [{pbv2_sel.get('timeframe','')}] | "
+            f"{pbv2_sel.get('signal', '')} | "
+            f"Tier {pbv2_sel.get('pin_tier', '')} ({score}/13) | "
+            f"Context {pbv2_sel.get('context', '')}"
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close",    pbv2_sel.get("close", ""))
+        c1.metric("MA20",     pbv2_sel.get("ma20", ""))
+        c2.metric("MA50",     pbv2_sel.get("ma50", ""))
+        c2.metric("R:R",      pbv2_sel.get("rr", ""))
+        c3.metric("SL",       pbv2_sel.get("sl", ""))
+        c3.metric("TP",       pbv2_sel.get("tp", ""))
+        c4.metric("Wick",     f"{pbv2_sel.get('wick_ratio', 0):.0%}")
+        rsi = pbv2_sel.get("rsi14")
+        c4.metric("RSI",      f"{rsi:.0f}" if rsi else "—")
+        c5.metric("Vol",      pbv2_sel.get("vol_tier", ""))
+        c5.metric("Priority", pbv2_sel.get("priority", ""))
+        show_chart(pbv2_sel["symbol"], sig=pbv2_sel, use_cache=use_cache)
 
 
 if __name__ == "__main__":
