@@ -1410,6 +1410,142 @@ class TestRunClimaxScan(unittest.TestCase):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# PULLBACK V2 SCANNER TESTS (vn_pullback_ma_rule_with_score.md)
+# ══════════════════════════════════════════════════════════════════════
+
+def _flat_vnindex(n=80, base=1000.0):
+    """VNINDEX flat at `base` — used so test stocks outperform (RS > 0)."""
+    idx = pd.bdate_range(end="2026-01-01", periods=n)
+    return pd.DataFrame({"Close": np.ones(n) * base}, index=idx)
+
+
+def _pullback_v2_df(n=80, base=50.0, end_mult=1.10):
+    """
+    Build an OHLCV df that satisfies every pullback v2 gate on the last bar:
+    gentle rising trend for MA stack, last 4 bars coil at ~MA10 with quiet
+    volume, last bar reclaims above prev high with a bullish confirmation.
+    """
+    prices = np.linspace(base, base * end_mult, n)
+    idx    = pd.bdate_range(end="2026-01-01", periods=n)
+    df = pd.DataFrame({
+        "Open":   prices * 0.998,
+        "High":   prices * 1.003,
+        "Low":    prices * 0.997,
+        "Close":  prices,
+        "Volume": np.full(n, 1_000_000.0),
+    }, index=idx)
+
+    # Coil target near the MA10 value of the gentle trend
+    coil = float(df["Close"].iloc[-10:-1].mean())
+    for k in (5, 4, 3, 2):
+        coil_close = coil * (1.001 if k % 2 == 0 else 0.999)
+        df.loc[df.index[-k], "Open"]   = coil * 0.999
+        df.loc[df.index[-k], "Close"]  = coil_close
+        df.loc[df.index[-k], "High"]   = coil * 1.005
+        df.loc[df.index[-k], "Low"]    = coil * 0.993
+        df.loc[df.index[-k], "Volume"] = 500_000.0
+
+    prev_high  = float(df["High"].iloc[-2])
+    prev_close = float(df["Close"].iloc[-2])
+    sig_close  = max(prev_high, prev_close) * 1.004
+    df.loc[df.index[-1], "Open"]   = sig_close * 0.996
+    df.loc[df.index[-1], "Close"]  = sig_close
+    df.loc[df.index[-1], "High"]   = sig_close * 1.002
+    df.loc[df.index[-1], "Low"]    = sig_close * 0.992
+    df.loc[df.index[-1], "Volume"] = 800_000.0
+    return df
+
+
+class TestScanPullbackV2(unittest.TestCase):
+    """scan_pullback_v2 — continuation pullback setup per spec."""
+
+    def test_returns_none_short_df(self):
+        self.assertIsNone(app.scan_pullback_v2(make_uptrend_df(30)))
+
+    def test_returns_none_without_vnindex(self):
+        """No VNINDEX → RS cannot be computed → scanner must bail out."""
+        df = _pullback_v2_df()
+        self.assertIsNone(app.scan_pullback_v2(df, None))
+
+    def test_returns_none_downtrend(self):
+        """Downtrend fails the trend gate even with a 'nice' last bar."""
+        vn = _flat_vnindex(200)
+        self.assertIsNone(app.scan_pullback_v2(make_downtrend_df(200), vn))
+
+    def test_returns_none_when_stock_underperforms(self):
+        """Strong VNINDEX rally → RS20/55 negative → fail strength gate."""
+        df = _pullback_v2_df()
+        # VNINDEX that doubles → index return >> stock return
+        strong_vn = pd.DataFrame(
+            {"Close": np.linspace(1000, 2000, 100)},
+            index=pd.bdate_range(end="2026-01-01", periods=100),
+        )
+        self.assertIsNone(app.scan_pullback_v2(df, strong_vn))
+
+    def test_happy_path_returns_signal(self):
+        """Well-formed setup + flat VNINDEX → produces a PBV2 signal."""
+        df = _pullback_v2_df()
+        vn = _flat_vnindex(100)
+        result = app.scan_pullback_v2(df, vn)
+        self.assertIsNotNone(result, "pullback_v2 should fire on happy-path df")
+        self.assertEqual(result["signal"], "PBV2")
+        for k in [
+            "close", "pbv2_tier", "pbv2_score", "ma10", "ma20", "ma50",
+            "rs20", "rs55", "range5", "sl", "tp", "rr", "risk_pct",
+        ]:
+            self.assertIn(k, result, f"Missing key: {k}")
+        self.assertIn(result["pbv2_tier"], ("A", "B"))
+        self.assertGreaterEqual(result["pbv2_score"], 70)
+        self.assertLessEqual(result["risk_pct"], 4.0)
+        self.assertGreater(result["rr"], 0)
+
+    def test_score_bounded_0_to_100(self):
+        df = _pullback_v2_df()
+        vn = _flat_vnindex(100)
+        result = app.scan_pullback_v2(df, vn)
+        if result is not None:
+            self.assertGreaterEqual(result["pbv2_score"], 0)
+            self.assertLessEqual(result["pbv2_score"], 100)
+
+    def test_score_grade_alignment(self):
+        """Grade mapping must follow §10.4 thresholds."""
+        df = _pullback_v2_df()
+        vn = _flat_vnindex(100)
+        result = app.scan_pullback_v2(df, vn)
+        if result is not None:
+            s = result["pbv2_score"]
+            g = result["pbv2_tier"]
+            if s >= 85:
+                self.assertEqual(g, "A")
+            elif s >= 70:
+                self.assertEqual(g, "B")
+
+    def test_risk_cap_rejects_wide_stop(self):
+        """A far-below coil low (>4% risk) must fail the risk filter."""
+        df = _pullback_v2_df()
+        vn = _flat_vnindex(100)
+        # Wreck the setup by sinking the coil lows so SL is >4% below close
+        for k in (5, 4, 3):
+            df.loc[df.index[-k], "Low"] = float(df["Close"].iloc[-1]) * 0.90
+        self.assertIsNone(app.scan_pullback_v2(df, vn))
+
+
+class TestRunPullbackV2Scan(unittest.TestCase):
+    """run_pullback_v2_scan — integration shape."""
+
+    def test_returns_list(self):
+        result = app.run_pullback_v2_scan({"FPT.VN": "Technology"})
+        self.assertIsInstance(result, list)
+
+    def test_empty_symbols_returns_empty(self):
+        self.assertEqual(app.run_pullback_v2_scan({}), [])
+
+    def test_pbv2_priority_in_signal_map(self):
+        """PBV2 must be registered in the combined-scan priority table."""
+        self.assertIn("PBV2", app._SIGNAL_PRIORITY)
+
+
+# ══════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

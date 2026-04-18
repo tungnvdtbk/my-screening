@@ -1182,21 +1182,188 @@ def scan_pinbar(df: pd.DataFrame, vnindex_df=None, d1_trend_up: bool | None = No
 
 
 # ============================================================
+# SCAN — Pullback V2 (continuation to MA in uptrend)
+# Spec: vn_pullback_ma_rule_with_score.md
+# ============================================================
+def scan_pullback_v2(df: pd.DataFrame, vnindex_df=None) -> dict | None:
+    """
+    Pullback V2 — continuation setup when a strong-trend stock pulls back
+    briefly to MA10/MA20 and reclaims with a confirmation candle.
+
+    All gates (trend / strength / pullback / trigger / filter) must pass AND
+    score must reach the alert threshold (>= 70) per §17.2 of the spec.
+    """
+    if df is None or len(df) < 70:
+        return None
+
+    closes  = df["Close"]
+    highs   = df["High"]
+    lows    = df["Low"]
+    volumes = df["Volume"]
+
+    ma10_series = closes.rolling(10).mean()
+    ma20_series = closes.rolling(20).mean()
+    ma50_series = closes.rolling(50).mean()
+
+    if (pd.isna(ma10_series.iloc[-1]) or pd.isna(ma20_series.iloc[-1])
+            or pd.isna(ma50_series.iloc[-1])):
+        return None
+    if pd.isna(ma20_series.iloc[-4]):
+        return None
+
+    ma10       = float(ma10_series.iloc[-1])
+    ma20       = float(ma20_series.iloc[-1])
+    ma50       = float(ma50_series.iloc[-1])
+    ma20_prev3 = float(ma20_series.iloc[-4])
+
+    close      = float(closes.iloc[-1])
+    high       = float(highs.iloc[-1])
+    low        = float(lows.iloc[-1])
+    vol        = float(volumes.iloc[-1])
+    prev_close = float(closes.iloc[-2])
+    prev_high  = float(highs.iloc[-2])
+    prev_vol   = float(volumes.iloc[-2])
+
+    # ── Trend gate (§4) ──
+    if not (close > ma20 and ma20 > ma50 and close > ma50 and ma20 > ma20_prev3):
+        return None
+
+    # ── Relative strength vs VNINDEX (§3.3 — absolute return difference) ──
+    rs20 = rs55 = None
+    if vnindex_df is not None and len(df) >= 56:
+        try:
+            idx_col = "Close" if "Close" in vnindex_df.columns else vnindex_df.columns[3]
+            idx_series = vnindex_df[idx_col].dropna()
+            if len(idx_series) >= 56:
+                stock20 = close / float(closes.iloc[-21]) - 1.0
+                idx20   = float(idx_series.iloc[-1]) / float(idx_series.iloc[-21]) - 1.0
+                rs20    = stock20 - idx20
+                stock55 = close / float(closes.iloc[-56]) - 1.0
+                idx55   = float(idx_series.iloc[-1]) / float(idx_series.iloc[-56]) - 1.0
+                rs55    = stock55 - idx55
+        except Exception:
+            pass
+    if rs20 is None or rs55 is None:
+        return None
+    if not (rs20 > 0 and rs55 > 0):
+        return None
+
+    # ── Coil / pullback (§6) — last 5 bars inclusive ──
+    hi5    = float(highs.iloc[-5:].max())
+    lo5    = float(lows.iloc[-5:].min())
+    range5 = hi5 / lo5 if lo5 > 0 else 99.0
+
+    vol3  = float(volumes.iloc[-3:].mean())
+    vol20 = float(volumes.iloc[-20:].mean())
+
+    coil_ok            = range5 < 1.06
+    structure_ok       = lo5 >= ma20 * 0.97
+    ma10_touch_ok      = (low <= ma10 * 1.01) and (close >= ma10)
+    vol_contract_ok    = vol3 < vol20
+
+    if not (coil_ok and structure_ok and ma10_touch_ok and vol_contract_ok):
+        return None
+
+    # ── Trigger (§7) ──
+    if not (close > prev_close and close > prev_high
+            and close >= high * 0.98 and vol > prev_vol):
+        return None
+
+    # ── Noise filter (§9) ──
+    over_ext = (close / ma20) - 1.0 > 0.05
+    candle_range = (high - low) / close if close > 0 else 1.0
+    long_bar = candle_range > 0.05
+    if over_ext or long_bar:
+        return None
+
+    # ── Score (§10.3, max 100) ──
+    score = 0
+    score_details: list[str] = []
+    if close > ma20:                                score += 10; score_details.append("c>MA20+10")
+    if ma20 > ma50:                                 score += 10; score_details.append("MA20>MA50+10")
+    if ma20 > ma20_prev3:                           score +=  5; score_details.append("MA20>MA20[3]+5")
+    if rs20 > 0:                                    score += 10; score_details.append("RS20+10")
+    if rs55 > 0:                                    score += 10; score_details.append("RS55+10")
+    if range5 < 1.06:                               score +=  8; score_details.append("coil+8")
+    if lo5 >= ma20 * 0.97:                          score +=  6; score_details.append("struct+6")
+    if (low <= ma10 * 1.01) and (close >= ma10):    score +=  6; score_details.append("MA10+6")
+    if vol3 < vol20:                                score +=  5; score_details.append("vol-dry+5")
+    if vol > prev_vol:                              score +=  5; score_details.append("vol>prev+5")
+    if close > prev_close:                          score +=  5; score_details.append("c>prev+5")
+    if close > prev_high:                           score +=  5; score_details.append("c>pH+5")
+    if close >= high * 0.98:                        score +=  5; score_details.append("near-high+5")
+    if (close / ma20) - 1 <= 0.05:                  score +=  5; score_details.append("near-MA20+5")
+    if candle_range <= 0.05:                        score +=  5; score_details.append("tight+5")
+
+    if   score >= 85: grade = "A"
+    elif score >= 70: grade = "B"
+    elif score >= 55: grade = "C"
+    else:             grade = "D"
+
+    # Only alert-quality setups (§17.2)
+    if score < 70:
+        return None
+
+    # ── Entry / stop / risk (§12–14) ──
+    entry    = round(close, 2)
+    sl       = round(lo5, 2)
+    if entry <= sl:
+        return None
+    risk_pct = (entry - sl) / entry
+    if risk_pct > 0.04:
+        return None
+
+    # TP not prescribed by spec — use 2R for parity with other scanners
+    tp = round(entry + 2.0 * (entry - sl), 2)
+    rr = round((tp - entry) / (entry - sl), 2)
+
+    # Volume tier — reuse shared helper (excludes signal candle)
+    avg_vol20_excl_series = volumes.shift(2).rolling(20).mean()
+    avg_vol_pre5_series   = volumes.shift(2).rolling(5).mean()
+    avg_vol20_excl = avg_vol20_excl_series.iloc[-1]
+    avg_vol_pre5   = avg_vol_pre5_series.iloc[-1]
+    vol_tier = _vol_tier(vol, avg_vol20_excl, avg_vol_pre5)
+
+    return {
+        "signal":       "PBV2",
+        "date":         df.index[-1],
+        "close":        entry,
+        "pbv2_tier":    grade,
+        "pbv2_score":   score,
+        "score_detail": " ".join(score_details),
+        "ma10":         round(ma10, 2),
+        "ma20":         round(ma20, 2),
+        "ma50":         round(ma50, 2),
+        "rs20":         round(rs20, 3),
+        "rs55":         round(rs55, 3),
+        "range5":       round(range5, 3),
+        "sl":           sl,
+        "tp":           tp,
+        "rr":           rr,
+        "risk_pct":     round(risk_pct * 100, 2),
+        "vol_tier":     vol_tier,
+        "volume":       int(vol),
+        "avg_vol20":    int(avg_vol20_excl) if not pd.isna(avg_vol20_excl) else 0,
+    }
+
+
+# ============================================================
 # SCAN RUNNER
 # ============================================================
 _SIGNAL_PRIORITY = {
     "BREAKOUT_STRONG": 0,
     "GAP_STRONG":      1,
     "NR7_STRONG":      2,
-    "BREAKOUT_EARLY":  3,
-    "GAP_EARLY":       4,
-    "NR7_EARLY":       5,
-    "PINBAR_MA200":    6,
-    "PINBAR_MA50":     7,
-    "PINBAR_MA20":     8,
-    "PINBAR_SWING":    9,
-    "TF_MA20":         10,
-    "TF_MA50":         11,
+    "PBV2":            3,
+    "BREAKOUT_EARLY":  4,
+    "GAP_EARLY":       5,
+    "NR7_EARLY":       6,
+    "PINBAR_MA200":    7,
+    "PINBAR_MA50":     8,
+    "PINBAR_MA20":     9,
+    "PINBAR_SWING":    10,
+    "TF_MA20":         11,
+    "TF_MA50":         12,
 }
 
 def run_scan(
@@ -1222,6 +1389,7 @@ def run_scan(
             scan_breakout(df, vnindex_df)     or
             scan_gap(df, vnindex_df)           or
             scan_nr7(df, vnindex_df)           or
+            scan_pullback_v2(df, vnindex_df)   or
             scan_pinbar(df, vnindex_df)        or
             scan_trend_filter(df, vnindex_df)
         )
@@ -1440,6 +1608,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             "PINBAR_MA200": "📍", "PINBAR_MA50": "📍",
             "PINBAR_MA20": "📍",  "PINBAR_SWING": "📍",
             "TF_MA20": "🎯", "TF_MA50": "📌",
+            "PBV2": "🏹",
         }.get(r["signal"], "")
         rs4w     = r.get("rs4w")
         rs_pct   = r.get("rs_pct")
@@ -1486,11 +1655,16 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             qf.append("MTF")
         if r.get("status") == "PENDING":
             qf.append("PEND")
+        # Pullback v2 specific flag
+        pbv2s = r.get("pbv2_score")
+        if pbv2s is not None:
+            qf.append(f"PB2·{pbv2s}")
         quality = "·".join(qf) if qf else "—"
         touched = r.get("touched_ma", "")
         # Tier from any of the scanners
         tier = (r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier")
-                or r.get("pin_tier") or r.get("tf_tier") or "")
+                or r.get("pin_tier") or r.get("tf_tier")
+                or r.get("pbv2_tier") or "")
         table_rows.append({
             "Mã":      r["symbol"],
             "Tier":    tier,
@@ -3514,6 +3688,98 @@ def _render_pinbar_v2_results(rows: list[dict], use_cache: bool,
 
 
 # ============================================================
+# PULLBACK V2 — dedicated runner & renderer
+# (combined scan hits go through run_scan; this returns all PBV2
+# signals ranked by score, for the dedicated section)
+# ============================================================
+def run_pullback_v2_scan(symbols: dict[str, str],
+                          use_cache: bool = True,
+                          vnindex_df=None,
+                          progress_cb=None) -> list[dict]:
+    """Run scan_pullback_v2 across all symbols; sort by score desc."""
+    candidates: list[dict] = []
+    total = len(symbols)
+    done  = 0
+
+    def _one(sym: str) -> dict | None:
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or df.empty or len(df) < 70:
+            return None
+        sig = scan_pullback_v2(df, vnindex_df)
+        if sig:
+            sig["symbol"] = sym.replace(".VN", "")
+            sig["sector"] = symbols.get(sym, "")
+        return sig
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym): sym for sym in symbols}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    candidates.append(res)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
+
+    candidates.sort(key=lambda r: (
+        -r.get("pbv2_score", 0),
+        -(r.get("rs20") or 0),
+        -(r.get("rs55") or 0),
+        r["symbol"],
+    ))
+    return candidates
+
+
+def _render_pullback_v2_results(rows: list[dict], use_cache: bool,
+                                 key: str = "pullbackv2_table") -> None:
+    if not rows:
+        st.info("Khong co tin hieu Pullback v2.")
+        return
+    st.caption(
+        "Pullback V2 — continuation setup: trend (MA20>MA50) + RS>0 vs VNINDEX + "
+        "coil tai MA10 + trigger confirm | Alert khi score >= 70 | Risk <= 4%"
+    )
+    table_rows = []
+    for r in rows:
+        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
+        table_rows.append({
+            "Ma":      r["symbol"],
+            "Tier":    r.get("pbv2_tier", ""),
+            "Score":   f"{r.get('pbv2_score', 0)}/100",
+            "Close":   r.get("close", ""),
+            "MA10":    r.get("ma10", ""),
+            "MA20":    r.get("ma20", ""),
+            "MA50":    r.get("ma50", ""),
+            "RS20":    f"{r.get('rs20', 0):+.2f}",
+            "RS55":    f"{r.get('rs55', 0):+.2f}",
+            "Range5":  f"{r.get('range5', 0):.3f}",
+            "Risk%":   f"{r.get('risk_pct', 0):.2f}",
+            "SL":      r.get("sl", ""),
+            "TP":      r.get("tp", ""),
+            "R:R":     r.get("rr", ""),
+            "Vol":     f"{vol_icon} {r.get('vol_tier', '')}",
+            "Nganh":   r.get("sector", ""),
+        })
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row", key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["pullbackv2_sel"] = rows[sel_rows[0]]
+            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
+                       "pb4h_sel", "pbv2_sel"):
+                st.session_state.pop(k, None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
 # STREAMLIT APP
 # ============================================================
 def main() -> None:
@@ -4118,6 +4384,79 @@ def main() -> None:
         c5.metric("Vol",      pbv2_sel.get("vol_tier", ""))
         c5.metric("Priority", pbv2_sel.get("priority", ""))
         show_chart(pbv2_sel["symbol"], sig=pbv2_sel, use_cache=use_cache)
+
+    # ══════════════════════════════════════════════════════════════
+    # PULLBACK V2 — continuation setup (uptrend + RS + coil at MA10)
+    # ══════════════════════════════════════════════════════════════
+    st.divider()
+    st.subheader("🏹 Pullback V2 — Continuation setup (Uptrend + RS + Coil)")
+    st.caption(
+        "Spec: vn_pullback_ma_rule_with_score.md | "
+        "Trend (close>MA20>MA50, MA20 rising) + RS20/RS55>0 vs VNINDEX + "
+        "coil 5 nen tai MA10 + trigger confirm | Alert khi score >= 70"
+    )
+
+    col_pbr_30, col_pbr_100 = st.columns(2)
+    with col_pbr_30:
+        do_pbr_30 = st.button("Scan Pullback V2 VN30", use_container_width=True)
+    with col_pbr_100:
+        do_pbr_100 = st.button("Scan Pullback V2 VN100", use_container_width=True)
+
+    if do_pbr_30:
+        prog = st.progress(0, text="Scanning Pullback V2 VN30... 0 / 30")
+        def _pbr_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning Pullback V2 VN30... {done} / {total}")
+        pbr_sigs = run_pullback_v2_scan(VN30_STOCKS, use_cache=use_cache,
+                                         vnindex_df=vnindex_df, progress_cb=_pbr_cb30)
+        st.session_state["pullbackv2_results"]  = pbr_sigs
+        st.session_state["pullbackv2_universe"] = "VN30"
+        prog.empty()
+
+    if do_pbr_100:
+        prog = st.progress(0, text="Scanning Pullback V2 VN100... 0 / 100")
+        def _pbr_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning Pullback V2 VN100... {done} / {total}")
+        pbr_sigs = run_pullback_v2_scan(VN100_STOCKS, use_cache=use_cache,
+                                         vnindex_df=vnindex_df, progress_cb=_pbr_cb100)
+        st.session_state["pullbackv2_results"]  = pbr_sigs
+        st.session_state["pullbackv2_universe"] = "VN100"
+        prog.empty()
+
+    pbr_results  = st.session_state.get("pullbackv2_results", [])
+    pbr_universe = st.session_state.get("pullbackv2_universe", "")
+
+    if pbr_results:
+        n_a = sum(1 for r in pbr_results if r.get("pbv2_tier") == "A")
+        n_b = sum(1 for r in pbr_results if r.get("pbv2_tier") == "B")
+        st.subheader(
+            f"Pullback V2 {pbr_universe} — {len(pbr_results)} tin hieu "
+            f"(A {n_a} / B {n_b})"
+        )
+        _render_pullback_v2_results(pbr_results, use_cache, key="pullbackv2_table_main")
+    elif not do_pbr_30 and not do_pbr_100:
+        st.caption("Nhan Scan Pullback V2 de bat dau.")
+
+    # Pullback V2 chart panel
+    pbr_sel = st.session_state.get("pullbackv2_sel")
+    if pbr_sel:
+        st.divider()
+        st.subheader(
+            f"Chart — {pbr_sel['symbol']} | PBV2 | "
+            f"Tier {pbr_sel.get('pbv2_tier', '')} "
+            f"({pbr_sel.get('pbv2_score', 0)}/100)"
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close", pbr_sel.get("close", ""))
+        c1.metric("MA10",  pbr_sel.get("ma10", ""))
+        c2.metric("MA20",  pbr_sel.get("ma20", ""))
+        c2.metric("MA50",  pbr_sel.get("ma50", ""))
+        c3.metric("RS20",  f"{pbr_sel.get('rs20', 0):+.2f}")
+        c3.metric("RS55",  f"{pbr_sel.get('rs55', 0):+.2f}")
+        c4.metric("SL",    pbr_sel.get("sl", ""))
+        c4.metric("TP",    pbr_sel.get("tp", ""))
+        c5.metric("R:R",   pbr_sel.get("rr", ""))
+        c5.metric("Risk%", f"{pbr_sel.get('risk_pct', 0):.2f}%")
+        show_chart(pbr_sel["symbol"], sig=pbr_sel, use_cache=use_cache)
 
 
 if __name__ == "__main__":
