@@ -59,6 +59,7 @@ from app import (                   # noqa: E402
     run_climax_scan,
     run_pinbar_4h_scan,
     run_pinbar_v2_scan,
+    run_bpe_scan,
 )
 
 # ── Scanner definitions ──────────────────────────────────────────────
@@ -70,6 +71,7 @@ SCANNERS = [
     ("Climax Reversal",                     "climax"),
     ("Pin Bar 4H",                          "pinbar4h"),
     ("Pin Bar v2 (D1 + 4H)",                "pinbarv2"),
+    ("BPE — Breakout Pullback Test",        "bpe"),
 ]
 
 TIER_FIELDS = {
@@ -80,6 +82,7 @@ TIER_FIELDS = {
     "climax":    lambda r: r.get("cx_tier", ""),
     "pinbar4h":  lambda r: r.get("pin_tier", ""),
     "pinbarv2":  lambda r: r.get("pin_tier", ""),
+    "bpe":       lambda r: r.get("bpe_tier", ""),
 }
 
 
@@ -90,7 +93,7 @@ def run_all_scans() -> dict:
 
     results = {
         "main": [], "swing": [], "pa": [], "mr": [],
-        "climax": [], "pinbar4h": [], "pinbarv2": [],
+        "climax": [], "pinbar4h": [], "pinbarv2": [], "bpe": [],
         "market_down": False, "errors": [],
     }
 
@@ -159,6 +162,15 @@ def run_all_scans() -> dict:
         results["errors"].append(f"Pin Bar v2 scan: {e}")
         traceback.print_exc()
 
+    # 8. BPE — Watchlist Breakout Pullback Test (D1)
+    try:
+        print("Running BPE (Breakout Pullback Test) scan...")
+        results["bpe"] = run_bpe_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
+        print(f"  -> {len(results['bpe'])} signals")
+    except Exception as e:
+        results["errors"].append(f"BPE scan: {e}")
+        traceback.print_exc()
+
     return results
 
 
@@ -200,7 +212,7 @@ def build_html_report(results: dict) -> str:
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
     market_color = "#ef5350" if results["market_down"] else "#00e676"
 
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bpe"))
 
     # Table header
     th = (
@@ -269,7 +281,7 @@ def build_html_report(results: dict) -> str:
 def build_telegram_summary(results: dict) -> str:
     date_str = datetime.now().strftime("%Y-%m-%d (%A)")
     market = "BEARISH" if results["market_down"] else "BULLISH"
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bpe"))
 
     lines = [
         f"<b>VN Stock Daily Scan — {date_str}</b>",
