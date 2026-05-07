@@ -73,6 +73,14 @@ VNMID_STOCKS: dict[str, str] = {
     "DHG.VN": "Pharma",      "IMP.VN": "Pharma",      "TRA.VN": "Pharma",
     "DMC.VN": "Pharma",      "CTD.VN": "Construction","VCG.VN": "Construction",
     "FCN.VN": "Construction",
+    "VND.VN": "Securities",
+    "VIC.VN": "Real Estate", "VRE.VN": "Retail",       "TCH.VN": "Real Estate",
+    "VPI.VN": "Real Estate", "KOS.VN": "Real Estate",
+    "GEE.VN": "Industrial",  "GEX.VN": "Industrial",   "KSB.VN": "Industrial",
+    "DGC.VN": "Chemicals",   "DPM.VN": "Chemicals",    "DCM.VN": "Chemicals",
+    "DPG.VN": "Construction","CTI.VN": "Construction", "CTR.VN": "Construction",
+    "BMP.VN": "Industrial",
+    "HAG.VN": "Agriculture", "TCM.VN": "Apparel",
 }
 
 VN100_STOCKS: dict[str, str] = {**VN30_STOCKS, **VNMID_STOCKS}
