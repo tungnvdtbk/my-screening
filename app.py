@@ -4100,13 +4100,14 @@ def _render_bpe_results(rows: list[dict], use_cache: bool,
 
 
 # ============================================================
-# BCP — Bull Cluster Pullback (Daily)
+# BCP — Bull Cluster Pullback (Daily ONLY — never 4H)
 # Spec: bull_cluster_pullback_scanner.md
 # Trigger: Filter C trio (3 bull bars, last close > MA20[d3])
 # Pullback: close[t] < cluster_high AND close[t] > cluster_low
 # Priority: longer time since trio (gap_t DESC) wins.
 # ============================================================
 def scan_bcp(df: pd.DataFrame) -> dict | None:
+    """BCP scanner — D1 only. `df` must be daily bars from load_price_data()."""
     if df is None or len(df) < 210:
         return None
 

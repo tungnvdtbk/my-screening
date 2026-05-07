@@ -3,6 +3,10 @@ Bull Cluster Pullback Scanner (BCP) — danh sách top 15 mã đã hình thành 
 dưới đỉnh cao nhất của cụm và vẫn đang nằm trên đáy thấp nhất của cụm. Đây là
 setup pullback đã thực sự xảy ra → actionable hơn BPE.
 
+Khung thời gian: CHỈ dùng D1 (daily). Không dùng 4H, 1H hay bất kỳ khung intraday
+nào. Toàn bộ chỉ báo (MA20, MA200, bull bar, gap_t, cluster_high/low) đều tính
+trên nến ngày. Lookback 25 phiên = 25 nến D1.
+
 Mức ưu tiên: BCP > BPE (Watchlist Breakout Pullback). Trong UI, BCP hiển thị
 TRƯỚC BPE; trong quy trình quyết định, BCP candidate được ưu tiên xem xét trước.
 
