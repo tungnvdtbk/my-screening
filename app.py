@@ -3785,19 +3785,23 @@ def _render_pullback_v2_results(rows: list[dict], use_cache: bool,
 # ============================================================
 def scan_bpe(df: pd.DataFrame) -> dict | None:
     """
-    Watchlist candidate: uptrend stock with a 2-bar bull cluster where at least
-    one bar is a big-body bull with matching volume.
+    Watchlist candidate. Two filters share the same uptrend gate; a stock
+    qualifies if it passes either.
 
-    Rules (spec: watchlist_breakout_pullback_scanner.md):
-      1. Close[t] > MA200[t]
-      2. MA200 rising: MA200[t] > MA200[t-5]
-      3. Two consecutive bull bars (d1, d2=d1+1) within the last 10 D1 bars,
-         i.e. 0 <= t-d2 <= 9
-      4. Both bars are bull: Close[d] > Open[d] for d in {d1, d2}
-      5. At least one bar ("anchor") is a big body:
-            RealBody[anchor] > 1.5 * MA10(RealBody prior to anchor)
-      6. The anchor bar has matching volume:
-            Volume[anchor] >= 1.5 * MA10(Volume prior to anchor)
+    Spec: watchlist_breakout_pullback_scanner.md
+
+    Common gate:
+      - Close[t] > MA200[t]
+      - MA200 rising: MA200[t] > MA200[t-5]
+
+    Filter A (Tier A/B) — 2 consecutive bull bars in last 25 bars where at
+    least one bar is a big body (RealBody > 1.5 * MA10 prior) AND that bar
+    has matching volume (Volume >= 1.5 * MA10 prior). Both big = A, one = B.
+
+    Filter C (Tier C) — 3 consecutive bull bars in last 25 bars where the
+    last bar closes above its MA20. No big-body / volume requirement.
+
+    Tier A/B is preferred over Tier C when both match.
     """
     if df is None or len(df) < 210:
         return None
@@ -3807,6 +3811,7 @@ def scan_bpe(df: pd.DataFrame) -> dict | None:
     low    = df["Low"]
     vol    = df["Volume"]
 
+    ma20_s    = close.rolling(20).mean()
     ma200_s   = close.rolling(200).mean()
     real_body = (close - opens).abs()
     rb_ma10_prior  = real_body.shift(1).rolling(10).mean()
@@ -3815,32 +3820,34 @@ def scan_bpe(df: pd.DataFrame) -> dict | None:
     n = len(df)
     t = n - 1
 
-    # Rule 1 — Close > MA200
+    # Common gate — Close > MA200
     close_t = float(close.iloc[t])
     ma200_t = float(ma200_s.iloc[t])
     if pd.isna(ma200_t) or close_t <= ma200_t:
         return None
 
-    # Rule 2 — MA200 rising vs t-5
+    # Common gate — MA200 rising vs t-5
     if t < 5:
         return None
     ma200_prev5 = float(ma200_s.iloc[t - 5])
     if pd.isna(ma200_prev5) or ma200_t <= ma200_prev5:
         return None
 
-    # Rules 3-6 — find most recent consecutive bull-pair in last 10 bars
+    bull_at = lambda i: float(close.iloc[i]) > float(opens.iloc[i])
+
+    # ── Filter A — 2-bull big-body pair in last 25 bars ──
+    # Window 25 lets us catch clusters that already started pulling back —
+    # which is the whole point of a watchlist for pullback/test entries.
     pair = None
-    for d2 in range(t, t - 10, -1):
+    for d2 in range(t, t - 25, -1):
         d1 = d2 - 1
         if d1 < 10:
             break
+        if not (bull_at(d1) and bull_at(d2)):
+            continue
 
         c1, o1 = float(close.iloc[d1]), float(opens.iloc[d1])
         c2, o2 = float(close.iloc[d2]), float(opens.iloc[d2])
-        # Rule 4 — both bull
-        if not (c1 > o1 and c2 > o2):
-            continue
-
         rb1, rb2 = c1 - o1, c2 - o2
         rb_ma_d1 = rb_ma10_prior.iloc[d1]
         rb_ma_d2 = rb_ma10_prior.iloc[d2]
@@ -3850,7 +3857,6 @@ def scan_bpe(df: pd.DataFrame) -> dict | None:
                 or pd.isna(vl_ma_d1) or pd.isna(vl_ma_d2)):
             continue
 
-        # Rule 5 — big body + Rule 6 — volume, evaluated per side
         big_d1 = (rb_ma_d1 > 0 and rb1 > 1.5 * float(rb_ma_d1)
                   and float(vl_ma_d1) > 0
                   and float(vol.iloc[d1]) >= 1.5 * float(vl_ma_d1))
@@ -3871,22 +3877,85 @@ def scan_bpe(df: pd.DataFrame) -> dict | None:
                 vl_ma_d1, vl_ma_d2, anchor_tag, anchor_idx)
         break
 
-    if pair is None:
-        return None
-    (d1, d2, rb1, rb2, rb_ma_d1, rb_ma_d2,
-     vl_ma_d1, vl_ma_d2, anchor_tag, anchor_idx) = pair
-
-    # ── Metadata for downstream pullback/test monitoring ──
-    rb_ratio_d1  = rb1 / float(rb_ma_d1)             if float(rb_ma_d1) > 0 else 0.0
-    rb_ratio_d2  = rb2 / float(rb_ma_d2)             if float(rb_ma_d2) > 0 else 0.0
-    vol_ratio_d1 = float(vol.iloc[d1]) / float(vl_ma_d1) if float(vl_ma_d1) > 0 else 0.0
-    vol_ratio_d2 = float(vol.iloc[d2]) / float(vl_ma_d2) if float(vl_ma_d2) > 0 else 0.0
     ma200_slope5 = ma200_t / ma200_prev5 - 1.0
+    ma20_t       = float(ma20_s.iloc[t])
 
-    anchor_high = float(df["High"].iloc[anchor_idx])
-    cluster_low = float(min(low.iloc[d1], low.iloc[d2]))
+    if pair is not None:
+        (d1, d2, rb1, rb2, rb_ma_d1, rb_ma_d2,
+         vl_ma_d1, vl_ma_d2, anchor_tag, anchor_idx) = pair
 
-    # Suggested entry zone — SL under cluster low, TP 2R
+        rb_ratio_d1  = rb1 / float(rb_ma_d1) if float(rb_ma_d1) > 0 else 0.0
+        rb_ratio_d2  = rb2 / float(rb_ma_d2) if float(rb_ma_d2) > 0 else 0.0
+        vol_ratio_d1 = (float(vol.iloc[d1]) / float(vl_ma_d1)
+                        if float(vl_ma_d1) > 0 else 0.0)
+        vol_ratio_d2 = (float(vol.iloc[d2]) / float(vl_ma_d2)
+                        if float(vl_ma_d2) > 0 else 0.0)
+
+        anchor_high = float(df["High"].iloc[anchor_idx])
+        cluster_low = float(min(low.iloc[d1], low.iloc[d2]))
+
+        entry = round(close_t, 2)
+        sl    = round(cluster_low * 0.99, 2)
+        if entry <= sl:
+            return None
+        tp = round(entry + 2.0 * (entry - sl), 2)
+        rr = round((tp - entry) / (entry - sl), 2)
+
+        tier = "A" if anchor_tag == "both" else "B"
+
+        return {
+            "signal":       "BPE",
+            "date":         df.index[t],
+            "close":        entry,
+            "bpe_tier":     tier,
+            "anchor":       anchor_tag,
+            "d1_date":      df.index[d1],
+            "d2_date":      df.index[d2],
+            "gap_t_d2":     int(t - d2),
+            "rb_ratio_d1":  round(rb_ratio_d1, 2),
+            "rb_ratio_d2":  round(rb_ratio_d2, 2),
+            "vol_ratio_d1": round(vol_ratio_d1, 2),
+            "vol_ratio_d2": round(vol_ratio_d2, 2),
+            "ma20":         round(ma20_t, 2) if not pd.isna(ma20_t) else None,
+            "ma200":        round(ma200_t, 2),
+            "ma200_slope5": round(ma200_slope5 * 100, 2),
+            "anchor_high":  round(anchor_high, 2),
+            "cluster_low":  round(cluster_low, 2),
+            "ma20_dist":    None,
+            "sl":           sl,
+            "tp":           tp,
+            "rr":           rr,
+        }
+
+    # ── Filter C — 3 consecutive bull bars, last close > MA20[d3] ──
+    trio = None
+    for d3 in range(t, t - 25, -1):
+        d2c, d1c = d3 - 1, d3 - 2
+        if d1c < 0:
+            break
+        if not (bull_at(d1c) and bull_at(d2c) and bull_at(d3)):
+            continue
+        ma20_d3 = ma20_s.iloc[d3]
+        if pd.isna(ma20_d3) or float(close.iloc[d3]) <= float(ma20_d3):
+            continue
+        trio = (d1c, d2c, d3, float(ma20_d3))
+        break
+
+    if trio is None:
+        return None
+
+    d1c, d2c, d3, ma20_d3 = trio
+    c3 = float(close.iloc[d3])
+    o3 = float(opens.iloc[d3])
+    rb3 = c3 - o3
+    rb_ma_d3 = rb_ma10_prior.iloc[d3]
+    vl_ma_d3 = vol_ma10_prior.iloc[d3]
+    rb_ratio_d3  = (rb3 / float(rb_ma_d3)
+                    if not pd.isna(rb_ma_d3) and float(rb_ma_d3) > 0 else 0.0)
+    vol_ratio_d3 = (float(vol.iloc[d3]) / float(vl_ma_d3)
+                    if not pd.isna(vl_ma_d3) and float(vl_ma_d3) > 0 else 0.0)
+
+    cluster_low = float(min(low.iloc[d1c], low.iloc[d2c], low.iloc[d3]))
     entry = round(close_t, 2)
     sl    = round(cluster_low * 0.99, 2)
     if entry <= sl:
@@ -3894,26 +3963,27 @@ def scan_bpe(df: pd.DataFrame) -> dict | None:
     tp = round(entry + 2.0 * (entry - sl), 2)
     rr = round((tp - entry) / (entry - sl), 2)
 
-    # Tier: both big bars = A, single big bar = B
-    tier = "A" if anchor_tag == "both" else "B"
+    ma20_dist = (c3 / ma20_d3 - 1.0) * 100 if ma20_d3 > 0 else 0.0
 
     return {
         "signal":       "BPE",
         "date":         df.index[t],
         "close":        entry,
-        "bpe_tier":     tier,
-        "anchor":       anchor_tag,
-        "d1_date":      df.index[d1],
-        "d2_date":      df.index[d2],
-        "gap_t_d2":     int(t - d2),
-        "rb_ratio_d1":  round(rb_ratio_d1, 2),
-        "rb_ratio_d2":  round(rb_ratio_d2, 2),
-        "vol_ratio_d1": round(vol_ratio_d1, 2),
-        "vol_ratio_d2": round(vol_ratio_d2, 2),
+        "bpe_tier":     "C",
+        "anchor":       "trio",
+        "d1_date":      df.index[d1c],
+        "d2_date":      df.index[d3],
+        "gap_t_d2":     int(t - d3),
+        "rb_ratio_d1":  0.0,
+        "rb_ratio_d2":  round(rb_ratio_d3, 2),
+        "vol_ratio_d1": 0.0,
+        "vol_ratio_d2": round(vol_ratio_d3, 2),
+        "ma20":         round(ma20_t, 2) if not pd.isna(ma20_t) else None,
         "ma200":        round(ma200_t, 2),
         "ma200_slope5": round(ma200_slope5 * 100, 2),
-        "anchor_high":  round(anchor_high, 2),
+        "anchor_high":  round(float(df["High"].iloc[d3]), 2),
         "cluster_low":  round(cluster_low, 2),
+        "ma20_dist":    round(ma20_dist, 2),
         "sl":           sl,
         "tp":           tp,
         "rr":           rr,
@@ -3952,10 +4022,13 @@ def run_bpe_scan(symbols: dict[str, str],
             if progress_cb:
                 progress_cb(done, total)
 
-    tier_order = {"A": 0, "B": 1}
+    tier_order = {"A": 0, "B": 1, "C": 2}
 
     def _strength(r):
-        """Pick the anchor side's big-body ratio — bigger = stronger."""
+        """Tier-aware strength: body ratio for A/B, MA20 distance for C."""
+        tier = r.get("bpe_tier", "")
+        if tier == "C":
+            return r.get("ma20_dist") or 0.0
         anch = r.get("anchor", "")
         if anch == "d1":
             return r.get("rb_ratio_d1", 0.0)
@@ -3964,12 +4037,12 @@ def run_bpe_scan(symbols: dict[str, str],
         return max(r.get("rb_ratio_d1", 0.0), r.get("rb_ratio_d2", 0.0))
 
     candidates.sort(key=lambda r: (
-        r.get("gap_t_d2", 99),
         tier_order.get(r.get("bpe_tier", ""), 9),
+        r.get("gap_t_d2", 99),
         -_strength(r),
         r.get("symbol", ""),
     ))
-    return candidates[:5]
+    return candidates[:20]
 
 
 def _render_bpe_results(rows: list[dict], use_cache: bool,
@@ -3978,14 +4051,16 @@ def _render_bpe_results(rows: list[dict], use_cache: bool,
         st.info("Khong co tin hieu BPE.")
         return
     st.caption(
-        "BPE — 2 nen bull lien tiep trong 10 phien gan nhat, it nhat 1 big body "
-        "voi volume tuong xung, uptrend (close>MA200, MA200 dang len vs t-5) | "
-        "Top 5 candidate gan nhat"
+        "BPE — Tier A/B: 2 bull bar lien tiep trong 10 phien gan nhat, it nhat 1 "
+        "big body voi volume tuong xung. Tier C: 3 bull bar lien tiep, bar cuoi "
+        "tren MA20. Uptrend (close>MA200, MA200 len vs t-5) | Top 20 watchlist"
     )
     table_rows = []
     for r in rows:
         d1_str = str(r.get("d1_date", ""))[:10]
         d2_str = str(r.get("d2_date", ""))[:10]
+        ma20_dist = r.get("ma20_dist")
+        ma20_dist_str = f"{ma20_dist:+.2f}%" if ma20_dist is not None else "—"
         table_rows.append({
             "Ma":       r["symbol"],
             "Tier":     r.get("bpe_tier", ""),
@@ -3998,6 +4073,8 @@ def _render_bpe_results(rows: list[dict], use_cache: bool,
             "Body_d2":  f"{r.get('rb_ratio_d2', 0):.2f}x",
             "Vol_d1":   f"{r.get('vol_ratio_d1', 0):.2f}x",
             "Vol_d2":   f"{r.get('vol_ratio_d2', 0):.2f}x",
+            "MA20":     r.get("ma20", ""),
+            "Cls/MA20": ma20_dist_str,
             "MA200":    r.get("ma200", ""),
             "MA200_5%": f"{r.get('ma200_slope5', 0):+.2f}",
             "ClusLow":  r.get("cluster_low", ""),
@@ -4708,9 +4785,10 @@ def main() -> None:
     st.subheader("🎯 BPE — Watchlist Breakout Pullback Test (D1)")
     st.caption(
         "Spec: watchlist_breakout_pullback_scanner.md | "
-        "Close>MA200 + MA200 dang len (vs t-5) + 2 nen bull lien tiep trong 10 phien gan nhat + "
-        "it nhat 1 nen big body (RealBody > 1.5x MA10) voi volume >= 1.5x MA10 | "
-        "Output: top 5 candidate gan nhat (uu tien gap_t_d2 nho, A tier, body lon)"
+        "Uptrend (Close>MA200, MA200 len vs t-5) + 1 trong 2 filter: "
+        "(A/B) 2 bull bar lien tiep, it nhat 1 big body + volume; "
+        "(C) 3 bull bar lien tiep, bar cuoi tren MA20 | "
+        "Output: top 20 watchlist (uu tien Tier A → B → C, gap_t nho)"
     )
 
     col_bpe_30, col_bpe_100 = st.columns(2)
@@ -4745,9 +4823,10 @@ def main() -> None:
     if bpe_results:
         n_a = sum(1 for r in bpe_results if r.get("bpe_tier") == "A")
         n_b = sum(1 for r in bpe_results if r.get("bpe_tier") == "B")
+        n_c = sum(1 for r in bpe_results if r.get("bpe_tier") == "C")
         st.subheader(
             f"BPE {bpe_universe} — {len(bpe_results)} tin hieu "
-            f"(A {n_a} / B {n_b})"
+            f"(A {n_a} / B {n_b} / C {n_c})"
         )
         _render_bpe_results(bpe_results, use_cache, key="bpe_table_main")
     elif not do_bpe_30 and not do_bpe_100:
