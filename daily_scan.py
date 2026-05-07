@@ -1,7 +1,7 @@
 """
 daily_scan.py — Headless daily stock scan for all VN100 symbols.
 
-Runs all 6 scanners, builds an HTML report, and sends it via Telegram.
+Runs all configured scanners, builds an HTML report, and sends it via Telegram.
 Can also be run locally: `python daily_scan.py` (saves HTML without sending).
 
 Environment variables (set as GitHub secrets for CI):
@@ -59,6 +59,7 @@ from app import (                   # noqa: E402
     run_climax_scan,
     run_pinbar_4h_scan,
     run_pinbar_v2_scan,
+    run_bcp_scan,
     run_bpe_scan,
 )
 
@@ -71,6 +72,7 @@ SCANNERS = [
     ("Climax Reversal",                     "climax"),
     ("Pin Bar 4H",                          "pinbar4h"),
     ("Pin Bar v2 (D1 + 4H)",                "pinbarv2"),
+    ("BCP — Bull Cluster Pullback",         "bcp"),
     ("BPE — Breakout Pullback Test",        "bpe"),
 ]
 
@@ -82,6 +84,7 @@ TIER_FIELDS = {
     "climax":    lambda r: r.get("cx_tier", ""),
     "pinbar4h":  lambda r: r.get("pin_tier", ""),
     "pinbarv2":  lambda r: r.get("pin_tier", ""),
+    "bcp":       lambda r: f"{r.get('gap_t', 0)}d",
     "bpe":       lambda r: r.get("bpe_tier", ""),
 }
 
@@ -93,7 +96,8 @@ def run_all_scans() -> dict:
 
     results = {
         "main": [], "swing": [], "pa": [], "mr": [],
-        "climax": [], "pinbar4h": [], "pinbarv2": [], "bpe": [],
+        "climax": [], "pinbar4h": [], "pinbarv2": [],
+        "bcp": [], "bpe": [],
         "market_down": False, "errors": [],
     }
 
@@ -162,7 +166,16 @@ def run_all_scans() -> dict:
         results["errors"].append(f"Pin Bar v2 scan: {e}")
         traceback.print_exc()
 
-    # 8. BPE — Watchlist Breakout Pullback Test (D1)
+    # 8. BCP — Bull Cluster Pullback (D1) — actionable, ranked above BPE
+    try:
+        print("Running BCP (Bull Cluster Pullback) scan...")
+        results["bcp"] = run_bcp_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
+        print(f"  -> {len(results['bcp'])} signals")
+    except Exception as e:
+        results["errors"].append(f"BCP scan: {e}")
+        traceback.print_exc()
+
+    # 9. BPE — Watchlist Breakout Pullback Test (D1)
     try:
         print("Running BPE (Breakout Pullback Test) scan...")
         results["bpe"] = run_bpe_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
@@ -212,7 +225,7 @@ def build_html_report(results: dict) -> str:
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
     market_color = "#ef5350" if results["market_down"] else "#00e676"
 
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bpe"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bcp", "bpe"))
 
     # Table header
     th = (
@@ -281,7 +294,7 @@ def build_html_report(results: dict) -> str:
 def build_telegram_summary(results: dict) -> str:
     date_str = datetime.now().strftime("%Y-%m-%d (%A)")
     market = "BEARISH" if results["market_down"] else "BULLISH"
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bpe"))
+    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bcp", "bpe"))
 
     lines = [
         f"<b>VN Stock Daily Scan — {date_str}</b>",
