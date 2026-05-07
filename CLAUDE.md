@@ -7,14 +7,14 @@ This file is contributor context for the current repo. Keep it aligned with `app
 Single-file Streamlit app for scanning Vietnamese stocks on multiple workflows:
 
 - Combined daily scan: Breakout Momentum, Gap-Up, NR7, Pin Bar at Context, Trend Filter
-- Separate sections: Mean Reversion, Swing Filter, Price Action, Climax Reversal, Pin Bar 4H
+- Separate sections: Mean Reversion, Swing Filter, Price Action, Pullback V2, BCP (Bull Cluster Pullback), BPE (Watchlist Breakout Pullback), Climax Reversal, Pin Bar 4H
 
 The app currently lives mostly in `app.py` and is roughly 3.4k lines long.
 
 ## Source of Truth
 
 - Runtime behavior and UI: `app.py`
-- Strategy rules: scanner-specific markdown files such as `gap_scanner.md`, `nr7_scanner.md`, `pinbar_scanner.md`, `trendfilter.md`, `mean_reversion_scanner.md`, `climax_scanner.md`, `swing_scanner_rules_pro_v_2.md`, and `price_action_scanner_breakout_pullback_v2.md`
+- Strategy rules: scanner-specific markdown files such as `gap_scanner.md`, `nr7_scanner.md`, `pinbar_scanner.md`, `trendfilter.md`, `mean_reversion_scanner.md`, `climax_scanner.md`, `swing_scanner_rules_pro_v_2.md`, `price_action_scanner_breakout_pullback_v2.md`, `vn_pullback_ma_rule_with_score.md`, `watchlist_breakout_pullback_scanner.md`, and `bull_cluster_pullback_scanner.md`
 - Reference-only material: `guide.md` and `instruction.md`
 
 Do not treat `guide.md` as the canonical spec for the whole application. It is only a focused strategy reference.
@@ -71,6 +71,9 @@ Pin Bar 4H has its own fetch/resample pipeline before reusing the shared pin-bar
 - `run_mr_scan()` — Mean Reversion results sorted by `final_score`
 - `run_swing_scan()` — Swing Filter top candidates sorted by cross-sectional score
 - `run_pa_scan()` — Price Action top candidates with sector cap
+- `run_pullback_v2_scan()` — Pullback-to-MA continuation candidates with score
+- `run_bcp_scan()` — Bull Cluster Pullback (top 15, gap_t DESC)
+- `run_bpe_scan()` — Watchlist Breakout Pullback (top 20, Tier A→B→C)
 - `run_climax_scan()` — Climax reversal candidates
 - `run_pinbar_4h_scan()` — recent 4H pin-bar hits
 
@@ -91,8 +94,11 @@ Pin Bar 4H has its own fetch/resample pipeline before reusing the shared pin-bar
 2. Mean Reversion Range
 3. Swing Filter
 4. Price Action — Breakout & Pullback
-5. Climax Reversal
-6. Pin Bar 4H
+5. Pullback V2
+6. BCP — Bull Cluster Pullback (ranked above BPE)
+7. BPE — Watchlist Breakout Pullback Test
+8. Climax Reversal
+9. Pin Bar 4H
 
 ## Commands
 

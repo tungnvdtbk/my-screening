@@ -58,6 +58,26 @@ Intraday pin-bar scanner over recent 4H candles:
 - Uses D1 trend alignment as a multi-timeframe filter
 - Scans a short recent lookback window instead of only the latest bar
 
+### 7. BCP — Bull Cluster Pullback
+
+Actionable-pullback scanner ranked above BPE in the UI:
+
+- Trio gate inherited from BPE Filter C: 3 consecutive bull bars in last 25 bars
+  with the last bar closing above its MA20 (uptrend gate Close>MA200, MA200 rising)
+- Pullback gate: current close has dropped under cluster_high but is still above
+  cluster_low — the support cluster is being tested, not broken
+- Top 15 sorted by `gap_t` DESC (longer pullback wins), tie-break depth_in_zone DESC
+- Spec: `bull_cluster_pullback_scanner.md`
+
+### 8. BPE — Watchlist Breakout Pullback Test
+
+Watchlist scanner producing top 20 candidates from two filters:
+
+- Filter A/B: 2 consecutive bull bars in last 25 bars, ≥1 big body with matching volume
+- Filter C: 3 consecutive bull bars in last 25 bars, last close above MA20
+- Tier A (both big), B (one big), C (3-bull soft); sort A → B → C, then gap_t ASC
+- Spec: `watchlist_breakout_pullback_scanner.md`
+
 ## Sidebar Controls
 
 Current sidebar groups:

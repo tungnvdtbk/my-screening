@@ -8,6 +8,9 @@ Streamlit app for scanning Vietnamese stocks (`VN30` / `VN100`) with multiple ru
 - Mean Reversion Range
 - Swing Filter
 - Price Action — Breakout & Pullback
+- Pullback V2 — continuation to MA in uptrend
+- BCP — Bull Cluster Pullback (3 bull bars + actionable pullback)
+- BPE — Watchlist Breakout Pullback (2-bar big-body or 3-bar above MA20)
 - Climax Reversal
 - Pin Bar 4H
 
@@ -93,6 +96,9 @@ CLAUDE.md                               # Contributor-facing codebase notes
 - `climax_scanner.md` — Climax reversal scanner spec
 - `swing_scanner_rules_pro_v_2.md` — Swing Filter spec
 - `price_action_scanner_breakout_pullback_v2.md` — Price Action spec
+- `vn_pullback_ma_rule_with_score.md` — Pullback V2 spec
+- `watchlist_breakout_pullback_scanner.md` — BPE watchlist spec
+- `bull_cluster_pullback_scanner.md` — BCP actionable-pullback spec
 - `guide.md` — focused reference for the original D1 breakout/reversal framework; not the full system spec
 - `instruction.md` — generic prompt/reference material; not synced to runtime behavior
 

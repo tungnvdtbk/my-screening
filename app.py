@@ -4093,7 +4093,189 @@ def _render_bpe_results(rows: list[dict], use_cache: bool,
         if sel_rows:
             st.session_state["bpe_sel"] = rows[sel_rows[0]]
             for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
-                       "pb4h_sel", "pbv2_sel", "pullbackv2_sel"):
+                       "pb4h_sel", "pbv2_sel", "pullbackv2_sel", "bcp_sel"):
+                st.session_state.pop(k, None)
+    except TypeError:
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# BCP — Bull Cluster Pullback (Daily)
+# Spec: bull_cluster_pullback_scanner.md
+# Trigger: Filter C trio (3 bull bars, last close > MA20[d3])
+# Pullback: close[t] < cluster_high AND close[t] > cluster_low
+# Priority: longer time since trio (gap_t DESC) wins.
+# ============================================================
+def scan_bcp(df: pd.DataFrame) -> dict | None:
+    if df is None or len(df) < 210:
+        return None
+
+    close  = df["Close"]
+    opens  = df["Open"]
+    high   = df["High"]
+    low    = df["Low"]
+
+    ma20_s  = close.rolling(20).mean()
+    ma200_s = close.rolling(200).mean()
+
+    n = len(df)
+    t = n - 1
+
+    close_t = float(close.iloc[t])
+    ma200_t = float(ma200_s.iloc[t])
+    if pd.isna(ma200_t) or close_t <= ma200_t:
+        return None
+
+    if t < 5:
+        return None
+    ma200_prev5 = float(ma200_s.iloc[t - 5])
+    if pd.isna(ma200_prev5) or ma200_t <= ma200_prev5:
+        return None
+
+    bull_at = lambda i: float(close.iloc[i]) > float(opens.iloc[i])
+
+    # Find the most recent trio (Filter C) where t > d3 (so a pullback exists).
+    trio = None
+    for d3 in range(t - 1, t - 25, -1):
+        d2c, d1c = d3 - 1, d3 - 2
+        if d1c < 0:
+            break
+        if not (bull_at(d1c) and bull_at(d2c) and bull_at(d3)):
+            continue
+        ma20_d3 = ma20_s.iloc[d3]
+        if pd.isna(ma20_d3) or float(close.iloc[d3]) <= float(ma20_d3):
+            continue
+        trio = (d1c, d2c, d3)
+        break
+
+    if trio is None:
+        return None
+    d1c, d2c, d3 = trio
+
+    cluster_high = float(max(high.iloc[d1c], high.iloc[d2c], high.iloc[d3]))
+    cluster_low  = float(min(low.iloc[d1c],  low.iloc[d2c],  low.iloc[d3]))
+
+    # Pullback gates: under cluster high, still above cluster low.
+    if close_t >= cluster_high or close_t <= cluster_low:
+        return None
+    if cluster_high <= cluster_low:
+        return None
+
+    depth_in_zone = (close_t - cluster_low) / (cluster_high - cluster_low) * 100
+    pullback_pct  = (close_t / cluster_high - 1.0) * 100
+
+    ma20_t       = float(ma20_s.iloc[t])
+    ma200_slope5 = ma200_t / ma200_prev5 - 1.0
+
+    entry = round(close_t, 2)
+    sl    = round(cluster_low * 0.99, 2)
+    if entry <= sl:
+        return None
+    tp = round(entry + 2.0 * (entry - sl), 2)
+    rr = round((tp - entry) / (entry - sl), 2)
+
+    return {
+        "signal":        "BCP",
+        "date":          df.index[t],
+        "close":         entry,
+        "d1_date":       df.index[d1c],
+        "d3_date":       df.index[d3],
+        "gap_t":         int(t - d3),
+        "cluster_high":  round(cluster_high, 2),
+        "cluster_low":   round(cluster_low, 2),
+        "depth_in_zone": round(depth_in_zone, 1),
+        "pullback_pct":  round(pullback_pct, 2),
+        "ma20":          round(ma20_t, 2) if not pd.isna(ma20_t) else None,
+        "ma200":         round(ma200_t, 2),
+        "ma200_slope5":  round(ma200_slope5 * 100, 2),
+        "sl":            sl,
+        "tp":            tp,
+        "rr":            rr,
+    }
+
+
+def run_bcp_scan(symbols: dict[str, str],
+                 use_cache: bool = True,
+                 vnindex_df=None,
+                 progress_cb=None) -> list[dict]:
+    candidates: list[dict] = []
+    total = len(symbols)
+    done  = 0
+
+    def _one(sym: str) -> dict | None:
+        df = load_price_data(sym, use_cache=use_cache)
+        if df is None or df.empty or len(df) < 250:
+            return None
+        sig = scan_bcp(df)
+        if sig:
+            sig["symbol"] = sym.replace(".VN", "")
+            sig["sector"] = symbols.get(sym, "")
+        return sig
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_one, sym): sym for sym in symbols}
+        for fut in as_completed(futures):
+            try:
+                res = fut.result()
+                if res:
+                    candidates.append(res)
+            except Exception:
+                pass
+            done += 1
+            if progress_cb:
+                progress_cb(done, total)
+
+    candidates.sort(key=lambda r: (
+        -r.get("gap_t", 0),
+        -r.get("depth_in_zone", 0.0),
+        r.get("symbol", ""),
+    ))
+    return candidates[:15]
+
+
+def _render_bcp_results(rows: list[dict], use_cache: bool,
+                         key: str = "bcp_table") -> None:
+    if not rows:
+        st.info("Khong co tin hieu BCP.")
+        return
+    st.caption(
+        "BCP — Cum 3 bull bar (giong Filter C) + close hien tai DA pullback duoi "
+        "cluster_high va VAN tren cluster_low. Uu tien pullback lau (gap_t lon) | "
+        "Top 15 actionable (uu tien hon BPE)"
+    )
+    table_rows = []
+    for r in rows:
+        d1_str = str(r.get("d1_date", ""))[:10]
+        d3_str = str(r.get("d3_date", ""))[:10]
+        table_rows.append({
+            "Ma":       r["symbol"],
+            "Close":    r.get("close", ""),
+            "d1":       d1_str,
+            "d3":       d3_str,
+            "gap_t":    r.get("gap_t", ""),
+            "ClusHi":   r.get("cluster_high", ""),
+            "ClusLo":   r.get("cluster_low", ""),
+            "Depth%":   f"{r.get('depth_in_zone', 0):.1f}%",
+            "Pull%":    f"{r.get('pullback_pct', 0):+.2f}%",
+            "MA20":     r.get("ma20", ""),
+            "MA200":    r.get("ma200", ""),
+            "MA200_5%": f"{r.get('ma200_slope5', 0):+.2f}",
+            "SL":       r.get("sl", ""),
+            "TP":       r.get("tp", ""),
+            "R:R":      r.get("rr", ""),
+            "Nganh":    r.get("sector", ""),
+        })
+    df_display = pd.DataFrame(table_rows)
+    try:
+        selected = st.dataframe(
+            df_display, use_container_width=True, hide_index=True,
+            on_select="rerun", selection_mode="single-row", key=key,
+        )
+        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
+        if sel_rows:
+            st.session_state["bcp_sel"] = rows[sel_rows[0]]
+            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
+                       "pb4h_sel", "pbv2_sel", "pullbackv2_sel", "bpe_sel"):
                 st.session_state.pop(k, None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -4777,6 +4959,76 @@ def main() -> None:
         c5.metric("R:R",   pbr_sel.get("rr", ""))
         c5.metric("Risk%", f"{pbr_sel.get('risk_pct', 0):.2f}%")
         show_chart(pbr_sel["symbol"], sig=pbr_sel, use_cache=use_cache)
+
+    # ══════════════════════════════════════════════════════════════
+    # BCP — Bull Cluster Pullback (Daily) — higher priority than BPE
+    # ══════════════════════════════════════════════════════════════
+    st.divider()
+    st.subheader("🎯 BCP — Bull Cluster Pullback (D1) [ưu tiên hơn BPE]")
+    st.caption(
+        "Spec: bull_cluster_pullback_scanner.md | "
+        "Cum 3 bull bar (Filter C) + close hien tai DA pullback duoi cluster_high "
+        "va VAN tren cluster_low | "
+        "Output: top 15 (uu tien gap_t lon — pullback lau hon)"
+    )
+
+    col_bcp_30, col_bcp_100 = st.columns(2)
+    with col_bcp_30:
+        do_bcp_30 = st.button("Scan BCP VN30", use_container_width=True)
+    with col_bcp_100:
+        do_bcp_100 = st.button("Scan BCP VN100", use_container_width=True)
+
+    if do_bcp_30:
+        prog = st.progress(0, text="Scanning BCP VN30... 0 / 30")
+        def _bcp_cb30(done, total):
+            prog.progress(done / total, text=f"Scanning BCP VN30... {done} / {total}")
+        bcp_sigs = run_bcp_scan(VN30_STOCKS, use_cache=use_cache,
+                                 vnindex_df=vnindex_df, progress_cb=_bcp_cb30)
+        st.session_state["bcp_results"]  = bcp_sigs
+        st.session_state["bcp_universe"] = "VN30"
+        prog.empty()
+
+    if do_bcp_100:
+        prog = st.progress(0, text="Scanning BCP VN100... 0 / 100")
+        def _bcp_cb100(done, total):
+            prog.progress(done / total, text=f"Scanning BCP VN100... {done} / {total}")
+        bcp_sigs = run_bcp_scan(VN100_STOCKS, use_cache=use_cache,
+                                 vnindex_df=vnindex_df, progress_cb=_bcp_cb100)
+        st.session_state["bcp_results"]  = bcp_sigs
+        st.session_state["bcp_universe"] = "VN100"
+        prog.empty()
+
+    bcp_results  = st.session_state.get("bcp_results", [])
+    bcp_universe = st.session_state.get("bcp_universe", "")
+
+    if bcp_results:
+        st.subheader(f"BCP {bcp_universe} — {len(bcp_results)} tin hieu")
+        _render_bcp_results(bcp_results, use_cache, key="bcp_table_main")
+    elif not do_bcp_30 and not do_bcp_100:
+        st.caption("Nhan Scan BCP de bat dau.")
+
+    # BCP chart panel
+    bcp_sel = st.session_state.get("bcp_sel")
+    if bcp_sel:
+        st.divider()
+        st.subheader(
+            f"Chart — {bcp_sel['symbol']} | BCP | "
+            f"d1 {str(bcp_sel.get('d1_date',''))[:10]} → "
+            f"d3 {str(bcp_sel.get('d3_date',''))[:10]} "
+            f"(pullback {bcp_sel.get('gap_t','')}d)"
+        )
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("Close",    bcp_sel.get("close", ""))
+        c1.metric("MA200",    bcp_sel.get("ma200", ""))
+        c2.metric("ClusHi",   bcp_sel.get("cluster_high", ""))
+        c2.metric("ClusLo",   bcp_sel.get("cluster_low", ""))
+        c3.metric("Depth%",   f"{bcp_sel.get('depth_in_zone', 0):.1f}%")
+        c3.metric("Pull%",    f"{bcp_sel.get('pullback_pct', 0):+.2f}%")
+        c4.metric("MA20",     bcp_sel.get("ma20", ""))
+        c4.metric("MA200_5%", f"{bcp_sel.get('ma200_slope5', 0):+.2f}%")
+        c5.metric("SL",       bcp_sel.get("sl", ""))
+        c5.metric("TP",       bcp_sel.get("tp", ""))
+        show_chart(bcp_sel["symbol"], sig=bcp_sel, use_cache=use_cache)
 
     # ══════════════════════════════════════════════════════════════
     # BPE — Watchlist Breakout Pullback Test (Daily)
