@@ -23,6 +23,9 @@ TRƯỚC BPE; trong quy trình quyết định, BCP candidate được ưu tiên
   dưới đỉnh cao nhất của cụm.
 - Close[t] > min(Low[d1], Low[d2], Low[d3]) — giá vẫn nằm trên đáy thấp nhất
   của cụm; nếu thủng đáy này thì coi như cụm đã hỏng và mã bị loại.
+- pullback_pct ≤ -2.0% — yêu cầu retrace tối thiểu 2% so với cluster_high.
+  Lý do: không có gate này, một pullback 0.2% cũng pass; với T+2.5 settlement
+  trên HOSE, setup cần độ rộng đủ để bounce trước khi exit khả thi.
 
 Output:
 - Trả về top 15 mã đạt điều kiện.

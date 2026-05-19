@@ -1011,7 +1011,7 @@ def scan_pullback_v2(df: pd.DataFrame, vnindex_df=None) -> dict | None:
             pass
     if rs20 is None or rs55 is None:
         return None
-    if not (rs20 > 0 and rs55 > 0):
+    if not (rs20 > 0.03 and rs55 > 0.03):
         return None
 
     # ── Coil / pullback (§6) — last 5 bars inclusive ──
@@ -2855,6 +2855,11 @@ def scan_bcp(df: pd.DataFrame) -> dict | None:
 
     depth_in_zone = (close_t - cluster_low) / (cluster_high - cluster_low) * 100
     pullback_pct  = (close_t / cluster_high - 1.0) * 100
+
+    # Reject shallow pullbacks: require ≥2% retrace from cluster high so the
+    # setup has real room to bounce before T+2.5 settlement window closes.
+    if pullback_pct > -2.0:
+        return None
 
     ma20_t       = float(ma20_s.iloc[t])
     ma200_slope5 = ma200_t / ma200_prev5 - 1.0

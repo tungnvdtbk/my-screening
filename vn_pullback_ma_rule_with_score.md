@@ -194,15 +194,16 @@ RS_55 > 0.05
 
 ## 5.3 Khuyến nghị
 
-Mặc định cho bot:
+Mặc định cho bot (đã áp dụng):
 
 ```text
-RS_20 > 0
-RS_55 > 0
+RS_20 > 0.03
+RS_55 > 0.03
 ```
 
-Nếu số lượng mã ra quá nhiều:
-- tăng ngưỡng lên `0.02` hoặc `0.03`
+Lý do: `> 0` admits bất kỳ outperform nhẹ nào (kể cả -2% trong index -5%).
+300bps absolute outperformance tách leader thực sự khỏi beta drag trên
+HOSE mid-caps. Nếu kết quả ra ít quá có thể nới về `> 0.02`.
 
 ---
 
