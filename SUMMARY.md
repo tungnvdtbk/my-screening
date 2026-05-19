@@ -2,6 +2,8 @@
 
 This summary reflects the current app structure in `app.py`. It is a high-level overview, not the per-scanner source of truth.
 
+The system is now breakout/breakout-pullback only. Reversal-style scanners (Mean Reversion, Climax, Pin Bar D1, Pin Bar 4H, Pin Bar v2) were removed to focus exclusively on trend-continuation setups.
+
 ## Main Sections
 
 ### 1. Daily multi-signal scan
@@ -9,25 +11,17 @@ This summary reflects the current app structure in `app.py`. It is a high-level 
 The top section scans `VN30` or `VN100` and returns one prioritized daily signal per symbol from this chain:
 
 ```text
-Breakout -> Gap -> NR7 -> Pin Bar -> Trend Filter
+Breakout -> Gap -> NR7 -> Pullback V2 -> Trend Filter
 ```
 
 Key behavior:
 
 - Uses the shared daily cache from `data/cache/`
 - Sorts results by signal priority and quality fields
-- Shows results in tabs: All / Breakout / NR7 / Gap / Pin Bar / Trend Filter
-- If `VNINDEX < MA50`, breakout-style signals are suppressed and only non-breakout signals remain
+- Shows results in tabs: All / Breakout / NR7 / Gap / Trend Filter
+- If `VNINDEX < MA50`, breakout-style signals are suppressed and only Trend Filter signals remain
 
-### 2. Mean Reversion Range
-
-Separate long-only range scanner for sideways markets:
-
-- Buys near support inside a validated range
-- Sidebar exposes MR-specific parameters such as range size, support tolerance, bottom-zone threshold, and target R:R
-- Results are sorted by `final_score`
-
-### 3. Swing Filter
+### 2. Swing Filter
 
 Cross-sectional scanner based on `swing_scanner_rules_pro_v_2.md`:
 
@@ -35,7 +29,7 @@ Cross-sectional scanner based on `swing_scanner_rules_pro_v_2.md`:
 - Uses a VNINDEX market-regime gate by default
 - Returns top candidates sorted by score
 
-### 4. Price Action — Breakout & Pullback
+### 3. Price Action — Breakout & Pullback
 
 Volman-style continuation scanner based on `price_action_scanner_breakout_pullback_v2.md`:
 
@@ -43,22 +37,15 @@ Volman-style continuation scanner based on `price_action_scanner_breakout_pullba
 - Uses barrier clustering, squeeze detection, RS vs VNINDEX, and sector-cap logic
 - Returns top candidates sorted by cross-sectional score
 
-### 5. Climax Reversal
+### 4. Pullback V2
 
-Reversal scanner for sell-climax / false-break setups:
+Continuation-to-MA scanner based on `vn_pullback_ma_rule_with_score.md`:
 
-- Looks for sharp prior decline, support violation, and reversal candle
-- Tracks `PENDING` / `CONFIRMED` style state fields and reversal type
+- Requires uptrend (close>MA20>MA50, MA20 rising) plus positive RS20/RS55 vs VNINDEX
+- Looks for a 5-bar coil at MA10 with a confirmation trigger candle
+- Alerts when the composite score ≥ 70
 
-### 6. Pin Bar 4H
-
-Intraday pin-bar scanner over recent 4H candles:
-
-- Fetches 1H data, resamples to 4H
-- Uses D1 trend alignment as a multi-timeframe filter
-- Scans a short recent lookback window instead of only the latest bar
-
-### 7. BCP — Bull Cluster Pullback
+### 5. BCP — Bull Cluster Pullback
 
 Actionable-pullback scanner ranked above BPE in the UI:
 
@@ -69,7 +56,7 @@ Actionable-pullback scanner ranked above BPE in the UI:
 - Top 15 sorted by `gap_t` DESC (longer pullback wins), tie-break depth_in_zone DESC
 - Spec: `bull_cluster_pullback_scanner.md`
 
-### 8. BPE — Watchlist Breakout Pullback Test
+### 6. BPE — Watchlist Breakout Pullback Test
 
 Watchlist scanner producing top 20 candidates from two filters:
 
@@ -86,21 +73,19 @@ Current sidebar groups:
 - Cache management
 - Capital and risk-per-trade inputs
 - Scan options, including optional VNINDEX bypass for Swing / Price Action
-- Mean Reversion configuration
 - Strategy cheat-sheet text
 
 ## Data and Caching
 
 - Daily data is cached incrementally to `data/cache/<SYMBOL>.parquet` with CSV fallback
 - `get_vnindex_data()` is cached in Streamlit for 1 hour
-- 4H price data is fetched fresh and resampled from 1H data
 - Chart panels load the selected symbol again and render Plotly candles plus signal overlays
 
 ## Universes
 
 - `VN30_STOCKS` — 30 symbols
 - `VNMID_STOCKS` — mid-cap basket
-- `VN100_STOCKS` — merged universe used by most scan sections
+- `VN100_STOCKS` — merged universe used by all scan sections
 
 ## Run and Validate
 

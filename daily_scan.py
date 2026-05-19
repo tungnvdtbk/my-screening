@@ -55,38 +55,31 @@ from app import (                   # noqa: E402
     run_scan,
     run_swing_scan,
     run_pa_scan,
-    run_mr_scan,
-    run_climax_scan,
-    run_pinbar_4h_scan,
-    run_pinbar_v2_scan,
+    run_pullback_v2_scan,
     run_bcp_scan,
     run_bpe_scan,
 )
 
 # ── Scanner definitions ──────────────────────────────────────────────
 SCANNERS = [
-    ("Breakout / NR7 / Gap / PinBar / TrendFilter", "main"),
+    ("Breakout / NR7 / Gap / TrendFilter",  "main"),
     ("Swing Filter",                        "swing"),
     ("Price Action",                        "pa"),
-    ("Mean Reversion",                      "mr"),
-    ("Climax Reversal",                     "climax"),
-    ("Pin Bar 4H",                          "pinbar4h"),
-    ("Pin Bar v2 (D1 + 4H)",                "pinbarv2"),
+    ("Pullback V2",                         "pullbackv2"),
     ("BCP — Bull Cluster Pullback",         "bcp"),
     ("BPE — Breakout Pullback Test",        "bpe"),
 ]
 
 TIER_FIELDS = {
-    "main":      lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("pin_tier") or r.get("tf_tier") or "",
-    "swing":     lambda r: r.get("sw_tier", ""),
-    "pa":        lambda r: r.get("pa_tier", ""),
-    "mr":        lambda r: r.get("mr_tier", ""),
-    "climax":    lambda r: r.get("cx_tier", ""),
-    "pinbar4h":  lambda r: r.get("pin_tier", ""),
-    "pinbarv2":  lambda r: r.get("pin_tier", ""),
-    "bcp":       lambda r: f"{r.get('gap_t', 0)}d",
-    "bpe":       lambda r: r.get("bpe_tier", ""),
+    "main":       lambda r: r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier") or r.get("tf_tier") or r.get("pbv2_tier") or "",
+    "swing":      lambda r: r.get("sw_tier", ""),
+    "pa":         lambda r: r.get("pa_tier", ""),
+    "pullbackv2": lambda r: r.get("pbv2_tier", ""),
+    "bcp":        lambda r: f"{r.get('gap_t', 0)}d",
+    "bpe":        lambda r: r.get("bpe_tier", ""),
 }
+
+_RESULT_KEYS = tuple(key for _, key in SCANNERS)
 
 
 # ── Run all scans ────────────────────────────────────────────────────
@@ -94,16 +87,13 @@ def run_all_scans() -> dict:
     print("Fetching VNINDEX data...")
     vnindex_df = get_vnindex_data()
 
-    results = {
-        "main": [], "swing": [], "pa": [], "mr": [],
-        "climax": [], "pinbar4h": [], "pinbarv2": [],
-        "bcp": [], "bpe": [],
-        "market_down": False, "errors": [],
-    }
+    results: dict = {key: [] for key in _RESULT_KEYS}
+    results["market_down"] = False
+    results["errors"] = []
 
-    # 1. Main scan (breakout, gap, NR7, pin bar, trend filter)
+    # 1. Main scan (breakout, gap, NR7, pullback v2, trend filter)
     try:
-        print("Running main scan (Breakout/Gap/NR7/PinBar/TrendFilter)...")
+        print("Running main scan (Breakout/Gap/NR7/PullbackV2/TrendFilter)...")
         sigs, mkt_down = run_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
         results["main"] = sigs
         results["market_down"] = mkt_down
@@ -130,43 +120,16 @@ def run_all_scans() -> dict:
         results["errors"].append(f"PA scan: {e}")
         traceback.print_exc()
 
-    # 4. Mean Reversion
+    # 4. Pullback V2 — dedicated runner, top candidates by score
     try:
-        print("Running Mean Reversion scan...")
-        results["mr"] = run_mr_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
-        print(f"  -> {len(results['mr'])} signals")
+        print("Running Pullback V2 scan...")
+        results["pullbackv2"] = run_pullback_v2_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
+        print(f"  -> {len(results['pullbackv2'])} signals")
     except Exception as e:
-        results["errors"].append(f"MR scan: {e}")
+        results["errors"].append(f"Pullback V2 scan: {e}")
         traceback.print_exc()
 
-    # 5. Climax
-    try:
-        print("Running Climax Reversal scan...")
-        results["climax"] = run_climax_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
-        print(f"  -> {len(results['climax'])} signals")
-    except Exception as e:
-        results["errors"].append(f"Climax scan: {e}")
-        traceback.print_exc()
-
-    # 6. Pin Bar 4H
-    try:
-        print("Running Pin Bar 4H scan...")
-        results["pinbar4h"] = run_pinbar_4h_scan(VN100_STOCKS, vnindex_df=vnindex_df)
-        print(f"  -> {len(results['pinbar4h'])} signals")
-    except Exception as e:
-        results["errors"].append(f"Pin Bar 4H scan: {e}")
-        traceback.print_exc()
-
-    # 7. Pin Bar v2 — D1+4H buy-only signal (no confirmation gate)
-    try:
-        print("Running Pin Bar v2 (D1+4H) scan...")
-        results["pinbarv2"] = run_pinbar_v2_scan(VN100_STOCKS, vnindex_df=vnindex_df)
-        print(f"  -> {len(results['pinbarv2'])} signals")
-    except Exception as e:
-        results["errors"].append(f"Pin Bar v2 scan: {e}")
-        traceback.print_exc()
-
-    # 8. BCP — Bull Cluster Pullback (D1) — actionable, ranked above BPE
+    # 5. BCP — Bull Cluster Pullback (D1) — actionable, ranked above BPE
     try:
         print("Running BCP (Bull Cluster Pullback) scan...")
         results["bcp"] = run_bcp_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
@@ -175,7 +138,7 @@ def run_all_scans() -> dict:
         results["errors"].append(f"BCP scan: {e}")
         traceback.print_exc()
 
-    # 9. BPE — Watchlist Breakout Pullback Test (D1)
+    # 6. BPE — Watchlist Breakout Pullback Test (D1)
     try:
         print("Running BPE (Breakout Pullback Test) scan...")
         results["bpe"] = run_bpe_scan(VN100_STOCKS, use_cache=True, vnindex_df=vnindex_df)
@@ -192,20 +155,11 @@ def _signal_row(sig: dict, key: str) -> str:
     tier = TIER_FIELDS[key](sig)
     tier_color = "#00e676" if tier in ("A", "Tier A") else "#ffca28" if tier in ("B", "Tier B") else "#888"
     symbol = sig.get("symbol", "?").replace(".VN", "")
-    # Pin bar quality extras
+    # Pullback V2 score badge (when present)
     extras = ""
-    tf = sig.get("timeframe")
-    prio = sig.get("priority")
-    if tf:
-        tf_color = "#00e676" if tf == "D1" else "#ffca28"
-        label = f"{tf}" + (f"·{prio}" if prio and prio != "primary" else "")
-        extras += f' <span style="color:{tf_color}">[{label}]</span>'
-    ps = sig.get("pin_score")
-    if ps is not None:
-        extras += f' <span style="color:#90caf9">[Q{ps}/13]</span>'
-        sd = sig.get("score_detail", "")
-        if sd:
-            extras += f' <span style="color:#666;font-size:12px">{sd}</span>'
+    pbv2s = sig.get("pbv2_score")
+    if pbv2s is not None:
+        extras += f' <span style="color:#90caf9">[PB2·{pbv2s}/100]</span>'
     return (
         f'<tr>'
         f'<td style="font-weight:bold">{symbol}</td>'
@@ -225,7 +179,7 @@ def build_html_report(results: dict) -> str:
     market_label = "BEARISH — market gate active" if results["market_down"] else "BULLISH"
     market_color = "#ef5350" if results["market_down"] else "#00e676"
 
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bcp", "bpe"))
+    total = sum(len(results[k]) for k in _RESULT_KEYS)
 
     # Table header
     th = (
@@ -294,7 +248,7 @@ def build_html_report(results: dict) -> str:
 def build_telegram_summary(results: dict) -> str:
     date_str = datetime.now().strftime("%Y-%m-%d (%A)")
     market = "BEARISH" if results["market_down"] else "BULLISH"
-    total = sum(len(results[k]) for k in ("main", "swing", "pa", "mr", "climax", "pinbar4h", "pinbarv2", "bcp", "bpe"))
+    total = sum(len(results[k]) for k in _RESULT_KEYS)
 
     lines = [
         f"<b>VN Stock Daily Scan — {date_str}</b>",
@@ -313,22 +267,11 @@ def build_telegram_summary(results: dict) -> str:
             tier = TIER_FIELDS[key](s)
             rr = s.get("rr", 0)
             sig_type = s.get("signal", "")
-            # Pin bar quality score + timeframe/priority (v2)
-            pb_extra = ""
-            tf = s.get("timeframe")
-            prio = s.get("priority")
-            if tf:
-                pb_extra += f" [{tf}"
-                if prio and prio != "primary":
-                    pb_extra += f"·{prio}"
-                pb_extra += "]"
-            ps = s.get("pin_score")
-            if ps is not None:
-                pb_extra += f"  Q{ps}/13"
-                sd = s.get("score_detail", "")
-                if sd:
-                    pb_extra += f" ({sd})"
-            lines.append(f"  <code>{sym:6s}</code> {sig_type}  {tier}  R:R {rr:.1f}{pb_extra}")
+            extra = ""
+            pbv2s = s.get("pbv2_score")
+            if pbv2s is not None:
+                extra = f"  PB2·{pbv2s}/100"
+            lines.append(f"  <code>{sym:6s}</code> {sig_type}  {tier}  R:R {rr:.1f}{extra}")
         lines.append("")
 
     if results.get("errors"):

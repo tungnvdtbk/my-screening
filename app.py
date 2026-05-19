@@ -286,28 +286,6 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     d["nr7"]          = d["candle_range"] <= d["candle_range"].rolling(7).min()
     # Gap vs prior close
     d["gap_pct"]      = (d["Open"] - d["Close"].shift(1)) / d["Close"].shift(1)
-    # Swing low on [-21] to [-2] — horizontal support for pin bar context
-    d["swing_low20"]  = d["Low"].shift(2).rolling(20).min()
-    # Swing high on [-21] to [-2] — for pin bar TP target
-    d["swing_high20"] = d["High"].shift(2).rolling(20).max()
-
-    # ── Pin bar quality indicators ──
-    # ATR(30) for dead-market filter
-    d["atr30"]        = tr.shift(2).rolling(30).mean()
-    # RSI(14) — Wilder smoothing
-    delta = d["Close"].diff()
-    gain  = delta.clip(lower=0)
-    loss  = (-delta).clip(lower=0)
-    avg_gain = gain.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    d["rsi14"] = 100 - (100 / (1 + rs))
-    # Pullback count: how many of [-4] to [-2] are bearish candles (close < open)
-    bearish = (d["Close"] < d["Open"]).astype(int)
-    d["pullback_count"] = bearish.shift(1) + bearish.shift(2) + bearish.shift(3)
-    # Volume dry-up: how many of [-4] to [-2] have below-average volume
-    below_avg = (d["Volume"] < d["avg_vol20"]).astype(int)
-    d["vol_quiet_count"] = below_avg.shift(1) + below_avg.shift(2) + below_avg.shift(3)
     return d
 
 
@@ -319,19 +297,6 @@ def _vol_tier(vol: float, avg_vol20: float, avg_vol_pre5: float) -> str:
         return "NO_VOL_DATA"
     spike    = bool(vol > 2.0 * avg_vol20)
     contract = (not pd.isna(avg_vol_pre5)) and bool(avg_vol_pre5 < avg_vol20 * 0.75)
-    if spike and contract:
-        return "TIER1"
-    if spike:
-        return "TIER2"
-    return "TIER3"
-
-
-def _pinbar_vol_tier(vol: float, avg_vol20: float, avg_vol_pre5: float) -> str:
-    """Pin bar vol tier — uses 1.5x threshold (not 2.0x like breakout)."""
-    if pd.isna(avg_vol20) or avg_vol20 == 0:
-        return "NO_VOL_DATA"
-    spike    = bool(vol > 1.5 * avg_vol20)
-    contract = (not pd.isna(avg_vol_pre5)) and bool(avg_vol_pre5 < avg_vol20 * 0.80)
     if spike and contract:
         return "TIER1"
     if spike:
@@ -981,213 +946,6 @@ def scan_trend_filter(df: pd.DataFrame, vnindex_df=None) -> dict | None:
     }
 
 
-# ============================================================
-# SCAN — Pin Bar at Context (Price Action Rejection)
-# ============================================================
-def scan_pinbar(df: pd.DataFrame, vnindex_df=None, d1_trend_up: bool | None = None) -> dict | None:
-    """
-    Detect bullish pin bar at meaningful support — improved quality scoring.
-
-    Quality score (0-13 points):
-      +3  MTF trend aligned (D1 up for 4H scan, or MA50 rising for D1)
-      +2  Pullback structure (>=2 bearish candles before pin bar)
-      +2  Context confluence (>=2 support levels)
-      +2  Volume spike (TIER1 or TIER2)
-      +1  Volume dry-up (3 quiet bars before pin bar)
-      +1  Bull close (close > open)
-      +1  Body in upper 25% of range
-      +1  RSI oversold (<40)
-
-    Tier A: score >= 7   Tier B: score >= 4   Below 4: rejected
-    d1_trend_up: for 4H scan, pass True/False from D1 data. None = skip MTF check.
-    """
-    if df is None or len(df) < 60:
-        return None
-    row = df.iloc[-1]
-
-    required = ["atr10", "avg_vol20", "ma20", "ma50", "ma50_prev5", "swing_low20"]
-    if any(pd.isna(row[c]) for c in required):
-        return None
-
-    close  = row["Close"]; open_ = row["Open"]
-    high   = row["High"];  low   = row["Low"]
-    vol    = row["Volume"]
-    atr10  = row["atr10"]
-    atr30  = row.get("atr30", float("nan"))
-    ma20   = row["ma20"]
-    ma50   = row["ma50"]
-    ma200  = row.get("ma200", float("nan"))
-    ma50_prev5   = row["ma50_prev5"]
-    avg_vol20    = row["avg_vol20"]
-    avg_vol_pre5 = row.get("avg_vol_pre5", float("nan"))
-    swing_low20  = row["swing_low20"]
-    swing_high20 = row.get("swing_high20", float("nan"))
-    rsi14        = row.get("rsi14", float("nan"))
-    pullback_cnt = row.get("pullback_count", 0)
-    vol_quiet    = row.get("vol_quiet_count", 0)
-
-    candle_range = high - low
-    if candle_range <= 0:
-        return None
-
-    body        = abs(close - open_)
-    lower_wick  = min(open_, close) - low
-    upper_wick  = high - max(open_, close)
-
-    # ── Pin bar shape detection ──
-    if not (lower_wick >= 0.60 * candle_range):  return None   # [1] long lower wick
-    if not (body <= 0.33 * candle_range):         return None   # [2] small body
-    if not (upper_wick <= 0.25 * candle_range):   return None   # [3] short upper wick
-    if not (candle_range >= 0.5 * atr10):         return None   # [4] minimum size
-
-    # ── Safety filters ──
-    if not pd.isna(ma200) and close < ma200 * 0.88:
-        return None   # [X1] freefall
-    # [X2] Dead market — ATR10 collapsed vs ATR30
-    if not pd.isna(atr30) and atr30 > 0 and atr10 < 0.3 * atr30:
-        return None
-
-    # ── Body position filter — body must sit in upper 25% of range ──
-    body_top = max(open_, close)
-    body_in_upper = body_top >= high - 0.25 * candle_range
-
-    # ── Context conditions — tighter proximity (0.3 * ATR) ──
-    proximity = 0.3 * atr10
-    contexts = []
-
-    # [C1] AT_MA20 — pullback in uptrend
-    if (abs(low - ma20) <= proximity
-            and close > ma20
-            and ma50 > ma50_prev5
-            and close <= ma50 * 1.10):
-        contexts.append("MA20")
-
-    # [C2] AT_MA50
-    if abs(low - ma50) <= proximity and close > ma50 * 0.98:
-        contexts.append("MA50")
-
-    # [C3] AT_MA200
-    if not pd.isna(ma200):
-        if abs(low - ma200) <= proximity and close >= ma200 * 0.98:
-            contexts.append("MA200")
-
-    # [C4] AT_SWING — 20-bar swing low
-    if abs(low - swing_low20) <= proximity and close > swing_low20:
-        contexts.append("SWING")
-
-    if not contexts:
-        return None   # no context = no signal
-
-    context_count = len(contexts)
-
-    # ── Signal type — priority: MA200 > MA50 > MA20 > SWING ──
-    _ctx_priority = {"MA200": 0, "MA50": 1, "MA20": 2, "SWING": 3}
-    primary_ctx = min(contexts, key=lambda c: _ctx_priority[c])
-    signal_type = f"PINBAR_{primary_ctx}"
-
-    # ── Volume tier (1.5x for pin bars) ──
-    vol_tier = _pinbar_vol_tier(vol, avg_vol20, avg_vol_pre5)
-
-    # ── SL / TP / R:R ──
-    sl    = round(low, 2)
-    entry = round(close * 1.001, 2)
-    risk  = entry - sl
-    if risk <= 0:
-        return None
-
-    # TP1 = MA50 (if below MA50)
-    tp_ma50 = round(ma50, 2) if close < ma50 else 0
-    # TP2 = prior swing high (if available and above entry)
-    tp_swing = 0
-    if not pd.isna(swing_high20) and swing_high20 > entry:
-        tp_swing = round(swing_high20, 2)
-    # TP3 = entry + 2 × ATR10
-    tp_rr2  = round(entry + 2.0 * atr10, 2)
-    tp      = max(tp_ma50, tp_swing, tp_rr2)
-    rr      = round((tp - entry) / risk, 2)
-
-    if rr < 2.0:
-        return None
-
-    risk_pct   = round(risk / entry * 100, 2) if entry > 0 else 99
-    if risk_pct > 7.0:
-        return None
-
-    bull_close  = close > open_
-    rsi_oversold = (not pd.isna(rsi14)) and rsi14 < 40
-    has_pullback = (not pd.isna(pullback_cnt)) and pullback_cnt >= 2
-    has_vol_dryup = (not pd.isna(vol_quiet)) and vol_quiet >= 3
-    rs4w        = compute_rs4w(df, vnindex_df)
-
-    # ── MTF trend alignment ──
-    if d1_trend_up is not None:
-        mtf_aligned = d1_trend_up
-    else:
-        # D1 scan: check own MA50 rising as trend proxy
-        mtf_aligned = bool(ma50 > ma50_prev5)
-
-    # ── Quality scoring (0-13 points) ──
-    score = 0
-    score_details = []
-    if mtf_aligned:
-        score += 3; score_details.append("trend+3")
-    if has_pullback:
-        score += 2; score_details.append(f"pb{int(pullback_cnt)}+2")
-    if context_count >= 2:
-        score += 2; score_details.append(f"ctx{context_count}+2")
-    if vol_tier in ("TIER1", "TIER2"):
-        score += 2; score_details.append(f"{vol_tier}+2")
-    if has_vol_dryup:
-        score += 1; score_details.append("quiet+1")
-    if bull_close:
-        score += 1; score_details.append("bull+1")
-    if body_in_upper:
-        score += 1; score_details.append("pos+1")
-    if rsi_oversold:
-        score += 1; score_details.append(f"rsi{rsi14:.0f}+1")
-
-    # ── Tier gate ──
-    if score >= 7:
-        pin_tier = "A"
-    elif score >= 4:
-        pin_tier = "B"
-    else:
-        return None   # below quality threshold
-
-    wick_ratio  = round(lower_wick / candle_range, 2)
-    body_ratio  = round(body / candle_range, 2)
-    context_str = "+".join(contexts)
-
-    return {
-        "signal":          signal_type,
-        "date":            df.index[-1],
-        "close":           round(close, 2),
-        "status":          "PENDING",
-        "pin_tier":        pin_tier,
-        "pin_score":       score,
-        "score_detail":    " ".join(score_details),
-        "context":         context_str,
-        "context_count":   context_count,
-        "wick_ratio":      wick_ratio,
-        "body_ratio":      body_ratio,
-        "body_pos_upper":  body_in_upper,
-        "pullback":        int(pullback_cnt) if not pd.isna(pullback_cnt) else 0,
-        "rsi14":           round(rsi14, 1) if not pd.isna(rsi14) else None,
-        "mtf_trend":       mtf_aligned,
-        "ma20":            round(ma20, 2),
-        "ma50":            round(ma50, 2),
-        "ma200":           round(ma200, 2) if not pd.isna(ma200) else None,
-        "sl":              sl,
-        "tp":              tp,
-        "rr":              rr,
-        "atr10":           round(atr10, 2),
-        "vol_tier":        vol_tier,
-        "vol_quiet":       has_vol_dryup,
-        "rs4w":            rs4w,
-        "volume":          int(vol),
-        "avg_vol20":       int(avg_vol20),
-    }
-
 
 # ============================================================
 # SCAN — Pullback V2 (continuation to MA in uptrend)
@@ -1366,12 +1124,8 @@ _SIGNAL_PRIORITY = {
     "BREAKOUT_EARLY":  4,
     "GAP_EARLY":       5,
     "NR7_EARLY":       6,
-    "PINBAR_MA200":    7,
-    "PINBAR_MA50":     8,
-    "PINBAR_MA20":     9,
-    "PINBAR_SWING":    10,
-    "TF_MA20":         11,
-    "TF_MA50":         12,
+    "TF_MA20":         7,
+    "TF_MA50":         8,
 }
 
 def run_scan(
@@ -1398,7 +1152,6 @@ def run_scan(
             scan_gap(df, vnindex_df)           or
             scan_nr7(df, vnindex_df)           or
             scan_pullback_v2(df, vnindex_df)   or
-            scan_pinbar(df, vnindex_df)        or
             scan_trend_filter(df, vnindex_df)
         )
         if sig:
@@ -1507,18 +1260,6 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
             fig.add_hline(y=sig["high20"], line=dict(color="#fbbf24", dash="dot", width=1),
                           annotation_text="HIGH20", annotation_position="right",
                           row=1, col=1)
-        # MR specific: range boundaries
-        if "range_high" in sig and sig.get("range_high"):
-            fig.add_hline(y=sig["range_high"],
-                          line=dict(color="#f97316", dash="dash", width=1.2),
-                          annotation_text="R.High", annotation_position="right",
-                          row=1, col=1)
-        if "range_low" in sig and sig.get("range_low"):
-            fig.add_hline(y=sig["range_low"],
-                          line=dict(color="#22c55e", dash="dash", width=1.2),
-                          annotation_text="R.Low / Support", annotation_position="right",
-                          row=1, col=1)
-
     # Volume bars
     vol_colors = [
         "#26a69a" if c >= o else "#ef5350"
@@ -1548,7 +1289,7 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
     if sig:
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Close", sig.get("close", ""))
-        c1.metric("SL", sig.get("sl", sig.get("range_low", "—")))
+        c1.metric("SL", sig.get("sl", "—"))
         if "tp" in sig:
             c2.metric("TP", sig["tp"])
             c2.metric("R:R", sig.get("rr", ""))
@@ -1574,10 +1315,6 @@ def show_chart(symbol: str, sig: dict | None = None, use_cache: bool = True) -> 
         if ra is not None: qf.append(f"Resist {ra:.1f}ATR above")
         vq = sig.get("vol_quiet", "")
         if vq in ("QUIET", "QUIET++"): qf.append(f"Vol {vq}")
-        ctx = sig.get("context", "")
-        if ctx: qf.append(f"@{ctx}")
-        wr = sig.get("wick_ratio")
-        if wr is not None: qf.append(f"Wick {wr:.0%}")
         c4.metric("Quality", " · ".join(qf) if qf else "—")
         ns = sig.get("nr7_score")
         if ns is not None:
@@ -1613,8 +1350,6 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
             "BREAKOUT_STRONG": "🚀", "BREAKOUT_EARLY": "📊",
             "NR7_STRONG": "🔩",     "NR7_EARLY": "🔧",
             "GAP_STRONG": "⚡",     "GAP_EARLY": "🌩",
-            "PINBAR_MA200": "📍", "PINBAR_MA50": "📍",
-            "PINBAR_MA20": "📍",  "PINBAR_SWING": "📍",
             "TF_MA20": "🎯", "TF_MA50": "📌",
             "PBV2": "🏹",
         }.get(r["signal"], "")
@@ -1643,26 +1378,6 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         elif vq == "QUIET":  qf.append("Q")
         ns = r.get("nr7_score")
         if ns is not None:   qf.append(f"S{ns}")
-        # Pin bar-specific flags
-        ctx = r.get("context", "")
-        if ctx:
-            qf.append(ctx)
-        ps = r.get("pin_score")
-        if ps is not None:
-            qf.append(f"Q{ps}/13")
-        wr = r.get("wick_ratio")
-        if wr is not None:
-            qf.append(f"W{wr:.0%}")
-        pb = r.get("pullback", 0)
-        if pb >= 2:
-            qf.append(f"PB{pb}")
-        rsi = r.get("rsi14")
-        if rsi is not None and rsi < 40:
-            qf.append(f"RSI{rsi:.0f}")
-        if r.get("mtf_trend"):
-            qf.append("MTF")
-        if r.get("status") == "PENDING":
-            qf.append("PEND")
         # Pullback v2 specific flag
         pbv2s = r.get("pbv2_score")
         if pbv2s is not None:
@@ -1671,8 +1386,7 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
         touched = r.get("touched_ma", "")
         # Tier from any of the scanners
         tier = (r.get("bo_tier") or r.get("nr7_tier") or r.get("gap_tier")
-                or r.get("pin_tier") or r.get("tf_tier")
-                or r.get("pbv2_tier") or "")
+                or r.get("tf_tier") or r.get("pbv2_tier") or "")
         table_rows.append({
             "Mã":      r["symbol"],
             "Tier":    tier,
@@ -1705,286 +1419,6 @@ def _render_results(rows: list[dict], use_cache: bool, key: str = "sig_table") -
 
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
-# ============================================================
-# MEAN REVERSION RANGE SCAN
-# ============================================================
-MR_CONFIG: dict = {
-    "range_window":          50,
-    "ema_fast":              20,
-    "ema_slow":              50,
-    "volume_window":         20,
-    "atr_window":            14,
-    "rsi_window":             3,
-    "slope_lookback":         5,
-    "support_tolerance":   0.03,
-    "bottom_zone_threshold": 0.25,
-    "min_avg_volume":    100_000,
-    "min_avg_traded_value": 1_000_000_000,   # 1B VND/day
-    "min_range_pct":        0.08,
-    "max_range_pct":        0.30,
-    "max_abs_ema20_slope":  0.02,
-    "max_abs_ema50_slope": 0.015,
-    "max_10bar_drop":      -0.10,
-    "min_history":           80,
-}
-
-
-def _compute_mr_indicators(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """Compute all MR-specific indicators on a single-ticker df."""
-    d = df.copy()
-
-    # EMAs
-    d["mr_ema20"] = d["Close"].ewm(span=cfg["ema_fast"],  adjust=False).mean()
-    d["mr_ema50"] = d["Close"].ewm(span=cfg["ema_slow"],  adjust=False).mean()
-
-    # ATR14 (Wilder smoothing = EWM with span=atr_window)
-    tr = pd.concat([
-        d["High"] - d["Low"],
-        (d["High"] - d["Close"].shift(1)).abs(),
-        (d["Low"]  - d["Close"].shift(1)).abs(),
-    ], axis=1).max(axis=1)
-    d["mr_atr14"] = tr.ewm(span=cfg["atr_window"], adjust=False).mean()
-
-    # RSI(3) using EWM
-    delta = d["Close"].diff()
-    gain  = delta.clip(lower=0).ewm(span=cfg["rsi_window"], adjust=False).mean()
-    loss  = (-delta.clip(upper=0)).ewm(span=cfg["rsi_window"], adjust=False).mean()
-    rs    = gain / loss.replace(0, float("nan"))
-    d["mr_rsi3"] = 100 - (100 / (1 + rs))
-
-    # Volume metrics
-    d["mr_avg_vol20"] = d["Volume"].rolling(cfg["volume_window"]).mean()
-    d["mr_avg_tv20"]  = (d["Volume"] * d["Close"]).rolling(cfg["volume_window"]).mean()
-
-    # 50-bar range (no lookahead — uses only past bars up to current row)
-    d["mr_range_high"] = d["High"].rolling(cfg["range_window"]).max()
-    d["mr_range_low"]  = d["Low"].rolling(cfg["range_window"]).min()
-
-    range_size = d["mr_range_high"] - d["mr_range_low"]
-    safe_low   = d["mr_range_low"].replace(0, float("nan"))
-    d["mr_range_size_pct"]    = range_size / safe_low
-    d["mr_position_in_range"] = (d["Close"] - d["mr_range_low"]) / range_size.replace(0, float("nan"))
-    d["mr_dist_to_support"]   = (d["Close"] - d["mr_range_low"]) / safe_low
-
-    # EMA slopes
-    lb = cfg["slope_lookback"]
-    d["mr_ema20_slope"] = (d["mr_ema20"] - d["mr_ema20"].shift(lb)) / d["mr_ema20"].shift(lb).replace(0, float("nan"))
-    d["mr_ema50_slope"] = (d["mr_ema50"] - d["mr_ema50"].shift(lb)) / d["mr_ema50"].shift(lb).replace(0, float("nan"))
-
-    return d
-
-
-def _mr_is_valid_range(d: pd.DataFrame, row: pd.Series, cfg: dict) -> bool:
-    """Return True if current bar satisfies the range-bound conditions."""
-    rsp  = float(row["mr_range_size_pct"])
-    e20s = abs(float(row["mr_ema20_slope"]))
-    e50s = abs(float(row["mr_ema50_slope"]))
-    close = float(row["Close"])
-    rh    = float(row["mr_range_high"])
-    rl    = float(row["mr_range_low"])
-    tol   = cfg["support_tolerance"]
-
-    if not (cfg["min_range_pct"] <= rsp <= cfg["max_range_pct"]): return False
-    if e20s > cfg["max_abs_ema20_slope"]: return False
-    if e50s > cfg["max_abs_ema50_slope"]: return False
-    if close >= rh:                        return False   # breakout high
-
-    # At least 2 touches of each boundary in last range_window bars
-    window = d.iloc[-cfg["range_window"]:]
-    highs_near = (window["High"] >= rh * (1 - tol)).sum()
-    lows_near  = (window["Low"]  <= rl * (1 + tol)).sum()
-    if highs_near < 2 or lows_near < 2:
-        return False
-
-    return True
-
-
-def _mr_is_near_support(row: pd.Series, cfg: dict) -> bool:
-    """
-    Price is in the bottom zone near support.
-    Uses position_in_range as the primary filter (avoids over-strictness
-    from absolute distance checks when the range is wide).
-    """
-    pir   = float(row["mr_position_in_range"])
-    close = float(row["Close"])
-    rl    = float(row["mr_range_low"])
-    return (
-        pir <= cfg["bottom_zone_threshold"] and   # bottom X% of range
-        close > rl * 0.97                          # above range_low (not a breakdown)
-    )
-
-
-def _mr_detect_reversal(d: pd.DataFrame) -> str | None:
-    """Detect the first matching reversal signal on the last bar."""
-    if len(d) < 3:
-        return None
-    today = d.iloc[-1]; prev = d.iloc[-2]; prev2 = d.iloc[-3]
-    c, h, l, o  = float(today["Close"]), float(today["High"]), float(today["Low"]),  float(today["Open"])
-    pc, ph, pl   = float(prev["Close"]),  float(prev["High"]),  float(prev["Low"])
-    pp2c         = float(prev2["Close"])
-    rsi3         = float(today.get("mr_rsi3", 50))
-
-    if c > ph:                                         return "CLOSE_ABOVE_PREV_HIGH"
-    if c > pc and l <= pl:                             return "HIGHER_CLOSE_LOWER_LOW"
-    candle_range = h - l
-    if candle_range > 0:
-        lower_wick = min(o, c) - l
-        body       = abs(c - o)
-        if lower_wick > body and c >= (h + l) / 2:    return "HAMMER"
-    if c > pc > pp2c:                                  return "TWO_HIGHER_CLOSES"
-    if not pd.isna(rsi3) and rsi3 < 20 and c > pc:    return "RSI3_BOUNCE"
-    return None
-
-
-def _mr_is_rejected(d: pd.DataFrame, row: pd.Series, cfg: dict) -> bool:
-    """Return True if the setup should be rejected (trend too strong / breaking down)."""
-    close = float(row["Close"])
-    ema50 = float(row["mr_ema50"])
-    ema20 = float(row["mr_ema20"])
-    e50s  = float(row["mr_ema50_slope"])
-    atr14 = float(row["mr_atr14"])
-
-    # Strong downtrend
-    if close < ema50 and ema20 < ema50 and e50s < -0.015:
-        return True
-    # 10-bar drop too deep
-    if len(d) >= 11:
-        c10 = float(d.iloc[-11]["Close"])
-        if c10 > 0 and (close - c10) / c10 < cfg["max_10bar_drop"]:
-            return True
-    # 3 consecutive large bearish candles
-    if len(d) >= 4 and atr14 > 0:
-        if all(
-            float(d.iloc[-i]["Close"]) < float(d.iloc[-i]["Open"]) and
-            (float(d.iloc[-i]["Open"]) - float(d.iloc[-i]["Close"])) > 0.5 * atr14
-            for i in range(1, 4)
-        ):
-            return True
-    return False
-
-
-def _mr_score(row: pd.Series, reversal: str, cfg: dict) -> dict:
-    """Compute component scores and weighted final score."""
-    import math
-    pir  = max(0.0, min(1.0, float(row["mr_position_in_range"])))
-    e20s = abs(float(row["mr_ema20_slope"]))
-    e50s = abs(float(row["mr_ema50_slope"]))
-    rsi3 = min(100.0, max(0.0, float(row.get("mr_rsi3", 50))))
-    avg_tv = max(1.0, float(row.get("mr_avg_tv20", 1.0)))
-
-    support_score   = max(0.0, 1.0 - pir / max(cfg["bottom_zone_threshold"], 0.01))
-    reversal_score  = {"CLOSE_ABOVE_PREV_HIGH": 1.0, "HAMMER": 0.9, "RSI3_BOUNCE": 0.85,
-                       "HIGHER_CLOSE_LOWER_LOW": 0.75, "TWO_HIGHER_CLOSES": 0.70}.get(reversal, 0.5)
-    range_score     = max(0.0, 1.0 - (e20s / max(cfg["max_abs_ema20_slope"], 1e-6) +
-                                       e50s / max(cfg["max_abs_ema50_slope"], 1e-6)) / 2)
-    rsi_score       = max(0.0, (30.0 - min(rsi3, 30.0)) / 30.0)
-    liq_score       = min(1.0, math.log10(avg_tv) / 13.0)   # ~10T VND = 1.0
-
-    final = (0.30 * support_score + 0.30 * reversal_score +
-             0.20 * range_score   + 0.10 * rsi_score + 0.10 * liq_score)
-    return {"final": final, "support": support_score, "reversal": reversal_score,
-            "range": range_score, "rsi": rsi_score, "liq": liq_score}
-
-
-def scan_mean_reversion(df: pd.DataFrame, vnindex_df=None, config: dict | None = None) -> dict | None:
-    """
-    Mean Reversion Range scan for a single ticker.
-    Finds stocks in a stable horizontal range, near support, with reversal signal.
-    Returns signal dict or None.
-    """
-    cfg = config or MR_CONFIG
-    if df is None or len(df) < cfg["min_history"]:
-        return None
-
-    d = _compute_mr_indicators(df, cfg)
-    row = d.iloc[-1]
-
-    required = ["mr_ema20", "mr_ema50", "mr_atr14", "mr_rsi3", "mr_range_high",
-                "mr_range_low", "mr_range_size_pct", "mr_position_in_range",
-                "mr_dist_to_support", "mr_ema20_slope", "mr_ema50_slope",
-                "mr_avg_vol20", "mr_avg_tv20"]
-    if any(pd.isna(row.get(c, float("nan"))) for c in required):
-        return None
-
-    # Liquidity
-    if float(row["mr_avg_vol20"]) < cfg["min_avg_volume"]:
-        return None
-
-    # Range condition
-    if not _mr_is_valid_range(d, row, cfg):
-        return None
-
-    # Near support
-    if not _mr_is_near_support(row, cfg):
-        return None
-
-    # Reversal signal
-    reversal = _mr_detect_reversal(d)
-    if reversal is None:
-        return None
-
-    # Trend rejection
-    if _mr_is_rejected(d, row, cfg):
-        return None
-
-    scores = _mr_score(row, reversal, cfg)
-    rs4w   = compute_rs4w(df, vnindex_df)
-    pir    = float(row["mr_position_in_range"])
-    rsi3   = float(row["mr_rsi3"])
-    close  = float(row["Close"])
-    range_low = float(row["mr_range_low"])
-    range_high = float(row["mr_range_high"])
-
-    # ── Quality Tier A/B gate ──
-    # Compute R:R with 0.1% slippage (entry=close*1.001, SL=range_low*0.98, TP=range_high)
-    mr_entry = round(close * 1.001, 2)   # 0.1% slippage
-    mr_sl = round(range_low * 0.98, 2)
-    mr_risk = mr_entry - mr_sl
-    mr_reward = range_high - mr_entry
-    mr_rr = mr_reward / max(mr_risk, 1e-9) if mr_risk > 0 else 0
-
-    # Tier A: strongest reversal + deep near support + oversold + R:R >= 2
-    # Tier B: any decent reversal + near support + R:R >= 2
-    if (reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER")
-            and pir < 0.15 and rsi3 < 20 and mr_rr >= 2.0):
-        mr_tier = "A"
-    elif (reversal in ("CLOSE_ABOVE_PREV_HIGH", "HAMMER", "HIGHER_CLOSE_LOWER_LOW")
-            and pir < 0.25 and mr_rr >= 2.0):
-        mr_tier = "B"
-    else:
-        return None
-
-    return {
-        "signal":              "MR_LONG",
-        "date":                df.index[-1],
-        "close":               round(close, 2),
-        "mr_tier":             mr_tier,
-        "range_high":          round(range_high, 2),
-        "range_low":           round(range_low, 2),
-        "range_size_pct":      round(float(row["mr_range_size_pct"]) * 100, 1),
-        "position_in_range":   round(pir * 100, 1),
-        "dist_support_pct":    round(float(row["mr_dist_to_support"]) * 100, 2),
-        "ema20":               round(float(row["mr_ema20"]), 2),
-        "ema50":               round(float(row["mr_ema50"]), 2),
-        "ema20_slope":         round(float(row["mr_ema20_slope"]) * 100, 3),
-        "ema50_slope":         round(float(row["mr_ema50_slope"]) * 100, 3),
-        "rsi3":                round(rsi3, 1),
-        "atr14":               round(float(row["mr_atr14"]), 2),
-        "avg_vol20":           int(row["mr_avg_vol20"]),
-        "reversal_signal":     reversal,
-        "final_score":         round(scores["final"], 3),
-        "score_support":       round(scores["support"], 3),
-        "score_reversal":      round(scores["reversal"], 3),
-        "score_range":         round(scores["range"], 3),
-        "sl":                  mr_sl,
-        "tp":                  round(range_high, 2),
-        "rr":                  round(mr_rr, 2),
-        "rs4w":                rs4w,
-        "vol_tier":            _vol_tier(float(row["Volume"]), float(row["mr_avg_vol20"]),
-                                         float(row.get("avg_vol_pre5", float("nan")))),
-    }
 
 
 # ============================================================
@@ -2418,8 +1852,6 @@ def _render_swing_results(rows: list[dict], use_cache: bool, key: str = "sw_tabl
         if sel_rows:
             st.session_state["sw_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-
-            st.session_state.pop("mr_sel", None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
@@ -2942,757 +2374,10 @@ def _render_pa_results(rows: list[dict], use_cache: bool, key: str = "pa_table")
         if sel_rows:
             st.session_state["pa_sel"] = rows[sel_rows[0]]
             st.session_state.pop("sig_sel", None)
-
-            st.session_state.pop("mr_sel", None)
             st.session_state.pop("sw_sel", None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
-
-def run_mr_scan(
-    symbols: dict[str, str],
-    use_cache: bool = True,
-    vnindex_df=None,
-    config: dict | None = None,
-    progress_cb=None,
-) -> list[dict]:
-    """Run scan_mean_reversion across all symbols in parallel."""
-    cfg     = config or MR_CONFIG
-    results: list[dict] = []
-    total   = len(symbols)
-    done    = 0
-
-    def _one(sym: str) -> dict | None:
-        df = load_price_data(sym, use_cache=use_cache)
-        if df is None or df.empty:
-            return None
-        sig = scan_mean_reversion(df, vnindex_df, cfg)
-        if sig:
-            sig["symbol"] = sym.replace(".VN", "")
-            sig["sector"] = symbols.get(sym, "")
-        return sig
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(_one, sym): sym for sym in symbols}
-        for fut in as_completed(futures):
-            try:
-                res = fut.result()
-                if res:
-                    results.append(res)
-            except Exception:
-                pass
-            done += 1
-            if progress_cb:
-                progress_cb(done, total)
-
-    return sorted(results, key=lambda r: -r["final_score"])
-
-
-# ============================================================
-# MEAN REVERSION RESULTS TABLE
-# ============================================================
-def _render_mr_results(rows: list[dict], use_cache: bool, key: str = "mr_table") -> None:
-    if not rows:
-        st.info("Không có tín hiệu Mean Reversion.")
-        return
-
-    st.caption("Long-only range swing — mua gần support, bán gần kháng cự | Sắp xếp theo Final Score")
-
-    reversal_icons = {
-        "CLOSE_ABOVE_PREV_HIGH":  "🚀",
-        "HAMMER":                 "🔨",
-        "RSI3_BOUNCE":            "📈",
-        "HIGHER_CLOSE_LOWER_LOW": "↗️",
-        "TWO_HIGHER_CLOSES":      "⬆️",
-    }
-
-    table_rows = []
-    for r in rows:
-        rs4w     = r.get("rs4w")
-        rs_str   = f"{rs4w:.2f}" if rs4w is not None else "—"
-        rs_icon  = "🟢" if rs4w and rs4w >= 1.05 else ("🔴" if rs4w and rs4w < 0.95 else "")
-        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
-        rev      = r.get("reversal_signal", "")
-        table_rows.append({
-            "Mã":          r["symbol"],
-            "Tier":        r.get("mr_tier", ""),
-            "Score":       f"{r['final_score']:.2f}",
-            "Giá":         r["close"],
-            "SL":          r.get("sl", ""),
-            "TP":          r.get("tp", ""),
-            "R:R":         r.get("rr", ""),
-            "Pos%":        f"{r.get('position_in_range', '')}%",
-            "Dist%":       f"{r.get('dist_support_pct', '')}%",
-            "Range%":      f"{r.get('range_size_pct', '')}%",
-            "RSI3":        r.get("rsi3", ""),
-            "Reversal":    f"{reversal_icons.get(rev, '')} {rev}",
-            "RS4W":        f"{rs_icon} {rs_str}",
-            "Vol":         f"{vol_icon} {r.get('vol_tier', '')}",
-            "Ngành":       r.get("sector", ""),
-        })
-
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row",
-            key=key,
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["mr_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("sig_sel", None)
-            st.session_state.pop("pa_sel", None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
-
-# ============================================================
-# CLIMAX SCANNER — Sell Climax + False Break Support + Reversal
-# ============================================================
-
-def compute_climax_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute indicators for the Climax reversal scanner."""
-    d = df.copy()
-    close = d["Close"]
-    high = d["High"]
-    low = d["Low"]
-    open_ = d["Open"]
-    volume = d["Volume"]
-
-    d["cx_ma20"] = close.rolling(20).mean()
-    d["cx_ma20_prev5"] = d["cx_ma20"].shift(5)
-    d["cx_ma20_slope_down"] = d["cx_ma20"] < d["cx_ma20_prev5"]
-    d["cx_vol_ma20"] = volume.rolling(20).mean()
-
-    # ATR(14) for climax candle sizing
-    tr = pd.concat([
-        high - low,
-        (high - close.shift(1)).abs(),
-        (low - close.shift(1)).abs(),
-    ], axis=1).max(axis=1)
-    d["cx_atr14"] = tr.rolling(14).mean()
-
-    # Candle anatomy
-    candle_range = (high - low).replace(0, 1e-9)
-    d["cx_range"] = candle_range
-    body = (close - open_).abs()
-    d["cx_body"] = body
-    d["cx_body_ratio"] = body / candle_range
-    d["cx_upper_wick"] = high - close.where(close >= open_, open_)
-    d["cx_lower_wick"] = close.where(close < open_, open_) - low
-    d["cx_upper_wick_ratio"] = d["cx_upper_wick"] / candle_range
-    d["cx_lower_wick_ratio"] = d["cx_lower_wick"] / candle_range
-
-    # Bearish wide-range candle
-    d["cx_bearish_wide"] = (
-        (close < open_)
-        & (candle_range > 1.5 * d["cx_atr14"])
-        & (d["cx_body_ratio"] >= 0.65)
-    )
-
-    # Support: lowest low of previous 15 bars
-    d["cx_support"] = low.shift(1).rolling(15).min()
-
-    # Swing high for decline measurement
-    d["cx_swing_high_10"] = high.shift(1).rolling(10).max()
-    d["cx_decline_pct"] = (d["cx_swing_high_10"] - close) / d["cx_swing_high_10"].replace(0, 1e-9)
-
-    # Red candle count in last 7 bars
-    d["cx_red_count_7"] = (close < open_).astype(int).rolling(7).sum()
-
-    # RSI(14)
-    delta = close.diff()
-    gain = delta.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
-    loss_s = (-delta.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
-    rs = gain / loss_s.replace(0, 1e-9)
-    d["cx_rsi"] = 100 - (100 / (1 + rs))
-
-    # Value
-    d["cx_value_avg5"] = (close * volume).rolling(5).mean()
-
-    return d
-
-
-def scan_climax(df: pd.DataFrame, vnindex_df=None) -> dict | None:
-    """
-    Sell Climax + False Break Support + Reversal Buy scanner.
-    Returns signal dict or None. Status = PENDING (needs confirmation).
-    """
-    if df is None or len(df) < 60:
-        return None
-
-    d = compute_climax_indicators(df)
-    row = d.iloc[-1]
-
-    required = [
-        "cx_ma20", "cx_ma20_slope_down", "cx_vol_ma20", "cx_atr14",
-        "cx_support", "cx_decline_pct", "cx_rsi", "cx_range",
-    ]
-    if any(pd.isna(row.get(c, float("nan"))) for c in required):
-        return None
-
-    close = float(row["Close"])
-    high = float(row["High"])
-    low = float(row["Low"])
-    open_ = float(row["Open"])
-    volume = float(row["Volume"])
-    ma20 = float(row["cx_ma20"])
-    vol_ma20 = float(row["cx_vol_ma20"])
-    atr14 = float(row["cx_atr14"])
-    support = float(row["cx_support"])
-    decline_pct = float(row["cx_decline_pct"])
-    rsi = float(row["cx_rsi"])
-    candle_range = float(row["cx_range"])
-    body = float(row["cx_body"])
-    body_ratio = float(row["cx_body_ratio"])
-    upper_wick = float(row["cx_upper_wick"])
-    lower_wick = float(row["cx_lower_wick"])
-    red_count = int(row["cx_red_count_7"])
-
-    # ── A. Downtrend context ──
-    if close >= ma20:
-        return None
-    if not bool(row["cx_ma20_slope_down"]):
-        return None
-    if decline_pct < 0.06:  # need >= 6% decline
-        return None
-    if red_count < 4:  # need >= 60% red in 7 bars
-        return None
-
-    # ── B. Sell climax: check last 3 bars for strong bearish candles ──
-    climax_count = 0
-    climax_vol_ok = False
-    for j in range(1, min(4, len(d))):
-        prev = d.iloc[-j]
-        if bool(prev.get("cx_bearish_wide", False)):
-            climax_count += 1
-            if float(prev["Volume"]) >= float(prev["cx_vol_ma20"]) * 1.3:
-                climax_vol_ok = True
-    if climax_count < 1:
-        return None
-
-    # ── C. False break of support ──
-    buffer = 0.005  # 0.5%
-    broke_support = low < support * (1 - buffer)
-    close_recovered = close >= support
-    if not (broke_support and close_recovered):
-        return None
-
-    # ── D. Reversal candle detection ──
-    if close <= open_:  # must be bullish
-        return None
-
-    reversal_type = None
-
-    # Check bullish marubozu
-    if (body_ratio >= 0.8
-            and upper_wick <= 0.1 * candle_range
-            and lower_wick <= 0.15 * candle_range):
-        reversal_type = "MARUBOZU"
-
-    # Check bullish hammer / pin bar
-    if reversal_type is None:
-        if (lower_wick >= 2 * body
-                and upper_wick <= 0.3 * max(body, 1e-9)
-                and close >= low + 0.66 * candle_range):
-            reversal_type = "HAMMER"
-
-    # Check strong bullish engulfing (close near high, large range)
-    if reversal_type is None:
-        if (candle_range > 1.0 * atr14
-                and body_ratio >= 0.65
-                and close >= high - 0.15 * candle_range):
-            reversal_type = "ENGULFING"
-
-    if reversal_type is None:
-        return None
-
-    # ── E. Volume check ──
-    vol_spike = volume / max(vol_ma20, 1e-9)
-    # Reversal or climax must have elevated volume
-    if vol_spike < 1.0 and not climax_vol_ok:
-        return None
-
-    # ── SL / TP / R:R ──
-    stop_loss = round(low * 0.998, 2)  # just below reversal candle low
-    entry = round(close * 1.001, 2)   # 0.1% slippage
-    risk = entry - stop_loss
-    if risk <= 0:
-        return None
-
-    tp_ma20 = round(ma20, 2)  # mean reversion target
-    tp_rr2 = round(entry + 2 * risk, 2)  # R:R = 2 target
-    target = max(tp_ma20, tp_rr2)  # take the higher target
-    rr_ratio = round((target - entry) / max(risk, 1e-9), 2)
-
-    if rr_ratio < 2.0:
-        return None
-
-    # ── Quality tier from backtest analysis (R:R >= 2 win rate) ──
-    risk_pct = (entry - stop_loss) / entry * 100
-    # Tier A: deep decline + tight risk + pin bar/hammer reversal
-    # Tier B: oversold + climax vol confirmed + HAMMER/MARUBOZU only + risk < 5%
-    if (decline_pct >= 0.08 and risk_pct < 2.0
-            and reversal_type in ("HAMMER", "MARUBOZU")):
-        cx_tier = "A"
-    elif (rsi < 35 and climax_vol_ok and risk_pct < 5.0
-            and reversal_type in ("HAMMER", "MARUBOZU")):
-        cx_tier = "B"
-    else:
-        return None
-
-    return {
-        "signal": "CLIMAX_REVERSAL",
-        "date": df.index[-1],
-        "close": round(close, 2),
-        "status": "PENDING",
-        "cx_tier": cx_tier,
-        "reversal_type": reversal_type,
-        "rsi": round(rsi, 1),
-        "decline_pct": round(decline_pct * 100, 1),
-        "support": round(support, 2),
-        "red_count_7": red_count,
-        "climax_count": climax_count,
-        "climax_vol_ok": climax_vol_ok,
-        "vol_spike": round(vol_spike, 2),
-        "sl": stop_loss,
-        "tp": target,
-        "tp_ma20": tp_ma20,
-        "rr": rr_ratio,
-        "ma20": round(ma20, 2),
-        "atr14": round(atr14, 2),
-        "volume": int(volume),
-        "avg_vol20": int(vol_ma20),
-    }
-
-
-def run_climax_scan(
-    symbols: dict[str, str],
-    use_cache: bool = True,
-    vnindex_df=None,
-    progress_cb=None,
-) -> list[dict]:
-    """Scan all symbols for Climax Reversal signals."""
-    candidates: list[dict] = []
-    total = len(symbols)
-    done = 0
-
-    def _one(sym: str, sector: str) -> dict | None:
-        try:
-            df_price = load_price_data(sym, use_cache=use_cache)
-            if df_price is None or len(df_price) < 60:
-                return None
-            sig = scan_climax(df_price, vnindex_df)
-            if sig:
-                sig["symbol"] = sym.replace(".VN", "")
-                sig["sector"] = sector
-            return sig
-        except Exception:
-            return None
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(_one, sym, sec): sym for sym, sec in symbols.items()}
-        for fut in as_completed(futures):
-            try:
-                res = fut.result()
-                if res:
-                    candidates.append(res)
-            except Exception:
-                pass
-            done += 1
-            if progress_cb:
-                progress_cb(done, total)
-
-    # Sort by decline depth (deeper = more extreme = potentially better reversal)
-    candidates.sort(key=lambda r: -r.get("decline_pct", 0))
-    return candidates[:10]
-
-
-def _render_climax_results(rows: list[dict], use_cache: bool, key: str = "cx_table") -> None:
-    if not rows:
-        st.info("Khong co tin hieu Climax Reversal.")
-        return
-
-    st.caption(
-        "Sell Climax — False break support + Reversal candle | "
-        "Status PENDING = cho xac nhan"
-    )
-
-    table_rows = []
-    for r in rows:
-        table_rows.append({
-            "Ma": r["symbol"],
-            "Tier": r.get("cx_tier", ""),
-            "Status": r.get("status", "PENDING"),
-            "Reversal": r.get("reversal_type", ""),
-            "Gia": r["close"],
-            "RSI": r.get("rsi", ""),
-            "Decline": f"{r.get('decline_pct', 0):.1f}%",
-            "Support": r.get("support", ""),
-            "Climax": f"{r.get('climax_count', 0)} bar",
-            "Vol": f"{r.get('vol_spike', 0):.1f}x",
-            "SL": r.get("sl", ""),
-            "TP": r.get("tp", ""),
-            "R:R": r.get("rr", ""),
-            "Nganh": r.get("sector", ""),
-        })
-
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row",
-            key=key,
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["cx_sel"] = rows[sel_rows[0]]
-            st.session_state.pop("sig_sel", None)
-
-            st.session_state.pop("pa_sel", None)
-            st.session_state.pop("sw_sel", None)
-            st.session_state.pop("mr_sel", None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
-# ============================================================
-# PIN BAR 4H — Intraday Pin Bar at Context (last 2 days)
-# ============================================================
-
-def _resample_1h_to_4h(raw: pd.DataFrame) -> pd.DataFrame | None:
-    """Resample 1H OHLCV to 4H bars, drop non-trading windows."""
-    df_4h = raw.resample("4h").agg({
-        "Open": "first", "High": "max", "Low": "min",
-        "Close": "last", "Volume": "sum",
-    }).dropna(subset=["Open", "Close"])
-    df_4h = df_4h[df_4h["Volume"] > 0]
-    return df_4h if len(df_4h) >= 60 else None
-
-
-def load_price_data_4h(symbol: str) -> pd.DataFrame | None:
-    """Fetch 1H data and resample to 4H. yfinance first (no rate limit), vnstock3 fallback."""
-    # yfinance first — no strict rate limit, good for parallel scan
-    try:
-        raw = yf.Ticker(symbol).history(period="60d", interval="1h")
-        if raw is not None and not raw.empty:
-            if raw.index.tz is not None:
-                raw.index = raw.index.tz_convert("Asia/Ho_Chi_Minh").tz_localize(None)
-            result = _resample_1h_to_4h(raw)
-            if result is not None:
-                return result
-    except Exception:
-        pass
-
-    # vnstock3 fallback
-    if HAS_VNSTOCK:
-        sym_clean = symbol.replace(".VN", "")
-        for source in ("VCI", "TCBS"):
-            try:
-                stock = Vnstock().stock(symbol=sym_clean, source=source)
-                end   = datetime.now().strftime("%Y-%m-%d")
-                start = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
-                raw   = stock.quote.history(symbol=sym_clean, start=start,
-                                            end=end, interval="1H")
-                if raw is not None and not raw.empty and len(raw) >= 20:
-                    raw = raw.rename(columns={
-                        "close": "Close", "open": "Open",
-                        "high": "High", "low": "Low", "volume": "Volume"})
-                    date_col = next((c for c in ["time", "date"] if c in raw.columns), None)
-                    if date_col:
-                        raw.index = pd.to_datetime(raw[date_col])
-                    result = _resample_1h_to_4h(raw)
-                    if result is not None:
-                        return result
-            except Exception:
-                continue
-    return None
-
-
-def _check_d1_trend(sym: str, use_cache: bool = True) -> bool | None:
-    """Check if D1 trend is up: close > MA50 and MA50 rising."""
-    try:
-        df = load_price_data(sym, use_cache=use_cache)
-        if df is None or len(df) < 55:
-            return None
-        ma50 = df["Close"].rolling(50).mean()
-        ma50_prev5 = ma50.shift(5)
-        c = df["Close"].iloc[-1]
-        m50 = ma50.iloc[-1]
-        m50p = ma50_prev5.iloc[-1]
-        if pd.isna(m50) or pd.isna(m50p):
-            return None
-        return bool(c > m50 and m50 > m50p)
-    except Exception:
-        return None
-
-
-def run_pinbar_4h_scan(
-    symbols: dict[str, str],
-    vnindex_df=None,
-    progress_cb=None,
-    lookback_bars: int = 4,
-) -> list[dict]:
-    """Scan 4H candles with MTF trend alignment from D1."""
-    candidates: list[dict] = []
-    total = len(symbols)
-    done  = 0
-
-    def _one(sym: str, sector: str) -> list[dict]:
-        try:
-            # Load D1 trend for MTF alignment
-            d1_trend = _check_d1_trend(sym)
-            df_4h = load_price_data_4h(sym)
-            if df_4h is None or len(df_4h) < 60:
-                return []
-            df_4h = compute_indicators(df_4h)
-            hits: list[dict] = []
-            for offset in range(lookback_bars):
-                sub = df_4h.iloc[:len(df_4h) - offset] if offset > 0 else df_4h
-                if len(sub) < 60:
-                    break
-                sig = scan_pinbar(sub, vnindex_df, d1_trend_up=d1_trend)
-                if sig:
-                    sig["symbol"]    = sym.replace(".VN", "")
-                    sig["sector"]    = sector
-                    sig["timeframe"] = "4H"
-                    hits.append(sig)
-            return hits
-        except Exception:
-            return []
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(_one, sym, sec): sym for sym, sec in symbols.items()}
-        for fut in as_completed(futures):
-            try:
-                candidates.extend(fut.result())
-            except Exception:
-                pass
-            done += 1
-            if progress_cb:
-                progress_cb(done, total)
-
-    candidates.sort(key=lambda r: (
-        0 if r.get("pin_tier") == "A" else 1,
-        -r.get("pin_score", 0),
-        -r.get("rr", 0),
-    ))
-    return candidates
-
-
-def _render_pinbar4h_results(rows: list[dict], use_cache: bool,
-                              key: str = "pb4h_table") -> None:
-    if not rows:
-        st.info("Khong co Pin Bar 4H nao.")
-        return
-    st.caption(
-        "Pin Bar 4H — nen 4 gio tai support (MA20/MA50/MA200/Swing) | "
-        "PENDING = cho next candle close > high"
-    )
-    table_rows = []
-    for r in rows:
-        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
-        wr       = r.get("wick_ratio")
-        date_str = str(r.get("date", ""))[:16]
-        score    = r.get("pin_score", "")
-        rsi      = r.get("rsi14")
-        rsi_str  = f"{rsi:.0f}" if rsi is not None else ""
-        # Quality tags
-        qtags = []
-        if r.get("mtf_trend"):   qtags.append("MTF")
-        pb = r.get("pullback", 0)
-        if pb >= 2:              qtags.append(f"PB{pb}")
-        if r.get("vol_quiet"):   qtags.append("DryUp")
-        if r.get("body_pos_upper"): qtags.append("TopBody")
-        table_rows.append({
-            "Ma":      r["symbol"],
-            "Tier":    r.get("pin_tier", ""),
-            "Score":   f"{score}/13" if score != "" else "",
-            "Signal":  r.get("signal", ""),
-            "Date":    date_str,
-            "Close":   r.get("close", ""),
-            "Context": r.get("context", ""),
-            "Wick":    f"{wr:.0%}" if wr is not None else "",
-            "RSI":     rsi_str,
-            "SL":      r.get("sl", ""),
-            "TP":      r.get("tp", ""),
-            "R:R":     r.get("rr", ""),
-            "Volume":  f"{vol_icon} {r.get('vol_tier', '')}",
-            "Quality": " ".join(qtags) if qtags else "",
-            "Nganh":   r.get("sector", ""),
-        })
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row", key=key,
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["pb4h_sel"] = rows[sel_rows[0]]
-            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel"):
-                st.session_state.pop(k, None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-
-# ============================================================
-# PIN BAR v2 — Confirmed buy-only (D1 + 4H, per pinbar_scanner_v2.md)
-# ============================================================
-
-def _check_d1_trend_v2(sym: str, use_cache: bool = True) -> bool | None:
-    """HTF filter for 4H v2: D1 close > MA50 OR MA50 rising (weaker than v1 AND)."""
-    try:
-        df = load_price_data(sym, use_cache=use_cache)
-        if df is None or len(df) < 55:
-            return None
-        ma50 = df["Close"].rolling(50).mean()
-        ma50_prev5 = ma50.shift(5)
-        c = df["Close"].iloc[-1]
-        m50 = ma50.iloc[-1]
-        m50p = ma50_prev5.iloc[-1]
-        if pd.isna(m50) or pd.isna(m50p):
-            return None
-        return bool(c > m50 or m50 > m50p)
-    except Exception:
-        return None
-
-
-def scan_pinbar_v2(df: pd.DataFrame, vnindex_df=None,
-                    d1_trend_up: bool | None = None) -> dict | None:
-    """
-    Buy-only bullish pin bar at support — v2 (signal-only, no confirmation gate).
-
-    Delegates shape/context/volume/scoring/RR to scan_pinbar.  v2 differs from
-    the v1 chain only in its orchestration: it's run in a dedicated scanner
-    combining D1 and 4H, with a weaker 4H HTF filter (see run_pinbar_v2_scan).
-    """
-    return scan_pinbar(df, vnindex_df, d1_trend_up=d1_trend_up)
-
-
-def run_pinbar_v2_scan(symbols: dict[str, str], vnindex_df=None,
-                       progress_cb=None) -> list[dict]:
-    """
-    Buy-only confirmed pin bar scan across D1 and 4H.
-
-    Priority rules (per pinbar_scanner_v2.md):
-      - D1 hits are primary.
-      - 4H hits require HTF trend filter (D1 close>MA50 OR MA50 rising).
-      - If both timeframes hit for the same symbol, D1 = primary, 4H = alt
-        (earlier/refined entry).
-    """
-    candidates: list[dict] = []
-    total = len(symbols)
-    done  = 0
-
-    def _one(sym: str, sector: str) -> list[dict]:
-        out: list[dict] = []
-        d1_trend = _check_d1_trend_v2(sym)
-
-        # ── D1 scan ──
-        try:
-            df_d1 = load_price_data(sym, use_cache=True)
-            if df_d1 is not None and len(df_d1) >= 60:
-                df_d1 = compute_indicators(df_d1)
-                sig = scan_pinbar_v2(df_d1, vnindex_df, d1_trend_up=d1_trend)
-                if sig:
-                    sig["symbol"]    = sym.replace(".VN", "")
-                    sig["sector"]    = sector
-                    sig["timeframe"] = "D1"
-                    sig["priority"]  = "primary"
-                    out.append(sig)
-        except Exception:
-            pass
-
-        # ── 4H scan (gated by HTF filter) ──
-        if d1_trend is True:
-            try:
-                df_4h = load_price_data_4h(sym)
-                if df_4h is not None and len(df_4h) >= 60:
-                    df_4h = compute_indicators(df_4h)
-                    sig = scan_pinbar_v2(df_4h, vnindex_df, d1_trend_up=d1_trend)
-                    if sig:
-                        sig["symbol"]    = sym.replace(".VN", "")
-                        sig["sector"]    = sector
-                        sig["timeframe"] = "4H"
-                        has_d1 = any(r["timeframe"] == "D1" for r in out)
-                        sig["priority"]  = "alt" if has_d1 else "primary"
-                        out.append(sig)
-            except Exception:
-                pass
-        return out
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        futures = {ex.submit(_one, sym, sec): sym for sym, sec in symbols.items()}
-        for fut in as_completed(futures):
-            try:
-                candidates.extend(fut.result())
-            except Exception:
-                pass
-            done += 1
-            if progress_cb:
-                progress_cb(done, total)
-
-    candidates.sort(key=lambda r: (
-        0 if r.get("priority") == "primary" else 1,
-        0 if r.get("timeframe")  == "D1"      else 1,
-        0 if r.get("pin_tier")   == "A"       else 1,
-        -r.get("pin_score", 0),
-        -r.get("rr", 0),
-    ))
-    return candidates
-
-
-def _render_pinbar_v2_results(rows: list[dict], use_cache: bool,
-                               key: str = "pbv2_table") -> None:
-    if not rows:
-        st.info("Khong co Pin Bar v2 nao.")
-        return
-    st.caption(
-        "Pin Bar v2 — buy-only pin bar tai support (D1 + 4H) | "
-        "D1 = primary, 4H = refined entry | HTF filter: D1 close>MA50 OR MA50 rising"
-    )
-    table_rows = []
-    for r in rows:
-        vol_icon = {"TIER1": "🔥", "TIER2": "📈"}.get(r.get("vol_tier", ""), "")
-        wr       = r.get("wick_ratio")
-        date_str = str(r.get("date", ""))[:16]
-        score    = r.get("pin_score", "")
-        rsi      = r.get("rsi14")
-        rsi_str  = f"{rsi:.0f}" if rsi is not None else ""
-        table_rows.append({
-            "Ma":       r["symbol"],
-            "TF":       r.get("timeframe", ""),
-            "Prio":     r.get("priority", ""),
-            "Tier":     r.get("pin_tier", ""),
-            "Score":    f"{score}/13" if score != "" else "",
-            "Signal":   r.get("signal", ""),
-            "Date":     date_str,
-            "Close":    r.get("close", ""),
-            "Context":  r.get("context", ""),
-            "Wick":     f"{wr:.0%}" if wr is not None else "",
-            "RSI":      rsi_str,
-            "SL":       r.get("sl", ""),
-            "TP":       r.get("tp", ""),
-            "R:R":      r.get("rr", ""),
-            "Volume":   f"{vol_icon} {r.get('vol_tier', '')}",
-            "Nganh":    r.get("sector", ""),
-        })
-    df_display = pd.DataFrame(table_rows)
-    try:
-        selected = st.dataframe(
-            df_display, use_container_width=True, hide_index=True,
-            on_select="rerun", selection_mode="single-row", key=key,
-        )
-        sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
-        if sel_rows:
-            st.session_state["pbv2_sel"] = rows[sel_rows[0]]
-            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel", "pb4h_sel"):
-                st.session_state.pop(k, None)
-    except TypeError:
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 
 # ============================================================
@@ -3780,8 +2465,7 @@ def _render_pullback_v2_results(rows: list[dict], use_cache: bool,
         sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
         if sel_rows:
             st.session_state["pullbackv2_sel"] = rows[sel_rows[0]]
-            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
-                       "pb4h_sel", "pbv2_sel"):
+            for k in ("sig_sel", "pa_sel", "sw_sel"):
                 st.session_state.pop(k, None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -4100,8 +2784,7 @@ def _render_bpe_results(rows: list[dict], use_cache: bool,
         sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
         if sel_rows:
             st.session_state["bpe_sel"] = rows[sel_rows[0]]
-            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
-                       "pb4h_sel", "pbv2_sel", "pullbackv2_sel", "bcp_sel"):
+            for k in ("sig_sel", "pa_sel", "sw_sel", "pullbackv2_sel", "bcp_sel"):
                 st.session_state.pop(k, None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -4283,8 +2966,7 @@ def _render_bcp_results(rows: list[dict], use_cache: bool,
         sel_rows = (selected.get("selection", {}) or {}).get("rows", [])
         if sel_rows:
             st.session_state["bcp_sel"] = rows[sel_rows[0]]
-            for k in ("sig_sel", "pa_sel", "sw_sel", "mr_sel", "cx_sel",
-                       "pb4h_sel", "pbv2_sel", "pullbackv2_sel", "bpe_sel"):
+            for k in ("sig_sel", "pa_sel", "sw_sel", "pullbackv2_sel", "bpe_sel"):
                 st.session_state.pop(k, None)
     except TypeError:
         st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -4340,21 +3022,6 @@ def main() -> None:
         bypass_vni = st.checkbox("Bypass VNINDEX filter", value=False,
                                   help="Bo qua dieu kien thi truong VNINDEX — scan bat ke xu huong index")
         st.session_state["bypass_vni"] = bypass_vni
-
-        st.divider()
-        st.header("Mean Reversion Config")
-        mr_range_min  = st.slider("Range min (%)",    5,  15,  8) / 100
-        mr_range_max  = st.slider("Range max (%)",   15,  40, 25) / 100
-        mr_support_tol = st.slider("Support tol (%)", 1,   6,  3) / 100
-        mr_bot_zone   = st.slider("Bottom zone (%)", 15,  40, 25) / 100
-        mr_rr         = st.slider("MR R:R",         1.0, 3.0, 2.0, 0.5)
-        mr_config = {**MR_CONFIG,
-            "min_range_pct":        mr_range_min,
-            "max_range_pct":        mr_range_max,
-            "support_tolerance":    mr_support_tol,
-            "bottom_zone_threshold": mr_bot_zone,
-        }
-        st.session_state["mr_config"] = mr_config
 
         st.divider()
         st.header("Chiến lược")
@@ -4416,7 +3083,7 @@ def main() -> None:
     if st.session_state.get("market_downtrend"):
         st.warning(
             "⚠️ Thị trường downtrend (VNIndex < MA50) — "
-            "Breakout signals đã bị tắt. Chỉ hiển thị Trend Filter & Pin Bar."
+            "Breakout signals đã bị tắt. Chỉ hiển thị Trend Filter."
         )
 
     # ── Results
@@ -4424,24 +3091,21 @@ def main() -> None:
     universe = st.session_state.get("scan_universe", "")
 
     if results:
-        _PINBAR_TYPES = {"PINBAR_MA200", "PINBAR_MA50", "PINBAR_MA20", "PINBAR_SWING"}
         n_bo  = sum(1 for r in results if r["signal"] in ("BREAKOUT_STRONG", "BREAKOUT_EARLY"))
         n_nr7 = sum(1 for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY"))
         n_gap = sum(1 for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY"))
-        n_pb  = sum(1 for r in results if r["signal"] in _PINBAR_TYPES)
         n_tf  = sum(1 for r in results if r["signal"] in ("TF_MA20", "TF_MA50"))
         n_rs  = sum(1 for r in results if (r.get("rs4w") or 0) >= 1.05)
         st.subheader(
             f"Kết quả {universe} — {len(results)} tín hiệu "
-            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 📍{n_pb} · 🎯{n_tf} · 🟢RS{n_rs})"
+            f"(🚀{n_bo} · 🔩{n_nr7} · ⚡{n_gap} · 🎯{n_tf} · 🟢RS{n_rs})"
         )
 
-        tab_all, tab_bo, tab_nr7, tab_gap, tab_pb, tab_tf = st.tabs([
+        tab_all, tab_bo, tab_nr7, tab_gap, tab_tf = st.tabs([
             f"Tất cả ({len(results)})",
             f"🚀 Breakout ({n_bo})",
             f"🔩 NR7 ({n_nr7})",
             f"⚡ Gap ({n_gap})",
-            f"📍 Pin Bar ({n_pb})",
             f"🎯 Trend Filter ({n_tf})",
         ])
         with tab_all:
@@ -4452,8 +3116,6 @@ def main() -> None:
             _render_results([r for r in results if r["signal"] in ("NR7_STRONG", "NR7_EARLY")], use_cache, key="tab_nr7")
         with tab_gap:
             _render_results([r for r in results if r["signal"] in ("GAP_STRONG", "GAP_EARLY")], use_cache, key="tab_gap")
-        with tab_pb:
-            _render_results([r for r in results if r["signal"] in _PINBAR_TYPES], use_cache, key="tab_pb")
         with tab_tf:
             _render_results([r for r in results if r["signal"] in ("TF_MA20", "TF_MA50")], use_cache, key="tab_tf")
 
@@ -4467,73 +3129,6 @@ def main() -> None:
 
     if not results and not do_vn30 and not do_vn100 and not sig_sel:
         st.info("Nhấn Scan VN30 hoặc Scan VN100 để bắt đầu.")
-
-    # ══════════════════════════════════════════════════════════════
-    # MEAN REVERSION RANGE SCAN
-    # ══════════════════════════════════════════════════════════════
-    st.divider()
-    st.subheader("🔁 Mean Reversion Range Scan")
-    st.caption("Sideways/range market — mua gần support, bán gần kháng cự")
-
-    col_mr30, col_mr100 = st.columns(2)
-    with col_mr30:
-        do_mr30  = st.button("Scan MR VN30",  use_container_width=True)
-    with col_mr100:
-        do_mr100 = st.button("Scan MR VN100", use_container_width=True)
-
-    mr_config = st.session_state.get("mr_config", MR_CONFIG)
-
-    if do_mr30:
-        prog = st.progress(0, text="Scanning MR VN30… 0 / 30")
-        def _mr_cb30(done, total):
-            prog.progress(done / total, text=f"Scanning MR VN30… {done} / {total}")
-        mr_sigs = run_mr_scan(VN30_STOCKS,  use_cache=use_cache,
-                               vnindex_df=vnindex_df, config=mr_config,
-                               progress_cb=_mr_cb30)
-        st.session_state["mr_results"]  = mr_sigs
-        st.session_state["mr_universe"] = "VN30"
-        prog.empty()
-
-    if do_mr100:
-        prog = st.progress(0, text="Scanning MR VN100… 0 / 100")
-        def _mr_cb100(done, total):
-            prog.progress(done / total, text=f"Scanning MR VN100… {done} / {total}")
-        mr_sigs = run_mr_scan(VN100_STOCKS, use_cache=use_cache,
-                               vnindex_df=vnindex_df, config=mr_config,
-                               progress_cb=_mr_cb100)
-        st.session_state["mr_results"]  = mr_sigs
-        st.session_state["mr_universe"] = "VN100"
-        prog.empty()
-
-    mr_results  = st.session_state.get("mr_results", [])
-    mr_universe = st.session_state.get("mr_universe", "")
-
-    if mr_results:
-        st.subheader(f"MR {mr_universe} — {len(mr_results)} candidates 🔁")
-        _render_mr_results(mr_results, use_cache, key="mr_table_main")
-    elif not do_mr30 and not do_mr100:
-        st.caption("Nhấn Scan MR để bắt đầu. Cấu hình tham số trong sidebar.")
-
-    # MR chart panel — outside tabs
-    mr_sel = st.session_state.get("mr_sel")
-    if mr_sel:
-        st.divider()
-        st.subheader(
-            f"Chart — {mr_sel['symbol']} 🔁 MR | "
-            f"Score {mr_sel['final_score']:.2f} | "
-            f"Pos {mr_sel.get('position_in_range', '')}% | "
-            f"{mr_sel.get('reversal_signal', '')}"
-        )
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Range High",  mr_sel.get("range_high", ""))
-        c1.metric("Range Low",   mr_sel.get("range_low", ""))
-        c2.metric("Close",       mr_sel.get("close", ""))
-        c2.metric("Dist to Sup", f"{mr_sel.get('dist_support_pct', '')}%")
-        c3.metric("RSI3",        mr_sel.get("rsi3", ""))
-        c3.metric("ATR14",       mr_sel.get("atr14", ""))
-        c4.metric("EMA20 slope", f"{mr_sel.get('ema20_slope', '')}%")
-        c4.metric("EMA50 slope", f"{mr_sel.get('ema50_slope', '')}%")
-        show_chart(mr_sel["symbol"], sig=mr_sel, use_cache=use_cache)
 
     # ══════════════════════════════════════════════════════════════
     # SWING FILTER SCAN
@@ -4687,214 +3282,6 @@ def main() -> None:
         c5.metric("RS vs VNI", f"{rs:.3f}" if rs else "—")
         c5.metric("Trigger", f"{pa_sel.get('trigger_score', '')}/6")
         show_chart(pa_sel["symbol"], sig=pa_sel, use_cache=use_cache)
-
-    # ── Section E: Climax Reversal Scan ──────────────────────────
-    st.divider()
-    st.subheader("🔻 Climax Reversal — Sell Climax + False Break + Reversal")
-    st.caption(
-        "Tim co phieu bi ban thao manh, thung support gia, "
-        "xuat hien nen dao chieu (PENDING = cho xac nhan)"
-    )
-
-    col_cx30, col_cx100 = st.columns(2)
-    with col_cx30:
-        do_cx30 = st.button("Scan Climax VN30", use_container_width=True)
-    with col_cx100:
-        do_cx100 = st.button("Scan Climax VN100", use_container_width=True)
-
-    if do_cx30:
-        prog = st.progress(0, text="Scanning Climax VN30... 0 / 30")
-        def _cx_cb30(done, total):
-            prog.progress(done / total, text=f"Scanning Climax VN30... {done} / {total}")
-        cx_sigs = run_climax_scan(VN30_STOCKS, use_cache=use_cache,
-                                   vnindex_df=vnindex_df, progress_cb=_cx_cb30)
-        st.session_state["cx_results"] = cx_sigs
-        st.session_state["cx_universe"] = "VN30"
-        prog.empty()
-
-    if do_cx100:
-        prog = st.progress(0, text="Scanning Climax VN100... 0 / 100")
-        def _cx_cb100(done, total):
-            prog.progress(done / total, text=f"Scanning Climax VN100... {done} / {total}")
-        cx_sigs = run_climax_scan(VN100_STOCKS, use_cache=use_cache,
-                                   vnindex_df=vnindex_df, progress_cb=_cx_cb100)
-        st.session_state["cx_results"] = cx_sigs
-        st.session_state["cx_universe"] = "VN100"
-        prog.empty()
-
-    cx_results = st.session_state.get("cx_results", [])
-    cx_universe = st.session_state.get("cx_universe", "")
-
-    if cx_results:
-        st.subheader(
-            f"Climax {cx_universe} — {len(cx_results)} candidates"
-        )
-        _render_climax_results(cx_results, use_cache, key="cx_table_main")
-    elif not do_cx30 and not do_cx100:
-        st.caption("Nhan Scan Climax de bat dau.")
-
-    # Climax chart panel
-    cx_sel = st.session_state.get("cx_sel")
-    if cx_sel:
-        st.divider()
-        st.subheader(
-            f"Chart — {cx_sel['symbol']} | "
-            f"{cx_sel.get('reversal_type', '')} | "
-            f"Tier {cx_sel.get('cx_tier', '')} | "
-            f"Decline {cx_sel.get('decline_pct', 0):.1f}%"
-        )
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Close", cx_sel.get("close", ""))
-        c1.metric("Support", cx_sel.get("support", ""))
-        c2.metric("RSI", cx_sel.get("rsi", ""))
-        c2.metric("Decline", f"{cx_sel.get('decline_pct', 0):.1f}%")
-        c3.metric("SL", cx_sel.get("sl", ""))
-        c3.metric("TP", cx_sel.get("tp", ""))
-        c4.metric("R:R", cx_sel.get("rr", ""))
-        c4.metric("Vol", f"{cx_sel.get('vol_spike', 0):.1f}x")
-        c5.metric("Status", cx_sel.get("status", "PENDING"))
-        c5.metric("Climax bars", cx_sel.get("climax_count", ""))
-        show_chart(cx_sel["symbol"], sig=cx_sel, use_cache=use_cache)
-
-    # ══════════════════════════════════════════════════════════════
-    # PIN BAR 4H — Intraday (last 2 days)
-    # ══════════════════════════════════════════════════════════════
-    st.divider()
-    st.subheader("📍 Pin Bar 4H — Nen 4 gio gan day (2 ngay)")
-    st.caption(
-        "Scan pin bar tren khung 4H — wick dai tai MA20/MA50/MA200/Swing Low | "
-        "Lookback ~4 nen 4H (2 ngay giao dich)"
-    )
-
-    col_pb4h_30, col_pb4h_100 = st.columns(2)
-    with col_pb4h_30:
-        do_pb4h_30 = st.button("Scan PB4H VN30", use_container_width=True)
-    with col_pb4h_100:
-        do_pb4h_100 = st.button("Scan PB4H VN100", use_container_width=True)
-
-    if do_pb4h_30:
-        prog = st.progress(0, text="Scanning Pin Bar 4H VN30... 0 / 30")
-        def _pb4h_cb30(done, total):
-            prog.progress(done / total, text=f"Scanning Pin Bar 4H VN30... {done} / {total}")
-        pb4h_sigs = run_pinbar_4h_scan(VN30_STOCKS, vnindex_df=vnindex_df,
-                                        progress_cb=_pb4h_cb30, lookback_bars=4)
-        st.session_state["pb4h_results"] = pb4h_sigs
-        st.session_state["pb4h_universe"] = "VN30"
-        prog.empty()
-
-    if do_pb4h_100:
-        prog = st.progress(0, text="Scanning Pin Bar 4H VN100... 0 / 100")
-        def _pb4h_cb100(done, total):
-            prog.progress(done / total, text=f"Scanning Pin Bar 4H VN100... {done} / {total}")
-        pb4h_sigs = run_pinbar_4h_scan(VN100_STOCKS, vnindex_df=vnindex_df,
-                                        progress_cb=_pb4h_cb100, lookback_bars=4)
-        st.session_state["pb4h_results"] = pb4h_sigs
-        st.session_state["pb4h_universe"] = "VN100"
-        prog.empty()
-
-    pb4h_results  = st.session_state.get("pb4h_results", [])
-    pb4h_universe = st.session_state.get("pb4h_universe", "")
-
-    if pb4h_results:
-        st.subheader(f"Pin Bar 4H {pb4h_universe} — {len(pb4h_results)} tin hieu")
-        _render_pinbar4h_results(pb4h_results, use_cache, key="pb4h_table_main")
-    elif not do_pb4h_30 and not do_pb4h_100:
-        st.caption("Nhan Scan PB4H de bat dau.")
-
-    # PB4H chart panel
-    pb4h_sel = st.session_state.get("pb4h_sel")
-    if pb4h_sel:
-        st.divider()
-        score = pb4h_sel.get("pin_score", "")
-        st.subheader(
-            f"Chart — {pb4h_sel['symbol']} | "
-            f"{pb4h_sel.get('signal', '')} | "
-            f"Tier {pb4h_sel.get('pin_tier', '')} ({score}/13) | "
-            f"Context {pb4h_sel.get('context', '')}"
-        )
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Close", pb4h_sel.get("close", ""))
-        c1.metric("MA20", pb4h_sel.get("ma20", ""))
-        c2.metric("MA50", pb4h_sel.get("ma50", ""))
-        c2.metric("R:R", pb4h_sel.get("rr", ""))
-        c3.metric("SL", pb4h_sel.get("sl", ""))
-        c3.metric("TP", pb4h_sel.get("tp", ""))
-        c4.metric("Wick", f"{pb4h_sel.get('wick_ratio', 0):.0%}")
-        rsi = pb4h_sel.get("rsi14")
-        c4.metric("RSI", f"{rsi:.0f}" if rsi else "—")
-        c5.metric("Vol", pb4h_sel.get("vol_tier", ""))
-        c5.metric("Score", pb4h_sel.get("score_detail", ""))
-        show_chart(pb4h_sel["symbol"], sig=pb4h_sel, use_cache=use_cache)
-
-    # ══════════════════════════════════════════════════════════════
-    # PIN BAR v2 — Buy-only pin bar signal (D1 + 4H)
-    # ══════════════════════════════════════════════════════════════
-    st.divider()
-    st.subheader("🎯 Pin Bar v2 — Buy-only signal (D1 + 4H)")
-    st.caption(
-        "Buy-only pin bar tai support — signal khi nen hinh thanh (khong yeu cau confirm) | "
-        "D1 = primary, 4H = refined/earlier entry | HTF filter 4H: D1 close>MA50 OR MA50 rising"
-    )
-
-    col_pbv2_30, col_pbv2_100 = st.columns(2)
-    with col_pbv2_30:
-        do_pbv2_30 = st.button("Scan PBv2 VN30", use_container_width=True)
-    with col_pbv2_100:
-        do_pbv2_100 = st.button("Scan PBv2 VN100", use_container_width=True)
-
-    if do_pbv2_30:
-        prog = st.progress(0, text="Scanning Pin Bar v2 VN30... 0 / 30")
-        def _pbv2_cb30(done, total):
-            prog.progress(done / total, text=f"Scanning Pin Bar v2 VN30... {done} / {total}")
-        pbv2_sigs = run_pinbar_v2_scan(VN30_STOCKS, vnindex_df=vnindex_df,
-                                        progress_cb=_pbv2_cb30)
-        st.session_state["pbv2_results"]  = pbv2_sigs
-        st.session_state["pbv2_universe"] = "VN30"
-        prog.empty()
-
-    if do_pbv2_100:
-        prog = st.progress(0, text="Scanning Pin Bar v2 VN100... 0 / 100")
-        def _pbv2_cb100(done, total):
-            prog.progress(done / total, text=f"Scanning Pin Bar v2 VN100... {done} / {total}")
-        pbv2_sigs = run_pinbar_v2_scan(VN100_STOCKS, vnindex_df=vnindex_df,
-                                        progress_cb=_pbv2_cb100)
-        st.session_state["pbv2_results"]  = pbv2_sigs
-        st.session_state["pbv2_universe"] = "VN100"
-        prog.empty()
-
-    pbv2_results  = st.session_state.get("pbv2_results", [])
-    pbv2_universe = st.session_state.get("pbv2_universe", "")
-
-    if pbv2_results:
-        st.subheader(f"Pin Bar v2 {pbv2_universe} — {len(pbv2_results)} tin hieu")
-        _render_pinbar_v2_results(pbv2_results, use_cache, key="pbv2_table_main")
-    elif not do_pbv2_30 and not do_pbv2_100:
-        st.caption("Nhan Scan PBv2 de bat dau.")
-
-    # PBv2 chart panel
-    pbv2_sel = st.session_state.get("pbv2_sel")
-    if pbv2_sel:
-        st.divider()
-        score = pbv2_sel.get("pin_score", "")
-        st.subheader(
-            f"Chart — {pbv2_sel['symbol']} [{pbv2_sel.get('timeframe','')}] | "
-            f"{pbv2_sel.get('signal', '')} | "
-            f"Tier {pbv2_sel.get('pin_tier', '')} ({score}/13) | "
-            f"Context {pbv2_sel.get('context', '')}"
-        )
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Close",    pbv2_sel.get("close", ""))
-        c1.metric("MA20",     pbv2_sel.get("ma20", ""))
-        c2.metric("MA50",     pbv2_sel.get("ma50", ""))
-        c2.metric("R:R",      pbv2_sel.get("rr", ""))
-        c3.metric("SL",       pbv2_sel.get("sl", ""))
-        c3.metric("TP",       pbv2_sel.get("tp", ""))
-        c4.metric("Wick",     f"{pbv2_sel.get('wick_ratio', 0):.0%}")
-        rsi = pbv2_sel.get("rsi14")
-        c4.metric("RSI",      f"{rsi:.0f}" if rsi else "—")
-        c5.metric("Vol",      pbv2_sel.get("vol_tier", ""))
-        c5.metric("Priority", pbv2_sel.get("priority", ""))
-        show_chart(pbv2_sel["symbol"], sig=pbv2_sel, use_cache=use_cache)
 
     # ══════════════════════════════════════════════════════════════
     # PULLBACK V2 — continuation setup (uptrend + RS + coil at MA10)
